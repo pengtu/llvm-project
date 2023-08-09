@@ -153,12 +153,10 @@ void mlir::populateGpuToGENXConversionPatterns(LLVMTypeConverter &converter,
   populateWithGenerated(patterns);
   patterns
       .add<GPUIndexIntrinsicOpLowering<gpu::ThreadIdOp, GENX::ThreadIdXOp,
-                                       GENX::ThreadIdYOp, GENX::ThreadIdZOp>>(
-          converter)
-      .add<GPUIndexIntrinsicOpLowering<gpu::BlockIdOp, GENX::BlockIdXOp,
-                                       GENX::BlockIdYOp, GENX::BlockIdZOp>>(
-          converter)
-      .add<GPUIndexIntrinsicOpLowering<gpu::BlockDimOp, GENX::BlockDimXOp,
+                                       GENX::ThreadIdYOp, GENX::ThreadIdZOp>,
+           GPUIndexIntrinsicOpLowering<gpu::BlockIdOp, GENX::BlockIdXOp,
+                                       GENX::BlockIdYOp, GENX::BlockIdZOp>,
+           GPUIndexIntrinsicOpLowering<gpu::BlockDimOp, GENX::BlockDimXOp,
                                        GENX::BlockDimYOp, GENX::BlockDimZOp>,
            GPUIndexIntrinsicOpLowering<gpu::GridDimOp, GENX::GridDimXOp,
                                        GENX::GridDimYOp, GENX::GridDimZOp>>(
