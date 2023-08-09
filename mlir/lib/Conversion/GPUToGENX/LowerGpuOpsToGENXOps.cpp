@@ -154,21 +154,18 @@ static void populateOpPatterns(LLVMTypeConverter &converter,
 void mlir::populateGpuToGENXConversionPatterns(LLVMTypeConverter &converter,
                                                RewritePatternSet &patterns) {
   populateWithGenerated(patterns);
-  // TODO: Add patterns
-  //  patterns
-  //    .add<GPUIndexIntrinsicOpLowering<gpu::ThreadIdOp, GENX::ThreadIdXOp,
-  //                                       GENX::ThreadIdYOp,
-  //                                       GENX::ThreadIdZOp>>(
-  //          converter)
-  //      .add<GPUIndexIntrinsicOpLowering<gpu::BlockIdOp, GENX::BlockIdXOp,
-  //                                       GENX::BlockIdYOp, GENX::BlockIdZOp>>(
-  //          converter)
-  //      .add<GPUIndexIntrinsicOpLowering<gpu::BlockDimOp, GENX::BlockDimXOp,
-  //                                       GENX::BlockDimYOp,
-  //                                       GENX::BlockDimZOp>,
-  //           GPUIndexIntrinsicOpLowering<gpu::GridDimOp, GENX::GridDimXOp,
-  //                                       GENX::GridDimYOp, GENX::GridDimZOp>>(
-  //          converter);
+  patterns
+      .add<GPUIndexIntrinsicOpLowering<gpu::ThreadIdOp, GENX::ThreadIdXOp,
+                                       GENX::ThreadIdYOp, GENX::ThreadIdZOp>>(
+          converter)
+      .add<GPUIndexIntrinsicOpLowering<gpu::BlockIdOp, GENX::BlockIdXOp,
+                                       GENX::BlockIdYOp, GENX::BlockIdZOp>>(
+          converter)
+      .add<GPUIndexIntrinsicOpLowering<gpu::BlockDimOp, GENX::BlockDimXOp,
+                                       GENX::BlockDimYOp, GENX::BlockDimZOp>,
+           GPUIndexIntrinsicOpLowering<gpu::GridDimOp, GENX::GridDimXOp,
+                                       GENX::GridDimYOp, GENX::GridDimZOp>>(
+          converter);
 }
 
 std::unique_ptr<OperationPass<gpu::GPUModuleOp>>
