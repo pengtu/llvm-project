@@ -75,7 +75,7 @@ public:
     StringAttr attrName = attribute.getName();
     Attribute attrVal = attribute.getValue();
 
-    // For GPU kernels, set SPIR_KERNEL calling convention.
+    // Set calling convention for kernel
     if (attrName == GENX::GENXDialect::getKernelFuncAttrName())
       llvmFunc->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
 
