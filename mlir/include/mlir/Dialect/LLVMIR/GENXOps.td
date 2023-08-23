@@ -59,7 +59,7 @@ def GENX_Dialect : Dialect {
     static constexpr unsigned kGlobalMemoryAddressSpace = 1;
     /// The address space value that represents shared memory.
     static constexpr unsigned kSharedMemoryAddressSpace = 3;
-    /// The address space value that represents private memory.
+    /// The address space value that represents private memory.F
     static constexpr unsigned kPrivateMemoryAddressSpace = 0;
   }];
 }
@@ -123,20 +123,23 @@ def GENX_BlockIdZOp : GENX_DeviceFunctionOp<"workgroup.id.z",
 
 def GENX_BlockDimXOp : GENX_DeviceFunctionOp<"workgroup.dim.x",
                         "_Z12get_local_sizej", 0>;
-
 def GENX_BlockDimYOp : GENX_DeviceFunctionOp<"workgroup.dim.y",
                         "_Z12get_local_sizej", 1>;
-
 def GENX_BlockDimZOp : GENX_DeviceFunctionOp<"workgroup.dim.z",
                         "_Z12get_local_sizej", 2>;
-
 def GENX_GridDimXOp : GENX_DeviceFunctionOp<"grid.dim.x",
                         "_Z12get_global_sizej", 0>;
-
 def GENX_GridDimYOp : GENX_DeviceFunctionOp<"grid.dim.y",
                         "_Z12get_global_sizej", 1>;
-
 def GENX_GridDimZOp : GENX_DeviceFunctionOp<"grid.dim.z",
                         "_Z12get_global_sizej", 2>;
+
+//===----------------------------------------------------------------------===//
+// Synchronization
+//===----------------------------------------------------------------------===//
+
+// Workgroup barrier ensuring all global and local memory accesses are visible.
+// TODO: we need GENX_DeviceFunctionOp to generate calls that return void.
+def GENX_BarrierOp : GENX_DeviceFunctionOp<"barrier", "_Z7barrierj", 0x11>;
 
 #endif // GENXIR_OPS
