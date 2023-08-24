@@ -30,7 +30,7 @@ func.func @genx_special_regs() -> i32 {
 }
 
 func.func @genx.barrier() {
-  // CHECK: genx.barrier : i32
-  genx.barrier : i32
+  // CHECK: genx.barrier
+  genx.barrier
   llvm.return
 }
