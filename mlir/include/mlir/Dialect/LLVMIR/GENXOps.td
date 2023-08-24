@@ -122,7 +122,7 @@ def GENX_GridDimZOp : GENX_DeviceFunctionOp<"grid.dim.z",
 // Synchronization
 //===----------------------------------------------------------------------===//
 
-def NVVM_Barrier0Op : GENX_Op<"barrier"> {
+def GENX_BarrierOp : GENX_Op<"barrier"> {
   let summary = "Workgroup barrier";
 
   string baseDescription = [{
