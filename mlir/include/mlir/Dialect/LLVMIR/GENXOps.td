@@ -172,10 +172,7 @@ def GENX_AtomicCmpXchgOp : GENX_Op<"atomic.cmpxchg", [
   }];
 
   string llvmBuilder = [{
-    llvm::Type *ptrType = moduleTranslation.convertType(op.getPtr().getType());
-    llvm::Type *cmpType = moduleTranslation.convertType(op.getCmp().getType());
-    llvm::Type *valType = moduleTranslation.convertType(op.getVal().getType());    
-    $res = createAtomicCmpXchg(builder, $_resultType, ptrType, cmpType, valType, $ptr, $cmp, $val);
+    $res = createAtomicCmpXchg(builder, $ptr, $cmp, $val);
   }];
 
   let assemblyFormat = [{

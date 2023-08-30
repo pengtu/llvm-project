@@ -43,17 +43,15 @@ static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
 
 // Create a call to SPIR atomic cmpxchg function.
 static llvm::Value *createAtomicCmpXchg(llvm::IRBuilderBase &builder,
-                                        llvm::Type *retType,
-                                        llvm::Type *ptrType,
-                                        llvm::Type *cmpType,
-                                        llvm::Type *valType, llvm::Value *ptr,
-                                        llvm::Value *cmp, llvm::Value *val) {
-  assert(isa<llvm::PointerType>(ptrType) && "Expecting a pointer type");
-  assert(cmpType == valType && "Expecting cmpType to be equal to valType");
-  assert(retType == valType && "Expecting retType to be equal to valType");
-  return createDeviceFunctionCall(builder, "_Z14atomic_cmpxchgPU3AS1Viii",
-                                  retType, {ptrType, cmpType, valType},
-                                  {ptr, cmp, val});
+                                        llvm::Value *ptr, llvm::Value *cmp,
+                                        llvm::Value *val) {
+  assert(isa<llvm::PointerType>(ptr->getType()) && "Expecting a pointer type");
+  assert(cmp->getType() == val->getType() && "Mismatching types");
+
+  llvm::Type *retType = val->getType();
+  return createDeviceFunctionCall(
+      builder, "_Z14atomic_cmpxchgPU3AS1Viii", retType,
+      {ptr->getType(), cmp->getType(), val->getType()}, {ptr, cmp, val});
 }
 
 namespace {
