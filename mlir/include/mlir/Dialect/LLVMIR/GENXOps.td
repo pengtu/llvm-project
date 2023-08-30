@@ -161,8 +161,8 @@ def ShflKindAttr : EnumAttr<GENX_Dialect, ShflKind, "shfl_kind">;
 def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
       TypesMatchWith<"result and value have the same type",
                      "res", "value", "$_self">]>,
-  Results<(outs I32:$res)>,
-  Arguments<(ins I32:$value,
+  Results<(outs LLVM_Type:$res)>,
+  Arguments<(ins LLVM_Type:$value,
                  I32:$mask,
                  ShflKindAttr:$kind)> {
   string llvmBuilder = [{

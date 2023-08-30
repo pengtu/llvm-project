@@ -43,20 +43,38 @@ static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
 static llvm::Value *createSubGroupShuffle(llvm::IRBuilderBase &builder,
                                           llvm::Value *value, llvm::Value *mask,
                                           GENX::ShflKind kind) {
-  llvm::Type *int32Ty = builder.getInt32Ty();
   std::string fnName = "";
   switch (kind) {
   case GENX::ShflKind::XOR:
-    fnName = "_Z21sub_group_shuffle_xorij";
+    fnName = "_Z21sub_group_shuffle_xor";
     break;
   case GENX::ShflKind::UP:
-    fnName = "_Z20sub_group_shuffle_upij";
+    fnName = "_Z20sub_group_shuffle_up";
     break;
   case GENX::ShflKind::DOWN:
-    fnName = "_Z22sub_group_shuffle_downij";
+    fnName = "_Z22sub_group_shuffle_down";
     break;
   };
-  return createDeviceFunctionCall(builder, fnName, int32Ty, {int32Ty, int32Ty},
+  llvm::Type *ty = value->getType();
+  if (ty->isHalfTy())
+    fnName += "Dh";
+  else if (ty->isFloatTy())
+    fnName += "f";
+  else if (ty->isDoubleTy())
+    fnName += "d";
+  else if (ty->isIntegerTy(8))
+    fnName += "c";
+  else if (ty->isIntegerTy(16))
+    fnName += "s";
+  else if (ty->isIntegerTy(32))
+    fnName += "i";
+  else if (ty->isIntegerTy(64))
+    fnName += "l";
+  else
+    llvm_unreachable("unhandled type");
+  fnName += "j";
+  return createDeviceFunctionCall(builder, fnName, value->getType(),
+                                  {value->getType(), mask->getType()},
                                   {value, mask});
 }
 

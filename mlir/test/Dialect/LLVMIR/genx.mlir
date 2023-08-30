@@ -43,5 +43,23 @@ func.func @genx.sub_group_shuffle() {
   %2 = genx.sub_group_shuffle UP %0, %0 : i32 -> i32
   // CHECK: %3 = genx.sub_group_shuffle DOWN %0, %0 : i32 -> i32
   %3 = genx.sub_group_shuffle DOWN %0, %0 : i32 -> i32
+  %4 = llvm.mlir.constant(0 : i8) : i8
+  // CHECK: %5 = genx.sub_group_shuffle XOR %4, %0 : i8 -> i8
+  %5 = genx.sub_group_shuffle XOR %4, %0 : i8 -> i8
+  %6 = llvm.mlir.constant(0 : i16) : i16
+  // CHECK: %7 = genx.sub_group_shuffle XOR %6, %0 : i16 -> i16
+  %7 = genx.sub_group_shuffle XOR %6, %0 : i16 -> i16
+  %8 = llvm.mlir.constant(0 : i64) : i64
+  // CHECK: %9 = genx.sub_group_shuffle XOR %8, %0 : i64 -> i64
+  %9 = genx.sub_group_shuffle XOR %8, %0 : i64 -> i64
+  %10 = llvm.mlir.constant(0.0 : f16) : f16
+  // CHECK: %11 = genx.sub_group_shuffle XOR %10, %0 : f16 -> f16
+  %11 = genx.sub_group_shuffle XOR %10, %0 : f16 -> f16
+  %12 = llvm.mlir.constant(0.0 : f32) : f32
+  // CHECK: %13 = genx.sub_group_shuffle XOR %12, %0 : f32 -> f32
+  %13 = genx.sub_group_shuffle XOR %12, %0 : f32 -> f32
+  %14 = llvm.mlir.constant(0.0 : f64) : f64
+  // CHECK: %15 = genx.sub_group_shuffle XOR %14, %0 : f64 -> f64
+  %15 = genx.sub_group_shuffle XOR %14, %0 : f64 -> f64
   llvm.return
 }
