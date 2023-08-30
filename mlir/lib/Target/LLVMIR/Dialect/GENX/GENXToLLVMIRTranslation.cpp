@@ -43,6 +43,7 @@ static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
 static llvm::Value *createSubGroupShuffle(llvm::IRBuilderBase &builder,
                                           llvm::Value *value, llvm::Value *mask,
                                           GENX::ShflKind kind) {
+  assert(mask->getType()->isIntegerTy(32) && "Expecting mask type to be i32");
   std::string fnName = "";
   switch (kind) {
   case GENX::ShflKind::XOR:
