@@ -40,6 +40,26 @@ static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
   return builder.CreateCall(fn, args);
 }
 
+static llvm::Value *createSubGroupShuffle(llvm::IRBuilderBase &builder,
+                                          llvm::Value *value, llvm::Value *mask,
+                                          GENX::ShflKind kind) {
+  llvm::Type *int32Ty = builder.getInt32Ty();
+  std::string fnName = "";
+  switch (kind) {
+  case GENX::ShflKind::XOR:
+    fnName = "_Z21sub_group_shuffle_xorij";
+    break;
+  case GENX::ShflKind::UP:
+    fnName = "_Z20sub_group_shuffle_upij";
+    break;
+  case GENX::ShflKind::DOWN:
+    fnName = "_Z22sub_group_shuffle_downij";
+    break;
+  };
+  return createDeviceFunctionCall(builder, fnName, int32Ty, {int32Ty, int32Ty},
+                                  {value, mask});
+}
+
 namespace {
 /// Implementation of the dialect interface that converts operations belonging
 /// to the GENX dialect to LLVM IR.

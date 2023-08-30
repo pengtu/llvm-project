@@ -146,21 +146,30 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
   let assemblyFormat = "attr-dict";
 }
 
-//===----------------------------------------------------------------------===//
-// Subgroup shuffle xor
+def ShflKindXor : I32EnumAttrCase<"XOR", 0>;
+def ShflKindUp   : I32EnumAttrCase<"UP", 1>;
+def ShflKindDown : I32EnumAttrCase<"DOWN", 2>;
 
-def GENX_SubGroupShuffleXorOp : GENX_Op<"sub_group_shuffle_xor"> {
-  let arguments = (ins I32:$value,
-                       I32:$mask);
-  let results = (outs I32:$result);
+/// Enum attribute of the different shuffle kinds.
+def ShflKind : I32EnumAttr<"ShflKind", "GENX shuffle kind",
+  [ShflKindXor, ShflKindUp, ShflKindDown]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::GENX";
+}
+def ShflKindAttr : EnumAttr<GENX_Dialect, ShflKind, "shfl_kind">;
+
+def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
+      TypesMatchWith<"result and value have the same type",
+                     "res", "value", "$_self">]>,
+  Results<(outs I32:$res)>,
+  Arguments<(ins I32:$value,
+                 I32:$mask,
+                 ShflKindAttr:$kind)> {
   string llvmBuilder = [{
-    llvm::Type *int32Ty = builder.getInt32Ty();
-    createDeviceFunctionCall(builder, "_Z21sub_group_shuffle_xorij",
-        int32Ty, {int32Ty, int32Ty}, {$value, $mask});
+    createSubGroupShuffle(builder, $value, $mask, $kind);
   }];
-
   let assemblyFormat = [{
-    `(` operands `)` attr-dict `:` functional-type(operands, results)
+    $kind $value `,` $mask attr-dict `:` type($value) `->` type($res)
   }];
 }
 
