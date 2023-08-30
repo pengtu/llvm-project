@@ -35,3 +35,9 @@ llvm.func @genx.barrier() {
   genx.barrier
   llvm.return
 }
+
+llvm.func @genx.atomic.cmpxchg.i32(%ptr : !llvm.ptr<i32>, %cmp : i32, %val : i32) -> i32 {
+  // CHECK: call i32 @_Z14atomic_cmpxchgPU3AS1Viii(ptr %0, i32 %1, i32 %2)
+  %res = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i32>, i32, i32) -> i32
+  llvm.return %res : i32
+}

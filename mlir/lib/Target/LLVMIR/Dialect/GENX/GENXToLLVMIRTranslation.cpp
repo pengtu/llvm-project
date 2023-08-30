@@ -17,6 +17,7 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/Target/LLVMIR/ModuleTranslation.h"
 
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/Support/raw_ostream.h"
@@ -38,6 +39,21 @@ static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
       module->getOrInsertFunction(fnName, functionType).getCallee());
   fn->setCallingConv(llvm::CallingConv::SPIR_FUNC);
   return builder.CreateCall(fn, args);
+}
+
+// Create a call to SPIR atomic cmpxchg function.
+static llvm::Value *createAtomicCmpXchg(llvm::IRBuilderBase &builder,
+                                        llvm::Type *retType,
+                                        llvm::Type *ptrType,
+                                        llvm::Type *cmpType,
+                                        llvm::Type *valType, llvm::Value *ptr,
+                                        llvm::Value *cmp, llvm::Value *val) {
+  assert(isa<llvm::PointerType>(ptrType) && "Expecting a pointer type");
+  assert(cmpType == valType && "Expecting cmpType to be equal to valType");
+  assert(retType == valType && "Expecting retType to be equal to valType");
+  return createDeviceFunctionCall(builder, "_Z14atomic_cmpxchgPU3AS1Viii",
+                                  retType, {ptrType, cmpType, valType},
+                                  {ptr, cmp, val});
 }
 
 namespace {

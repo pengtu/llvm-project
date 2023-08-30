@@ -144,4 +144,43 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
   let assemblyFormat = "attr-dict";
 }
 
+//===----------------------------------------------------------------------===//
+// Atomic operations
+//===----------------------------------------------------------------------===//
+
+def GENX_AtomicCmpXchgType : AnyTypeOf<[AnyI32, AnyI64]>;
+
+def GENX_AtomicCmpXchgOp : GENX_Op<"atomic.cmpxchg", [
+      TypesMatchWith<"operand #1 and operand #2 have the same type",
+                     "val", "cmp", "$_self">,
+      TypesMatchWith<"result #0 and operand #1 have the same type",
+                     "res", "cmp", "$_self">]>,
+  Results<(outs GENX_AtomicCmpXchgType:$res)>,
+  Arguments<(ins Arg<LLVM_PointerTo<GENX_AtomicCmpXchgType>,"", [MemRead]>:$ptr,
+             GENX_AtomicCmpXchgType:$cmp, GENX_AtomicCmpXchgType:$val)> {
+  let summary = "Atomic compare and exchange";
+
+  string baseDescription = [{
+    The 'genx.atomic.cmpxchg' operation performs an atomic compare-and-swap at 
+    the memory location specified by the pointer argument. 
+    The semantics are:
+      atomic {
+        old = *ptr; 
+        *ptr = (old == cmp) ? cmp : val 
+        return old
+      }  
+  }];
+
+  string llvmBuilder = [{
+    llvm::Type *ptrType = moduleTranslation.convertType(op.getPtr().getType());
+    llvm::Type *cmpType = moduleTranslation.convertType(op.getCmp().getType());
+    llvm::Type *valType = moduleTranslation.convertType(op.getVal().getType());    
+    $res = createAtomicCmpXchg(builder, $_resultType, ptrType, cmpType, valType, $ptr, $cmp, $val);
+  }];
+
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
+  }];
+}
+
 #endif // GENXIR_OPS
