@@ -54,6 +54,9 @@ static llvm::Value *createSubGroupShuffle(llvm::IRBuilderBase &builder,
   case GENX::ShflKind::DOWN:
     fnName = "_Z22sub_group_shuffle_down";
     break;
+  case GENX::ShflKind::IDX:
+    fnName = "_Z17sub_group_shuffle";
+    break;
   };
   llvm::Type *ty = value->getType();
   if (ty->isHalfTy())

@@ -151,10 +151,11 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
 def ShflKindXor : I32EnumAttrCase<"XOR", 0>;
 def ShflKindUp   : I32EnumAttrCase<"UP", 1>;
 def ShflKindDown : I32EnumAttrCase<"DOWN", 2>;
+def ShflKindIdx  : I32EnumAttrCase<"IDX", 3>;
 
 /// Enum attribute of the different shuffle kinds.
 def ShflKind : I32EnumAttr<"ShflKind", "GENX shuffle kind",
-  [ShflKindXor, ShflKindUp, ShflKindDown]> {
+  [ShflKindXor, ShflKindUp, ShflKindDown, ShflKindIdx]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
 }
@@ -167,6 +168,14 @@ def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
   Arguments<(ins IntegerOrFloatType:$value,
                  I32:$mask,
                  ShflKindAttr:$kind)> {
+  let summary = "Subgroup shuffle";
+  string baseDescription = [{
+    The `genx.sub_group_shuffle` operation returns,
+    - $kind == XOR, the $value of the invocation identified by the current invocation’s id within the subgroup xor’ed with $mask.
+    - $kind == UP, the $value of the invocation identified by the current invocation’s id within the subgroup - $mask. 
+    - $kind == DOWN, the Value of the invocation identified by the current invocation’s id within the subgroup + $mask.
+    - $kind == IDX, the $value of the invocation identified by the id $mask.
+  }];
   string llvmBuilder = [{
     $res = createSubGroupShuffle(builder, $value, $mask, $kind);
   }];
