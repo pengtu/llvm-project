@@ -28,6 +28,8 @@ def LLVM_i8Ptr_uniform_constant : LLVM_IntPtrBase<8, 2>;
 // spirv::Generic: 4
 def LLVM_i8Ptr_generic : LLVM_IntPtrBase<8, 4>;
 
+def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;
+
 //===----------------------------------------------------------------------===//
 // GENX dialect definitions
 //===----------------------------------------------------------------------===//
@@ -161,12 +163,12 @@ def ShflKindAttr : EnumAttr<GENX_Dialect, ShflKind, "shfl_kind">;
 def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
       TypesMatchWith<"result and value have the same type",
                      "res", "value", "$_self">]>,
-  Results<(outs LLVM_Type:$res)>,
-  Arguments<(ins LLVM_Type:$value,
+  Results<(outs IntegerOrFloatType:$res)>,
+  Arguments<(ins IntegerOrFloatType:$value,
                  I32:$mask,
                  ShflKindAttr:$kind)> {
   string llvmBuilder = [{
-    createSubGroupShuffle(builder, $value, $mask, $kind);
+    $res = createSubGroupShuffle(builder, $value, $mask, $kind);
   }];
   let assemblyFormat = [{
     $kind $value `,` $mask attr-dict `:` type($value) `->` type($res)
