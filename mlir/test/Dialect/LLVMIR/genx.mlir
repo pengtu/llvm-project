@@ -34,3 +34,10 @@ func.func @genx.barrier() {
   genx.barrier
   llvm.return
 }
+
+func.func @genx.sub_group_shuffle_xor() {
+  %0 = llvm.mlir.constant(0 : i32) : i32
+  // CHECK: %1 = genx.sub_group_shuffle_xor(%0, %0) : (i32, i32) -> i32
+  %1 = genx.sub_group_shuffle_xor(%0, %0) : (i32, i32) -> i32
+  llvm.return
+}

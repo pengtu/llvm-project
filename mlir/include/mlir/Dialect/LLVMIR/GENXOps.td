@@ -144,4 +144,22 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
   let assemblyFormat = "attr-dict";
 }
 
+//===----------------------------------------------------------------------===//
+// Subgroup shuffle xor
+
+def GENX_SubGroupShuffleXorOp : GENX_Op<"sub_group_shuffle_xor"> {
+  let arguments = (ins I32:$value,
+                       I32:$mask);
+  let results = (outs I32:$result);
+  string llvmBuilder = [{
+    llvm::Type *int32Ty = builder.getInt32Ty();
+    createDeviceFunctionCall(builder, "_Z21sub_group_shuffle_xorij",
+        int32Ty, {int32Ty, int32Ty}, {$value, $mask});
+  }];
+
+  let assemblyFormat = [{
+    `(` operands `)` attr-dict `:` functional-type(operands, results)
+  }];
+}
+
 #endif // GENXIR_OPS
