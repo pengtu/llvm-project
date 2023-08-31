@@ -152,7 +152,7 @@ def GENX_AtomicCmpXchgType : AnyTypeOf<[AnyI32, AnyI64]>;
 
 def GENX_AtomicCmpXchgOp : GENX_Op<"atomic.cmpxchg", [
       TypesMatchWith<"operand #1 and operand #2 have the same type",
-                     "val", "cmp", "$_self">,
+                     "cmp", "val", "$_self">,
       TypesMatchWith<"result #0 and operand #1 have the same type",
                      "res", "cmp", "$_self">]>,
   Results<(outs GENX_AtomicCmpXchgType:$res)>,

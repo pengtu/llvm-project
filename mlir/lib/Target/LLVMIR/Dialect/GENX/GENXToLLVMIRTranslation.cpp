@@ -46,11 +46,38 @@ static llvm::Value *createAtomicCmpXchg(llvm::IRBuilderBase &builder,
                                         llvm::Value *ptr, llvm::Value *cmp,
                                         llvm::Value *val) {
   assert(isa<llvm::PointerType>(ptr->getType()) && "Expecting a pointer type");
+  assert(isa<llvm::IntegerType>(cmp->getType()) && "Expecting an integer type");
   assert(cmp->getType() == val->getType() && "Mismatching types");
 
-  llvm::Type *retType = val->getType();
+  auto *retType = cast<llvm::IntegerType>(val->getType());
+  unsigned addrSpace =
+      cast<llvm::PointerType>(ptr->getType())->getAddressSpace();
+
+  std::string fnName = "_Z12atom_cmpxchgPU";
+  switch (addrSpace) {
+  case mlir::GENX::GENXDialect::kGlobalMemoryAddressSpace:
+    fnName += "8CLglobal";
+    break;
+  case mlir::GENX::GENXDialect::kSharedMemoryAddressSpace:
+    fnName += "7CLlocal";
+    break;
+  default:
+    llvm_unreachable("Unexpected address space");
+  }
+
+  switch (retType->getBitWidth()) {
+  case 32:
+    fnName += retType->getSignBit() ? "Viii" : "Vjjj";
+    break;
+  case 64:
+    fnName += retType->getSignBit() ? "Vlll" : "Vmmm";
+    break;
+  default:
+    llvm_unreachable("Unexpected bit width");
+  }
+
   return createDeviceFunctionCall(
-      builder, "_Z14atomic_cmpxchgPU3AS1Viii", retType,
+      builder, fnName, retType,
       {ptr->getType(), cmp->getType(), val->getType()}, {ptr, cmp, val});
 }
 
