@@ -72,3 +72,52 @@ llvm.func @genx.atomic.cmpxchg.i32(%ptr : !llvm.ptr<i32>, %cmp : i32, %val : i32
   %res = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i32>, i32, i32) -> i32
   llvm.return %res : i32
 }
+
+llvm.func @genx.atomic.rmw.and.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw ADD %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw ADD %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.or.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw OR %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw OR %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.xor.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw XOR %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw XOR %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.add.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw ADD %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw ADD %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.min.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw MIN %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw MIN %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.max.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw MAX %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw MAX %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
+
+llvm.func @genx.atomic.rmw.xchg.i32(%ptr : !llvm.ptr<i32>, %val : i32) -> i32 {
+  // CHECK: [[RES:%.*]] = genx.atomic.rmw XCHG %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
+  // CHECK-NEXT: llvm.return [[RES]] : i32
+  %res = genx.atomic.rmw XCHG %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
+  llvm.return %res : i32
+}
