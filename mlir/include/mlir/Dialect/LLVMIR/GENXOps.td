@@ -170,11 +170,15 @@ def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
                  ShflKindAttr:$kind)> {
   let summary = "Subgroup shuffle";
   string baseDescription = [{
-    The `genx.sub_group_shuffle` operation returns,
-    - $kind == XOR, the $value of the invocation identified by the current invocation’s id within the subgroup xor’ed with $mask.
-    - $kind == UP, the $value of the invocation identified by the current invocation’s id within the subgroup - $mask. 
-    - $kind == DOWN, the Value of the invocation identified by the current invocation’s id within the subgroup + $mask.
-    - $kind == IDX, the $value of the invocation identified by the id $mask.
+    The `genx.sub_group_shuffle` operation is invoked by different work items
+    with different values, given by $value. Different work items have different
+    subgroup local IDs. The shuffle kind, $kind, is given to determine how to
+    calculate the associated subgroup local ID.
+    It returns the associated $value for the work item with subgroup local ID equals:
+    - $kind == XOR, the current invocation’s subgroup local ID xor’ed with $mask.
+    - $kind == UP, the current invocation’s subgroup local ID - $mask.
+    - $kind == DOWN, the current invocation’s subgroup local ID + $mask.
+    - $kind == IDX, the subgroup local ID $mask.
   }];
   string llvmBuilder = [{
     $res = createSubGroupShuffle(builder, $value, $mask, $kind);
