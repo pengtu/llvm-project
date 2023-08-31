@@ -173,8 +173,8 @@ def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
     The `genx.sub_group_shuffle` operation is invoked by different work items
     with different values, given by $value. Different work items have different
     subgroup local IDs. The shuffle kind, $kind, is given to determine how to
-    calculate the associated subgroup local ID.
-    It returns the associated $value for the work item with subgroup local ID equals:
+    calculate the associated subgroup local ID. It returns the associated
+    $value for the work item with subgroup local ID equal to:
     - $kind == XOR, the current invocation’s subgroup local ID xor’ed with $mask.
     - $kind == UP, the current invocation’s subgroup local ID - $mask.
     - $kind == DOWN, the current invocation’s subgroup local ID + $mask.
