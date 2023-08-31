@@ -28,6 +28,8 @@ def LLVM_i8Ptr_uniform_constant : LLVM_IntPtrBase<8, 2>;
 // spirv::Generic: 4
 def LLVM_i8Ptr_generic : LLVM_IntPtrBase<8, 4>;
 
+def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;
+
 //===----------------------------------------------------------------------===//
 // GENX dialect definitions
 //===----------------------------------------------------------------------===//
@@ -65,6 +67,8 @@ def GENX_Dialect : Dialect {
     /// The address space value that represents private memory.
     static constexpr unsigned kPrivateMemoryAddressSpace = 0;
   }];
+
+  let useDefaultAttributePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -142,6 +146,82 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
   }];
 
   let assemblyFormat = "attr-dict";
+}
+
+def ShflKindXor : I32EnumAttrCase<"XOR", 0>;
+def ShflKindUp   : I32EnumAttrCase<"UP", 1>;
+def ShflKindDown : I32EnumAttrCase<"DOWN", 2>;
+def ShflKindIdx  : I32EnumAttrCase<"IDX", 3>;
+
+/// Enum attribute of the different shuffle kinds.
+def ShflKind : I32EnumAttr<"ShflKind", "GENX shuffle kind",
+  [ShflKindXor, ShflKindUp, ShflKindDown, ShflKindIdx]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::GENX";
+}
+def ShflKindAttr : EnumAttr<GENX_Dialect, ShflKind, "shfl_kind">;
+
+def GENX_SubGroupShuffleOp : GENX_Op<"sub_group_shuffle", [
+      TypesMatchWith<"result and value have the same type",
+                     "res", "value", "$_self">]>,
+  Results<(outs IntegerOrFloatType:$res)>,
+  Arguments<(ins IntegerOrFloatType:$value,
+                 I32:$mask,
+                 ShflKindAttr:$kind)> {
+  let summary = "Subgroup shuffle";
+  string baseDescription = [{
+    The `genx.sub_group_shuffle` operation is invoked by different work items
+    with different values, given by $value. Different work items have different
+    subgroup local IDs. The shuffle kind, $kind, is given to determine how to
+    calculate the associated subgroup local ID. It returns the associated
+    $value for the work item with subgroup local ID equal to:
+    - $kind == XOR, the current invocation’s subgroup local ID xor’ed with $mask.
+    - $kind == UP, the current invocation’s subgroup local ID - $mask.
+    - $kind == DOWN, the current invocation’s subgroup local ID + $mask.
+    - $kind == IDX, the subgroup local ID $mask.
+  }];
+  string llvmBuilder = [{
+    $res = createSubGroupShuffle(builder, $value, $mask, $kind);
+  }];
+  let assemblyFormat = [{
+    $kind $value `,` $mask attr-dict `:` type($value) `->` type($res)
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// Atomic operations
+//===----------------------------------------------------------------------===//
+
+def GENX_AtomicCmpXchgType : AnyTypeOf<[AnyI32, AnyI64]>;
+
+def GENX_AtomicCmpXchgOp : GENX_Op<"atomic.cmpxchg", [
+      TypesMatchWith<"operand #1 and operand #2 have the same type",
+                     "cmp", "val", "$_self">,
+      TypesMatchWith<"result #0 and operand #1 have the same type",
+                     "res", "cmp", "$_self">]>,
+  Results<(outs GENX_AtomicCmpXchgType:$res)>,
+  Arguments<(ins Arg<LLVM_PointerTo<GENX_AtomicCmpXchgType>,"", [MemRead]>:$ptr,
+             GENX_AtomicCmpXchgType:$cmp, GENX_AtomicCmpXchgType:$val)> {
+  let summary = "Atomic compare and exchange";
+
+  string baseDescription = [{
+    The 'genx.atomic.cmpxchg' operation performs an atomic compare-and-swap at 
+    the memory location specified by the pointer argument. 
+    The semantics are:
+      atomic {
+        old = *ptr; 
+        *ptr = (old == cmp) ? cmp : val 
+        return old
+      }  
+  }];
+
+  string llvmBuilder = [{
+    $res = createAtomicCmpXchg(builder, $ptr, $cmp, $val);
+  }];
+
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 #endif // GENXIR_OPS
