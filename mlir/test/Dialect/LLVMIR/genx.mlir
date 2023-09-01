@@ -1,7 +1,7 @@
 // RUN: mlir-opt %s -split-input-file -verify-diagnostics | FileCheck %s
 
 func.func @genx_special_regs() -> i32 {
-  // CHECK-LABEL: genx_special_regs  
+  // CHECK-LABEL: genx_special_regs
   // CHECK: genx.workitem.id.x : i32
   %0 = genx.workitem.id.x : i32
   // CHECK: genx.workitem.id.y : i32
@@ -76,7 +76,7 @@ llvm.func @genx.atomic.cmpxchg.i32(%ptr : !llvm.ptr<i32>, %cmp : i32, %val : i32
 }
 
 llvm.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
-  // CHECK-LABEL: genx.atomic.rmw.i32  
+  // CHECK-LABEL: genx.atomic.rmw.i32
   // CHECK: genx.atomic.rmw AND %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
   %0 = genx.atomic.rmw AND %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
   // CHECK: genx.atomic.rmw OR %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32  
