@@ -83,8 +83,8 @@ llvm.func @genx.atomic.cmpxchg.shared.u64(%ptr : !llvm.ptr<i64, 3>, %cmp : i64, 
   llvm.return
 }
 
-llvm.func @genx.atomic.rmw.global.i32(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, %val1 : i32, %val2 : i64) {
-  // CHECK-LABEL: genx.atomic.rmw.global.i32
+llvm.func @genx.atomic.rmw(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, %val1 : i32, %val2 : i64) {
+  // CHECK-LABEL: genx.atomic.rmw
   // CHECK: call i32 @_Z8atom_andPU8CLglobalVii(ptr addrspace(1) %0, i32 %2)
   %0 = genx.atomic.rmw AND %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z7atom_orPU8CLglobalVii(ptr addrspace(1) %0, i32 %2)
