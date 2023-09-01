@@ -264,6 +264,4 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
   }];
 }
 
-
-
 #endif // GENXIR_OPS

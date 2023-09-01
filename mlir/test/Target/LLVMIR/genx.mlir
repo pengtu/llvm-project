@@ -31,12 +31,14 @@ llvm.func @genx_special_regs() -> i64 {
 }
 
 llvm.func @genx.barrier() {
+  // CHECK-LABEL: genx.barrier
   // CHECK: call void @_Z7barrierj(i32 3)
   genx.barrier
   llvm.return
 }
 
 llvm.func @genx.sub_group_shuffle() {
+  // CHECK-LABEL: genx.sub_group_shuffle
   %0 = llvm.mlir.constant(0 : i32) : i32
   // CHECK: %1 = call i32 @_Z21sub_group_shuffle_xorij(i32 0, i32 0)
   %1 = genx.sub_group_shuffle XOR %0, %0 : i32 -> i32
@@ -67,98 +69,51 @@ llvm.func @genx.sub_group_shuffle() {
   llvm.return
 }
 
-llvm.func @genx.atomic.cmpxchg.global.i32(%ptr : !llvm.ptr<i32, 1>, %cmp : i32, %val : i32) -> i32 {
+llvm.func @genx.atomic.cmpxchg.global.i32(%ptr : !llvm.ptr<i32, 1>, %cmp : i32, %val : i32)  {
+  // CHECK-LABEL: genx.atomic.cmpxchg.global.i32
   // CHECK: call i32 @_Z12atom_cmpxchgPU8CLglobalViii(ptr addrspace(1) %0, i32 %1, i32 %2)
-  %res = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i32, 1>, i32, i32) -> i32
-  llvm.return %res : i32
+  %0 = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i32, 1>, i32, i32) -> i32
+  llvm.return
 }
 
-llvm.func @genx.atomic.cmpxchg.shared.u64(%ptr : !llvm.ptr<i64, 3>, %cmp : i64, %val : i64) -> i64 {
+llvm.func @genx.atomic.cmpxchg.shared.u64(%ptr : !llvm.ptr<i64, 3>, %cmp : i64, %val : i64)  {
+  // CHECK-LABEL: genx.atomic.cmpxchg.shared.u64
   // CHECK: call i64 @_Z12atom_cmpxchgPU7CLlocalVlll(ptr addrspace(3) %0, i64 %1, i64 %2)
-  %res = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i64, 3>, i64, i64) -> i64
-  llvm.return %res : i64
+  %0 = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i64, 3>, i64, i64) -> i64
+  llvm.return
 }
 
-llvm.func @genx.atomic.and.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+llvm.func @genx.atomic.rmw.global.i32(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, %val1 : i32, %val2 : i64) {
+  // CHECK-LABEL: genx.atomic.rmw.global.i32
   // CHECK: call i32 @_Z8atom_andPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw AND %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.and.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z8atom_andPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw AND %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.or.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %0 = genx.atomic.rmw AND %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z7atom_orPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw OR %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.or.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z7atom_orPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw OR %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.xor.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %1 = genx.atomic.rmw OR %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z8atom_xorPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw XOR %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.xor.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z8atom_xorPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw XOR %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.add.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %2 = genx.atomic.rmw XOR %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z8atom_addPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw ADD %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.add.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z8atom_addPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw ADD %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.min.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %3 = genx.atomic.rmw ADD %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z8atom_minPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw MIN %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.min.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z8atom_minPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw MIN %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.max.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %4 = genx.atomic.rmw MIN %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z8atom_maxPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw MAX %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
-
-llvm.func @genx.atomic.max.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
-  // CHECK: call i64 @_Z8atom_maxPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw MAX %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
-}
-
-llvm.func @genx.atomic.xchg.global.i32(%ptr : !llvm.ptr<i32, 1>, %val : i32) -> i32 {
+  %5 = genx.atomic.rmw MAX %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
   // CHECK: call i32 @_Z8atom_xchgPU8CLglobalVii(ptr addrspace(1) %0, i32 %1)
-  %res = genx.atomic.rmw XCHG %ptr, %val : (!llvm.ptr<i32, 1>, i32) -> i32
-  llvm.return %res : i32
-}
+  %6 = genx.atomic.rmw XCHG %ptr, %val1 : (!llvm.ptr<i32, 1>, i32) -> i32
 
-llvm.func @genx.atomic.xchg.shared.u64(%ptr : !llvm.ptr<i64, 3>, %val : i64) -> i64 {
+  // CHECK: call i64 @_Z8atom_andPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %7 = genx.atomic.rmw AND %sptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+  // CHECK: call i64 @_Z7atom_orPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %8 = genx.atomic.rmw OR %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+  // CHECK: call i64 @_Z8atom_xorPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %9 = genx.atomic.rmw XOR %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+  // CHECK: call i64 @_Z8atom_addPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %10 = genx.atomic.rmw ADD %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+  // CHECK: call i64 @_Z8atom_minPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %11 = genx.atomic.rmw MIN %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+  // CHECK: call i64 @_Z8atom_maxPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
+  %12 = genx.atomic.rmw MAX %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
   // CHECK: call i64 @_Z8atom_xchgPU7CLlocalVll(ptr addrspace(3) %0, i64 %1)
-  %res = genx.atomic.rmw XCHG %ptr, %val : (!llvm.ptr<i64, 3>, i64) -> i64
-  llvm.return %res : i64
+  %13 = genx.atomic.rmw XCHG %ptr, %val2 : (!llvm.ptr<i64, 3>, i64) -> i64
+
+  llvm.return
 }
