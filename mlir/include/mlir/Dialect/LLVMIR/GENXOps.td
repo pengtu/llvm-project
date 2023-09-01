@@ -238,7 +238,7 @@ def RMWOpKind : I32EnumAttr<"RMWOpKind", "GENX RMW operation kind",
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
 }
-def RMWOpAttr : EnumAttr<GENX_Dialect, RMWOpKind, "RMW_op_kind">;
+def RMWOpKindAttr : EnumAttr<GENX_Dialect, RMWOpKind, "RMW_op_kind">;
 
 def GENX_AtomicRMWType : AnyTypeOf<[AnyI32, AnyI64]>;
 
@@ -247,7 +247,7 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
                      "res", "val", "$_self">]>,
   Results<(outs GENX_AtomicRMWType:$res)>,
   Arguments<(ins Arg<LLVM_PointerTo<GENX_AtomicRMWType>,"", [MemRead, MemWrite]>:$ptr,
-             GENX_AtomicRMWType:$val, RMWOpAttr:$bin_op)> {
+             GENX_AtomicRMWType:$val, RMWOpKindAttr:$bin_op)> {
   let summary = "Atomic read-modify-write";
 
   string baseDescription = [{
