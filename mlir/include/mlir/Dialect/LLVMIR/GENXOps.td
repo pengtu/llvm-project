@@ -201,7 +201,7 @@ def GENX_AtomicWorkItemFenceOp : GENX_Op<"atomic_work_item_fence">,
     createAtomicWorkItemFence(builder, $flags, $order, $scope);
   }];
   let assemblyFormat = [{
-    custom<MemoryFenceFlags>($flags) `,` $order `,` $scope attr-dict
+    ` ` `<` custom<MemoryFenceFlags>($flags) ` ``>` `,` $order `,` $scope attr-dict
   }];
 }
 

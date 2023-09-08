@@ -68,7 +68,7 @@ static mlir::ParseResult parseMemoryFenceFlags(OpAsmParser &parser,
     if (parser.parseCustomAttributeWithFallback(memoryFenceFlagAttr))
       return failure();
     flags |= static_cast<int>(memoryFenceFlagAttr.getValue());
-  } while (succeeded(parser.parseOptionalKeyword("or")));
+  } while (succeeded(parser.parseOptionalComma()));
   flagsAttr =
       IntegerAttr::get(IntegerType::get(parser.getContext(), 32), flags);
   return success();
@@ -81,7 +81,7 @@ static void printMemoryFenceFlags(OpAsmPrinter &p, AtomicWorkItemFenceOp op,
     assert(flag == 1 | flag == 2 | flag == 4 &&
            "Expecting valid memory fence flag");
     if (!firstFlag)
-      p << " or";
+      p << ",";
     p.printStrippedAttrOrType(MemoryFenceFlagAttr::get(
         flags.getContext(), static_cast<MemoryFenceFlag>(flag)));
     firstFlag = false;
