@@ -74,7 +74,7 @@ static mlir::ParseResult parseMemoryFenceFlags(OpAsmParser &parser,
   return success();
 }
 
-static void printMemoryFenceFlags(OpAsmPrinter &p, AtomicWorkItemFenceOp op,
+static void printMemoryFenceFlags(OpAsmPrinter &p, FenceOp op,
                                   IntegerAttr flags) {
   bool firstFlag = true;
   auto printFlag = [&](int flag) {

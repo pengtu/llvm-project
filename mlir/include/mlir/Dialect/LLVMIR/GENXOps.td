@@ -151,9 +151,9 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
 /// Enum attribute of the different memory fence flags.
 def MemoryFenceFlag : I32EnumAttr<"MemoryFenceFlag", "GENX memory fence flag",
   [
-    I32EnumAttrCase<"CLK_LOCAL_MEM_FENCE",  1>,
-    I32EnumAttrCase<"CLK_GLOBAL_MEM_FENCE", 2>,
-    I32EnumAttrCase<"CLK_IMAGE_MEM_FENCE",  4>
+    I32EnumAttrCase<"LOCAL_MEM_FENCE",  1>,
+    I32EnumAttrCase<"GLOBAL_MEM_FENCE", 2>,
+    I32EnumAttrCase<"IMAGE_MEM_FENCE",  4>
   ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
@@ -188,17 +188,22 @@ def MemoryScope : I32EnumAttr<"MemoryScope", "GENX memory scope",
 }
 def MemoryScopeAttr : EnumAttr<GENX_Dialect, MemoryScope, "memory_scope">;
 
-def GENX_AtomicWorkItemFenceOp : GENX_Op<"atomic_work_item_fence">,
-  Arguments<(ins I32Attr:$flags,
+def GENX_FenceOp : GENX_Op<"atomic_work_item_fence">,
+  Arguments<(ins ConfinedAttr<I32Attr, [IntMinValue<0>, IntMaxValue<7>]>:$flags,
                  MemoryOrderAttr:$order,
                  MemoryScopeAttr:$scope)> {
-  let summary = "Atomic work item fence";
+  let summary = "Fence of memory accesses";
   string baseDescription = [{
     Ensures that memory accesses issued before this instruction will be observed
-    before memory accesses issued after this instruction.
+    before memory accesses issued after this instruction. Function arguments
+    determine what kind of memory is being controlled and what kind of control
+    to apply.
+    $flags must be set to MemoryFenceFlag or a combination of them.
+    $order determines the type of fence (e.g., acquire, release, etc.).
+    $scope control the extent a fence is visible with respect to the memory model.
   }];
   string llvmBuilder = [{
-    createAtomicWorkItemFence(builder, $flags, $order, $scope);
+    createFence(builder, $flags, $order, $scope);
   }];
   let assemblyFormat = [{
     ` ` `<` custom<MemoryFenceFlags>($flags) ` ``>` `,` $order `,` $scope attr-dict
