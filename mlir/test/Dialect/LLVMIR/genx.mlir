@@ -126,3 +126,10 @@ func.func @genx.matrix.store(%ptr : !llvm.ptr<vector<4xi32>>, %val: !genx.jointm
   genx.matrix.store <Subgroup> <RowMajor> %ptr, %val, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>, index)  
   llvm.return  
 }
+
+func.func @genx.matrix.store(%ptr : !llvm.ptr<vector<4xi32>>, %val: !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>, %stride : index) {
+  // CHECK-LABEL: genx.matrix.store
+  // CHECK: genx.matrix.store <Subgroup> <RowMajor> %arg0, %arg1, %arg2 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>, index)
+  genx.matrix.store <Subgroup> <RowMajor> %ptr, %val, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>, index)  
+  llvm.return  
+}
