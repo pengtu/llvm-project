@@ -25,7 +25,7 @@ def GENX_Dialect : Dialect {
   let name = "genx";
   let summary = "The GENX dialect in MLIR.";
   let description = [{
-    GENX is a dialect for representing operations on Intel GPUs and  extensions 
+    GENX is a dialect for representing operations on Intel GPUs and extensions 
     to the LLVM type system.
   }];
   let cppNamespace = "::mlir::GENX";
@@ -382,10 +382,10 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
 
   string baseDescription = [{
     The `genx.matrix.load` operation performs a load of the matrix at the memory 
-    location specified by the pointer argument %ptr. The stride argument specifies 
-    the number of matrix elements in memory between the start of successive rows/columns 
-    in the result. The matrix elements loaded from memory are arranged according to the 
-    specified layout. The scope indicates the synchronization scope for operations 
+    location specified by the pointer argument $ptr. The stride argument specifies 
+    the number of matrix elements in memory between the start of successive rows and 
+    columns in the result. The matrix elements loaded from memory are arranged according 
+    to the specified layout. The scope indicates the synchronization scope for operations 
     on the matrix.
   }];
 
