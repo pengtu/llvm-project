@@ -387,11 +387,11 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
 
   string baseDescription = [{
     The `genx.matrix.load` operation performs a load of the matrix at the memory 
-    location specified by the pointer argument. The stride argument specifies the 
-    number of matrix elements in memory between the start of successive rows and 
-    columns in the result. The matrix elements loaded from memory are arranged 
-    according to the specified layout. The scope indicates the synchronization 
-    scope for operation on the mmatrix.
+    location specified by the pointer argument %ptr. The stride argument specifies 
+    the number of matrix elements in memory between the start of successive rows/columns 
+    in the result. The matrix elements loaded from memory are arranged according to the 
+    specified layout. The scope indicates the synchronization scope for operations 
+    on the matrix.
   }];
 
   string llvmBuilder = [{
