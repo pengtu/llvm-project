@@ -160,23 +160,6 @@ static Type parseJointMatrixType(GENXDialect const &dialect,
   return JointMatrixType::get(elementTy, scope, dims[0], dims[1], matrixLayout);
 }
 
-// Specialize this function to parse each of the parameters that define an
-// ImageType. By default it assumes this is an enum type.
-template <typename ValTy>
-static std::optional<ValTy> parseAndVerify(GENXDialect const &dialect,
-                                           DialectAsmParser &parser) {
-  StringRef enumSpec;
-  SMLoc enumLoc = parser.getCurrentLocation();
-  if (parser.parseKeyword(&enumSpec)) {
-    return std::nullopt;
-  }
-
-  auto val = GENX::symbolizeEnum<ValTy>(enumSpec);
-  if (!val)
-    parser.emitError(enumLoc, "unknown attribute: '") << enumSpec << "'";
-  return val;
-}
-
 Type GENXDialect::parseType(DialectAsmParser &parser) const {
   StringRef keyword;
   if (parser.parseKeyword(&keyword))
@@ -194,8 +177,8 @@ Type GENXDialect::parseType(DialectAsmParser &parser) const {
 //===----------------------------------------------------------------------===//
 
 static void print(JointMatrixType type, DialectAsmPrinter &os) {
-  os << "jointmatrix<" << type.getRows() << "x" << type.getColumns() << "x";
-  os << type.getElementType() << ", "
+  os << "jointmatrix<" << type.getNumRows() << "x" << type.getNumColumns()
+     << "x" << type.getElementType() << ", "
      << stringifyMatrixLayout(type.getMatrixLayout());
   os << ", " << stringifyScope(type.getScope()) << ">";
 }
@@ -232,7 +215,7 @@ static void printMemoryFenceFlags(OpAsmPrinter &p, FenceOp op,
                                   IntegerAttr flags) {
   bool firstFlag = true;
   auto printFlag = [&](int flag) {
-    assert((flag == 1) | (flag == 2) | (flag == 4) &&
+    assert(((flag == 1) || (flag == 2) || (flag == 4)) &&
            "Expecting valid memory fence flag");
     if (!firstFlag)
       p << ",";

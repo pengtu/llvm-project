@@ -37,6 +37,7 @@ public:
 
   std::optional<int64_t> getSizeInBytes() const;
 };
+
 class JointMatrixType : public Type::TypeBase<JointMatrixType, GENXType,
                                               detail::JointMatrixTypeStorage> {
 public:
@@ -46,12 +47,10 @@ public:
                              unsigned columns, MatrixLayout matrixLayout);
 
   Type getElementType() const;
-
   Scope getScope() const;
   MatrixLayout getMatrixLayout() const;
-
-  unsigned getRows() const;
-  unsigned getColumns() const;
+  unsigned getNumRows() const;
+  unsigned getNumColumns() const;
 };
 
 } // namespace GENX

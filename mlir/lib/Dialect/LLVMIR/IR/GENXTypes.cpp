@@ -65,9 +65,9 @@ MatrixLayout JointMatrixType::getMatrixLayout() const {
   return getImpl()->matrixLayout;
 }
 
-unsigned JointMatrixType::getRows() const { return getImpl()->rows; }
+unsigned JointMatrixType::getNumRows() const { return getImpl()->rows; }
 
-unsigned JointMatrixType::getColumns() const { return getImpl()->columns; }
+unsigned JointMatrixType::getNumColumns() const { return getImpl()->columns; }
 
 //===----------------------------------------------------------------------===//
 // GENX Dialect
