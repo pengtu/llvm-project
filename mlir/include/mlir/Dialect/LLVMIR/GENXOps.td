@@ -45,7 +45,7 @@ def GENX_Dialect : Dialect {
   let dependentDialects = ["LLVM::LLVMDialect"];
   let hasOperationAttrVerify = 1;
   let useDefaultTypePrinterParser = 1;
-  let useDefaultAttributePrinterParser = 1;  
+  let useDefaultAttributePrinterParser = 1;
 
   let extraClassDeclaration = [{
     void registerAttributes();    
