@@ -428,7 +428,11 @@ def GENX_MatrixInitOp : GENX_Op<"matrix.init">,
     $scope operands attr-dict`:` `(` type(operands) `)`
   }];
 
+<<<<<<< HEAD
   let hasVerifier = 1;
+=======
+  let hasVerifier = 1;  
+>>>>>>> 5e9b906fb9be ([GENX][JointMatrix]: Add MatrixMad to the GENX dialect)
 }
 
 #endif // GENXIR_OPS
