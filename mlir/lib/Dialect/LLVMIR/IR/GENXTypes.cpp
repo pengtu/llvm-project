@@ -12,9 +12,7 @@
 
 #include "mlir/Dialect/LLVMIR/GENXTypes.h"
 #include "mlir/Dialect/LLVMIR/GENXDialect.h"
-#include "mlir/Dialect/LLVMIR/GENXEnums.h"
 #include "mlir/IR/Attributes.h"
-#include "mlir/IR/BuiltinTypes.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/TypeSwitch.h"
 

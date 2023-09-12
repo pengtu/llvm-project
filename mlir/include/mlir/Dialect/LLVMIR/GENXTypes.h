@@ -13,13 +13,14 @@
 #ifndef MLIR_DIALECT_LLVMIR_GENXTYPES_H_
 #define MLIR_DIALECT_LLVMIR_GENXTYPES_H_
 
-#include "mlir/Dialect/LLVMIR/GENXEnums.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/TypeSupport.h"
 #include "mlir/IR/Types.h"
 
+#include "mlir/Dialect/LLVMIR/GENXOpsEnums.h.inc"
 namespace mlir {
 namespace GENX {
 
