@@ -224,25 +224,6 @@ static mlir::ParseResult parseMemoryFenceFlags(OpAsmParser &parser,
   return success();
 }
 
-Attribute GENXDialect::parseAttribute(DialectAsmParser &parser,
-                                      Type type) const {
-  if (type) {
-    parser.emitError(parser.getNameLoc(), "unexpected type");
-    return {};
-  }
-
-  StringRef attrKind;
-  Attribute attr;
-  OptionalParseResult result =
-      generatedAttributeParser(parser, &attrKind, type, attr);
-  if (result.has_value())
-    return attr;
-
-  parser.emitError(parser.getNameLoc(), "unknown GENX attribute kind: ")
-      << attrKind;
-  return {};
-}
-
 //===----------------------------------------------------------------------===//
 // Attribute printing
 //===----------------------------------------------------------------------===//
@@ -265,14 +246,6 @@ static void printMemoryFenceFlags(OpAsmPrinter &p, FenceOp op,
     printFlag(2);
   if (flags.getInt() & 4)
     printFlag(4);
-}
-
-void GENXDialect::printAttribute(Attribute attr,
-                                 DialectAsmPrinter &printer) const {
-  if (succeeded(generatedAttributePrinter(attr, printer)))
-    return;
-
-  llvm_unreachable("unhandled GENX attribute kind");
 }
 
 #define GET_OP_CLASSES
