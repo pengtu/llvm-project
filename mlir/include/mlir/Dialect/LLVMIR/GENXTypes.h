@@ -21,6 +21,7 @@
 #include "mlir/IR/Types.h"
 
 #include "mlir/Dialect/LLVMIR/GENXOpsEnums.h.inc"
+
 namespace mlir {
 namespace GENX {
 
@@ -36,21 +37,7 @@ public:
 
   std::optional<int64_t> getSizeInBytes() const;
 };
-
-class CompositeType : public GENXType {
-public:
-  using GENXType::GENXType;
-
-  static bool classof(Type type);
-
-  unsigned getNumElements() const;
-
-  Type getElementType(unsigned) const;
-
-  std::optional<int64_t> getSizeInBytes() const;
-};
-
-class JointMatrixType : public Type::TypeBase<JointMatrixType, CompositeType,
+class JointMatrixType : public Type::TypeBase<JointMatrixType, GENXType,
                                               detail::JointMatrixTypeStorage> {
 public:
   using Base::Base;

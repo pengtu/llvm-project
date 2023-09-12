@@ -22,33 +22,6 @@ using namespace mlir;
 using namespace mlir::GENX;
 
 //===----------------------------------------------------------------------===//
-// CompositeType
-//===----------------------------------------------------------------------===//
-
-bool CompositeType::classof(Type type) {
-  return type.isa<GENX::JointMatrixType>();
-}
-
-unsigned CompositeType::getNumElements() const {
-  if (isa<JointMatrixType>())
-    llvm_unreachable(
-        "invalid to query number of elements of GENX::JointMatrix type");
-
-  llvm_unreachable("invalid composite type");
-}
-
-Type CompositeType::getElementType(unsigned index) const {
-  return TypeSwitch<Type, Type>(*this)
-      .Case<JointMatrixType>([](auto type) { return type.getElementType(); })
-      .Default(
-          [](Type) -> Type { llvm_unreachable("invalid composite type"); });
-}
-
-std::optional<int64_t> CompositeType::getSizeInBytes() const {
-  return std::nullopt;
-}
-
-//===----------------------------------------------------------------------===//
 // JointMatrixType
 //===----------------------------------------------------------------------===//
 
