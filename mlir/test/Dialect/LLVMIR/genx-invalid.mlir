@@ -1,13 +1,21 @@
 // RUN: mlir-opt -split-input-file -verify-diagnostics %s
 
+<<<<<<< HEAD
 func.func @joint_matrix_load(%ptr : !llvm.ptr<i32>, %stride : index) {
   // expected-error @+1 {{'genx.matrix.load' op scope attribute must have value 'Subgroup'}}
   %0 = genx.matrix.load <Workgroup> <RowMajor> %ptr, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<i32>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
   llvm.return
+=======
+func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xi32, RowMajor, Subgroup>, %b : !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>, %c : !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>) {
+  // expected-error @+1 {{'genx.matrix.mad' op matrix size must match}}
+  %r = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x16xi32, RowMajor, Subgroup>, !genx.jointmatrix<8x8xi32, RowMajor, Subgroup> -> !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>
+  llvm.return    
+>>>>>>> 5e9b906fb9be ([GENX][JointMatrix]: Add MatrixMad to the GENX dialect)
 }
 
 // -----
 
+<<<<<<< HEAD
 func.func @joint_matrix_load(%ptr : !llvm.ptr<i32>, %stride : index) {
   // expected-error @+1 {{'genx.matrix.load' op result layout must match layout attribute}}
   %1 = genx.matrix.load <Subgroup> <RowMajor> %ptr, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<i32>, index) -> !genx.jointmatrix<8x16xi32, ColumnMajor>
@@ -39,3 +47,18 @@ func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xf32, RowMajor>, %b : !ge
 }
 
 
+=======
+func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xi32, RowMajor, Subgroup>, %b : !genx.jointmatrix<16x8xi32, RowMajor, Workgroup>, %c : !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>) {
+  // expected-error @+1 {{'genx.matrix.mad' op matrix scope must match}}
+  %r = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x16xi32, RowMajor, Subgroup>, !genx.jointmatrix<16x8xi32, RowMajor, Workgroup> -> !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>
+  llvm.return  
+}
+
+// -----
+
+func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xf32, RowMajor, Subgroup>, %b : !genx.jointmatrix<16x8xi32, RowMajor, Subgroup>, %c : !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>) {
+  // expected-error @+1 {{matrix element type must match}}
+  %r = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x16xf32, RowMajor, Subgroup>, !genx.jointmatrix<16x8xi32, RowMajor, Subgroup> -> !genx.jointmatrix<8x8xi32, RowMajor, Subgroup>
+  llvm.return
+}
+>>>>>>> 5e9b906fb9be ([GENX][JointMatrix]: Add MatrixMad to the GENX dialect)
