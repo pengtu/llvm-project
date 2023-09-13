@@ -66,45 +66,39 @@ LogicalResult GENXDialect::verifyOperationAttribute(Operation *op,
 //===----------------------------------------------------------------------===//
 // Type Parsing
 //===----------------------------------------------------------------------===//
+namespace {
 
-static Type parseAndVerifyType(GENXDialect const &dialect,
+Type verifyJointMatrixElemType(GENXDialect const &dialect,
                                DialectAsmParser &parser) {
   Type type;
   SMLoc typeLoc = parser.getCurrentLocation();
   if (parser.parseType(type))
     return Type();
 
-  // Allow GENX dialect types
+  // Allow GENX dialect types.
   if (&type.getDialect() == &dialect)
     return type;
 
-  // Check other allowed types
+  llvm::errs() << "type: " << type << "\n";
+
+  // Intel XMX allows only certain floating point and integer types.
   if (auto t = type.dyn_cast<FloatType>()) {
-    if (type.isBF16()) {
-      parser.emitError(typeLoc, "cannot use 'bf16' to compose GENX types");
+    // TODO: add check for TF32 once available.
+    if (!t.isF16() && !t.isBF16() && !t.isF32() /*&& !t.isTF32()*/) {
+      parser.emitError(typeLoc, "only fp16, bf16, f32, and tf32 floating "
+                                "point types allowed but found ")
+          << t;
       return Type();
     }
   } else if (auto t = type.dyn_cast<IntegerType>()) {
-    if (!llvm::is_contained({1u, 8u, 16u, 32u, 64u}, t.getWidth())) {
+    if (!llvm::is_contained({8u, 16u, 32u}, t.getWidth())) {
       parser.emitError(typeLoc,
-                       "only 1/8/16/32/64-bit integer type allowed but found ")
-          << type;
-      return Type();
-    }
-  } else if (auto t = type.dyn_cast<VectorType>()) {
-    if (t.getRank() != 1) {
-      parser.emitError(typeLoc, "only 1-D vector allowed but found ") << t;
-      return Type();
-    }
-    if (t.getNumElements() > 4) {
-      parser.emitError(
-          typeLoc, "vector length has to be less than or equal to 4 but found ")
-          << t.getNumElements();
+                       "only 8/16/32-bit integer types allowed but found ")
+          << t;
       return Type();
     }
   } else {
-    parser.emitError(typeLoc, "cannot use ")
-        << type << " to compose GENX types";
+    parser.emitError(typeLoc, "cannot use ") << type << " as element type";
     return Type();
   }
 
@@ -113,8 +107,8 @@ static Type parseAndVerifyType(GENXDialect const &dialect,
 
 /// Parses the next keyword in `parser` as an enumerator.
 template <typename EnumClass, typename ParserType>
-static ParseResult parseEnumKeywordAttr(EnumClass &value, ParserType &parser,
-                                        StringRef attrName) {
+ParseResult parseEnumKeywordAttr(EnumClass &value, ParserType &parser,
+                                 StringRef attrName) {
   StringRef keyword;
   SmallVector<NamedAttribute, 1> attr;
   auto loc = parser.getCurrentLocation();
@@ -130,8 +124,8 @@ static ParseResult parseEnumKeywordAttr(EnumClass &value, ParserType &parser,
 
 // joint-matrix-type ::= `!genx.jointmatrix` `<`rows `x` cols `x` element-type
 //                                           `,` layout `,` scope`>`
-static Type parseJointMatrixType(GENXDialect const &dialect,
-                                 DialectAsmParser &parser) {
+Type parseJointMatrixType(GENXDialect const &dialect,
+                          DialectAsmParser &parser) {
   if (parser.parseLess())
     return Type();
 
@@ -145,7 +139,7 @@ static Type parseJointMatrixType(GENXDialect const &dialect,
     return Type();
   }
 
-  auto elementTy = parseAndVerifyType(dialect, parser);
+  auto elementTy = verifyJointMatrixElemType(dialect, parser);
   if (!elementTy)
     return Type();
   MatrixLayout matrixLayout;
@@ -159,6 +153,8 @@ static Type parseJointMatrixType(GENXDialect const &dialect,
     return Type();
   return JointMatrixType::get(elementTy, scope, dims[0], dims[1], matrixLayout);
 }
+
+} // namespace
 
 Type GENXDialect::parseType(DialectAsmParser &parser) const {
   StringRef keyword;
@@ -176,14 +172,14 @@ Type GENXDialect::parseType(DialectAsmParser &parser) const {
 // Type Printing
 //===----------------------------------------------------------------------===//
 
-static void print(JointMatrixType type, DialectAsmPrinter &os) {
-  os << "jointmatrix<" << type.getNumRows() << "x" << type.getNumColumns()
-     << "x" << type.getElementType() << ", "
-     << stringifyMatrixLayout(type.getMatrixLayout());
-  os << ", " << stringifyScope(type.getScope()) << ">";
-}
-
 void GENXDialect::printType(Type type, DialectAsmPrinter &os) const {
+  auto print = [](JointMatrixType type, DialectAsmPrinter &os) {
+    os << "jointmatrix<" << type.getNumRows() << "x" << type.getNumColumns()
+       << "x" << type.getElementType() << ", "
+       << stringifyMatrixLayout(type.getMatrixLayout());
+    os << ", " << stringifyScope(type.getScope()) << ">";
+  };
+
   TypeSwitch<Type>(type)
       .Case<JointMatrixType>([&](auto type) { print(type, os); })
       .Default([](Type) { llvm_unreachable("unhandled GENX type"); });
