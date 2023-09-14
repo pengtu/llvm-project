@@ -213,6 +213,16 @@ createMatrixLoad(llvm::IRBuilderBase &builder, llvm::Value *res,
   return nullptr;
 }
 
+static llvm::Value *createMatrixCopy(llvm::IRBuilderBase &builder,
+                                     llvm::Value *res, llvm::Value *src,
+                                     GENX::Scope scope) {
+  assert((isa<GENX::JointMatrixType>(res->getType()) &&
+          isa<GENX::JointMatrixType>(src->getType())) &&
+         "Expecting a joint matrix type");
+  assert(false && "TODO");
+  return nullptr;
+}
+
 namespace {
 /// Implementation of the dialect interface that converts operations belonging
 /// to the GENX dialect to LLVM IR.
