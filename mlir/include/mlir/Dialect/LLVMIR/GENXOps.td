@@ -433,27 +433,4 @@ def GENX_MatrixMadOp : GENX_Op<"matrix.mad", [Pure, AllTypesMatch<["c", "res"]>]
   let hasVerifier = 1;  
 }
 
-def GENX_MatrixMadOp : GENX_Op<"matrix.mad", [Pure, AllTypesMatch<["c", "res"]>]>,
-  Results<(outs GENX_AnyJointMatrix:$res)>,
-  Arguments<(ins GENX_AnyJointMatrix:$a, GENX_AnyJointMatrix:$b, GENX_AnyJointMatrix:$c, 
-            ScopeAttr:$scope)> {
-  let summary = "Multiply and add operation on joint matrices";
-
-  string baseDescription = [{
-    The `genx.matrix.mad` operation multiplies matrices $a and $b and adds matrix $c to 
-    the result. Matrix $a is a M x K matrix, $b is a K x N matrix and $c is a M x N matrix. 
-    The scope operand indicates the synchronization scope for operations on the matrix.
-  }];
-
-  string llvmBuilder = [{
-    $res = createMatrixMad(builder, $a, $b, $c, $scope);
-  }];
-
-  let assemblyFormat = [{
-    $scope operands attr-dict`:` type($a) `,` type($b) `->` type($c)    
-  }];
-
-  let hasVerifier = 1;  
-}
-
 #endif // GENXIR_OPS
