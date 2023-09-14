@@ -68,8 +68,8 @@ LogicalResult GENXDialect::verifyOperationAttribute(Operation *op,
 //===----------------------------------------------------------------------===//
 namespace {
 
-Type verifyJointMatrixElemType(GENXDialect const &dialect,
-                               DialectAsmParser &parser) {
+Type parseJointMatrixElemType(GENXDialect const &dialect,
+                              DialectAsmParser &parser) {
   Type type;
   SMLoc typeLoc = parser.getCurrentLocation();
   if (parser.parseType(type))
@@ -78,8 +78,6 @@ Type verifyJointMatrixElemType(GENXDialect const &dialect,
   // Allow GENX dialect types.
   if (&type.getDialect() == &dialect)
     return type;
-
-  llvm::errs() << "type: " << type << "\n";
 
   // Intel XMX allows only certain floating point and integer types.
   if (auto t = type.dyn_cast<FloatType>()) {
@@ -123,7 +121,7 @@ ParseResult parseEnumKeywordAttr(EnumClass &value, ParserType &parser,
 }
 
 // joint-matrix-type ::= `!genx.jointmatrix` `<`rows `x` cols `x` element-type
-//                                           `,` layout `,` scope`>`
+//                                           `,` layout `>`
 Type parseJointMatrixType(GENXDialect const &dialect,
                           DialectAsmParser &parser) {
   if (parser.parseLess())
@@ -139,19 +137,18 @@ Type parseJointMatrixType(GENXDialect const &dialect,
     return Type();
   }
 
-  auto elementTy = verifyJointMatrixElemType(dialect, parser);
+  auto elementTy = parseJointMatrixElemType(dialect, parser);
   if (!elementTy)
     return Type();
+
   MatrixLayout matrixLayout;
   if (parser.parseComma() ||
       parseEnumKeywordAttr(matrixLayout, parser, "matrixLayout <id>"))
     return Type();
-  Scope scope;
-  if (parser.parseComma() || parseEnumKeywordAttr(scope, parser, "scope <id>"))
-    return Type();
-  if (parser.parseGreater())
-    return Type();
-  return JointMatrixType::get(elementTy, scope, dims[0], dims[1], matrixLayout);
+
+  return parser.parseGreater()
+             ? Type()
+             : JointMatrixType::get(elementTy, dims[0], dims[1], matrixLayout);
 }
 
 } // namespace
@@ -176,8 +173,7 @@ void GENXDialect::printType(Type type, DialectAsmPrinter &os) const {
   auto print = [](JointMatrixType type, DialectAsmPrinter &os) {
     os << "jointmatrix<" << type.getNumRows() << "x" << type.getNumColumns()
        << "x" << type.getElementType() << ", "
-       << stringifyMatrixLayout(type.getMatrixLayout());
-    os << ", " << stringifyScope(type.getScope()) << ">";
+       << stringifyMatrixLayout(type.getMatrixLayout()) << ">";
   };
 
   TypeSwitch<Type>(type)

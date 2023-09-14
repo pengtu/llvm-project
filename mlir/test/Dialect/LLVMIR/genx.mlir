@@ -115,7 +115,7 @@ func.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
 
 func.func @genx.matrix.load(%ptr : !llvm.ptr<vector<4xi32>>, %stride : index) {
   // CHECK-LABEL: genx.matrix.load
-  // CHECK: %0 = genx.matrix.load <Subgroup> <RowMajor> %arg0, %arg1 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>
-  %0 = genx.matrix.load <Subgroup> <RowMajor> %ptr, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor, Workgroup>
+  // CHECK: %0 = genx.matrix.load <Subgroup> <RowMajor> %arg0, %arg1 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
+  %0 = genx.matrix.load <Subgroup> <RowMajor> %ptr, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
   llvm.return  
 }

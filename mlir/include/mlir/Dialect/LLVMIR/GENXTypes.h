@@ -43,11 +43,10 @@ class JointMatrixType : public Type::TypeBase<JointMatrixType, GENXType,
 public:
   using Base::Base;
 
-  static JointMatrixType get(Type elementType, Scope scope, unsigned rows,
-                             unsigned columns, MatrixLayout matrixLayout);
+  static JointMatrixType get(Type elementType, unsigned rows, unsigned columns,
+                             MatrixLayout matrixLayout);
 
   Type getElementType() const;
-  Scope getScope() const;
   MatrixLayout getMatrixLayout() const;
   unsigned getNumRows() const;
   unsigned getNumColumns() const;

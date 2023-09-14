@@ -26,7 +26,7 @@ using namespace mlir::GENX;
 //===----------------------------------------------------------------------===//
 
 struct GENX::detail::JointMatrixTypeStorage : public TypeStorage {
-  using KeyTy = std::tuple<Type, unsigned, unsigned, MatrixLayout, Scope>;
+  using KeyTy = std::tuple<Type, unsigned, unsigned, MatrixLayout>;
 
   static JointMatrixTypeStorage *construct(TypeStorageAllocator &allocator,
                                            const KeyTy &key) {
@@ -35,31 +35,27 @@ struct GENX::detail::JointMatrixTypeStorage : public TypeStorage {
   }
 
   bool operator==(const KeyTy &key) const {
-    return key == KeyTy(elementType, rows, columns, matrixLayout, scope);
+    return key == KeyTy(elementType, rows, columns, matrixLayout);
   }
 
   JointMatrixTypeStorage(const KeyTy &key)
       : elementType(std::get<0>(key)), rows(std::get<1>(key)),
-        columns(std::get<2>(key)), scope(std::get<4>(key)),
-        matrixLayout(std::get<3>(key)) {}
+        columns(std::get<2>(key)), matrixLayout(std::get<3>(key)) {}
 
   Type elementType;
   unsigned rows;
   unsigned columns;
-  Scope scope;
   MatrixLayout matrixLayout;
 };
 
-JointMatrixType JointMatrixType::get(Type elementType, Scope scope,
-                                     unsigned rows, unsigned columns,
+JointMatrixType JointMatrixType::get(Type elementType, unsigned rows,
+                                     unsigned columns,
                                      MatrixLayout matrixLayout) {
   return Base::get(elementType.getContext(), elementType, rows, columns,
-                   matrixLayout, scope);
+                   matrixLayout);
 }
 
 Type JointMatrixType::getElementType() const { return getImpl()->elementType; }
-
-Scope JointMatrixType::getScope() const { return getImpl()->scope; }
 
 MatrixLayout JointMatrixType::getMatrixLayout() const {
   return getImpl()->matrixLayout;

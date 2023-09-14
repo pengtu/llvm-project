@@ -28,7 +28,7 @@ def LLVM_i8Ptr_uniform_constant : LLVM_IntPtrBase<8, 2>;
 // spirv::Generic: 4
 def LLVM_i8Ptr_generic : LLVM_IntPtrBase<8, 4>;
 
-def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;spirv::CrossWorkGroup: 1
+def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;
 
 //===----------------------------------------------------------------------===//
 // GENX dialect definitions
@@ -358,10 +358,9 @@ def ScopeAttr : EnumAttr<GENX_Dialect, ScopeKind, "scope"> {
 
 def MatrixLayoutKind : I32EnumAttr<"MatrixLayout", "GENX Matrix Layout", 
   [
-    I32EnumAttrCase<"ColumnMajor", 0>,
-    I32EnumAttrCase<"RowMajor", 1>,
-    I32EnumAttrCase<"PackedA", 2>,
-    I32EnumAttrCase<"PackedB", 3>
+    I32EnumAttrCase<"RowMajor", 0>,    
+    I32EnumAttrCase<"ColumnMajor", 1>,
+    I32EnumAttrCase<"Packed", 2>
   ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
@@ -389,15 +388,15 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   Arguments<(ins Arg<LLVM_AnyPointer,"", [MemRead]>:$ptr,
              Index:$stride, MatrixLayoutAttr:$layout, ScopeAttr:$scope,
              OptionalAttr<MemoryAccessAttr>:$memory_access)> {
-  let summary = "Load a matrix through a pointer";
+  let summary = "Load a joint matrix through a pointer";
 
   string baseDescription = [{
     The `genx.matrix.load` operation performs a load of the matrix at the memory 
-    location specified by the pointer argument $ptr. The stride argument specifies 
-    the number of matrix elements in memory between the start of successive rows and 
-    columns in the result. The matrix elements loaded from memory are arranged according 
-    to the specified layout. The scope indicates the synchronization scope for operations 
-    on the matrix.
+    location specified by the pointer argument $ptr. The $stride argument specifies 
+    the number of elements in memory between consecutive rows (for the row major layout) 
+    and columns (for the column major layout) in the result. The matrix elements loaded 
+    from memory are arranged according to the specified $layout. The $scope indicates 
+    the synchronization scope for operations on the matrix.
   }];
 
   string llvmBuilder = [{
@@ -407,6 +406,8 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   let assemblyFormat = [{
     $scope $layout operands attr-dict `:` `(` type(operands) `)` `->` type($res)
   }];
+
+  let hasVerifier = 1;
 }
 
 #endif // GENXIR_OPS
