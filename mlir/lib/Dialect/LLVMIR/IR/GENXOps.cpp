@@ -25,10 +25,8 @@ LogicalResult GENX::MatrixLoadOp::verify() {
     return this->emitOpError("scope attribute must have value 'Subgroup'");
 
   auto resType = getResult().getType().cast<GENX::JointMatrixType>();
-  if (getLayout() != resType.getMatrixLayout()) {
-    llvm::errs() << "ETTORE\n";
+  if (getLayout() != resType.getMatrixLayout())
     return this->emitOpError("result layout must match layout attribute");
-  }
 
   return success();
 }
