@@ -17,6 +17,19 @@ include "mlir/IR/EnumAttr.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
+// spirv::CrossWorkGroup: 1
+def LLVM_i8Ptr_cross_workgroup : LLVM_IntPtrBase<8, 1>;
+// spirv::WorkGroup: 3
+def LLVM_i8Ptr_workgroup : LLVM_IntPtrBase<8, 3>;
+// spirv::Function: 0
+def LLVM_i8Ptr_function : LLVM_IntPtrBase<8, 0>;
+// spirv::UniformConst: 2
+def LLVM_i8Ptr_uniform_constant : LLVM_IntPtrBase<8, 2>;
+// spirv::Generic: 4
+def LLVM_i8Ptr_generic : LLVM_IntPtrBase<8, 4>;
+
+def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;spirv::CrossWorkGroup: 1
+
 //===----------------------------------------------------------------------===//
 // GENX dialect definitions
 //===----------------------------------------------------------------------===//
@@ -64,8 +77,6 @@ def GENX_Dialect : Dialect {
     static constexpr unsigned kPrivateMemoryAddressSpace = 0;
   }];
 }
-
-def IntegerOrFloatType : AnyTypeOf<[AnyInteger, AnyFloat]>;
 
 //===----------------------------------------------------------------------===//
 // GENX op definitions
