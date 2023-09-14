@@ -213,6 +213,14 @@ createMatrixLoad(llvm::IRBuilderBase &builder, llvm::Value *res,
   return nullptr;
 }
 
+// Create a call to SPIR function for multiply-add joint matrices.
+static llvm::Value *createMatrixMad(llvm::IRBuilderBase &builder,
+                                    llvm::Value *a, llvm::Value *b,
+                                    llvm::Value *c, GENX::Scope scope) {
+  assert(false && "TODO");
+  return nullptr;
+}
+
 namespace {
 /// Implementation of the dialect interface that converts operations belonging
 /// to the GENX dialect to LLVM IR.
