@@ -30,3 +30,20 @@ LogicalResult GENX::MatrixLoadOp::verify() {
 
   return success();
 }
+
+//===----------------------------------------------------------------------===//
+// genx.matrix.store
+//===----------------------------------------------------------------------===//
+
+LogicalResult GENX::MatrixStoreOp::verify() {
+  // The scope attribute must be 'Subgroup' currently.
+  if (getScope() != GENX::Scope::Subgroup)
+    return this->emitOpError("scope attribute must have value 'Subgroup'");
+
+  auto valType = getVal().getType().cast<GENX::JointMatrixType>();
+  if (getLayout() != valType.getMatrixLayout())
+    return this->emitOpError(
+        "layout of value to store must match layout attribute");
+
+  return success();
+}
