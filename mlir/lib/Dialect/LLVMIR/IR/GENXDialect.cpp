@@ -161,7 +161,7 @@ Type GENXDialect::parseType(DialectAsmParser &parser) const {
   if (keyword == "jointmatrix")
     return parseJointMatrixType(*this, parser);
 
-  parser.emitError(parser.getNameLoc(), "unknown GENX-V type: ") << keyword;
+  parser.emitError(parser.getNameLoc(), "unknown GENX type: ") << keyword;
   return Type();
 }
 
