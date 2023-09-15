@@ -221,6 +221,11 @@ static void createMatrixStore(llvm::IRBuilderBase &builder, llvm::Value *ptr,
   assert(false && "TODO");
 }
 
+static void createMatrixInit(llvm::IRBuilderBase &builder, llvm::Value *mat,
+                             llvm::Value *val, GENX::Scope scope) {
+  assert(false && "TODO");
+}
+
 namespace {
 /// Implementation of the dialect interface that converts operations belonging
 /// to the GENX dialect to LLVM IR.
