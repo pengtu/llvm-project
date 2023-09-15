@@ -15,6 +15,7 @@
 
 include "mlir/IR/EnumAttr.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 // spirv::CrossWorkGroup: 1
@@ -400,7 +401,7 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   }];
 
   string llvmBuilder = [{
-    createMatrixLoad(builder, $res, $ptr, $stride, $layout, $scope, $memory_access);
+    $res = createMatrixLoad(builder, $res, $ptr, $stride, $layout, $scope, $memory_access);
   }];
 
   let assemblyFormat = [{
@@ -408,6 +409,53 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   }];
 
   let hasVerifier = 1;
+}
+
+def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
+    Arguments<(ins Variadic<AnyType>:$values)> {
+  let summary = "GENX dialect yield operation";
+
+  string baseDescription = [{
+    The `genx.yield` operation performs an element-wise operation on every element of 
+    the input joint matrix $mat.
+
+    Example:
+
+    ```mlir
+       $add = genx.matrix.map %map, %val 
+            (%elem: f32) {
+              %0 = arith.addf %elem, %val : f32
+            } (!genx.jointmatrix<8x32xf32, RowMajor>, f32) -> !genx.jointmatrix<8x32xf32, RowMajor>
+    ```
+  }];
+
+  let builders = [OpBuilder<(ins), [{ /* nothing to do */ }]>];
+  let hasCustomAssemblyFormat = 1;
+  let hasVerifier = 1;
+}
+
+def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
+  RecursiveMemoryEffects,
+  SingleBlockImplicitTerminator<"YieldOp">]>,
+  Results<(outs GENX_AnyJointMatrix:$res)>,
+  Arguments<(ins GENX_AnyJointMatrix:$src, Variadic<IntegerOrFloatType>:$inputs, ScopeAttr:$scope)> {
+  let summary = "Elementwise operation on a joint matrix";
+
+  string baseDescription = [{
+    The `genx.matrix.map` operation 
+  }];
+
+//  string llvmBuilder = [{
+//    $res = createMatrixMap(builder, $res, $mat, $body, $scope);
+//  }];
+
+  let assemblyFormat = [{
+    $scope operands $body attr-dict `:` `(` type(operands) `)` `->` type($res)
+  }];
+
+  let regions = (region SizedRegion<1>:$body);  
+  let hasVerifier = 1;
+//  let hasRegionVerifier = 1;
 }
 
 #endif // GENXIR_OPS
