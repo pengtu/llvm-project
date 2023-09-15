@@ -35,24 +35,6 @@ LogicalResult GENX::MatrixLoadOp::verify() {
 // genx.yield
 //===----------------------------------------------------------------------===//
 
-ParseResult GENX::YieldOp::parse(OpAsmParser &parser, OperationState &result) {
-  SmallVector<OpAsmParser::UnresolvedOperand, 2> opInfo;
-  SmallVector<Type, 2> types;
-  SMLoc loc = parser.getCurrentLocation();
-  return failure(parser.parseOperandList(opInfo) ||
-                 parser.parseOptionalAttrDict(result.attributes) ||
-                 (!opInfo.empty() && parser.parseColonTypeList(types)) ||
-                 parser.resolveOperands(opInfo, types, loc, result.operands));
-}
-
-void GENX::YieldOp::print(OpAsmPrinter &p) {
-  if (getNumOperands() > 0)
-    p << ' ' << getOperands();
-  p.printOptionalAttrDict((*this)->getAttrs());
-  if (getNumOperands() > 0)
-    p << " : " << getOperandTypes();
-}
-
 LogicalResult GENX::YieldOp::verify() {
   auto *parentOp = (*this)->getParentOp();
   if (parentOp->getNumRegions() != 1 || parentOp->getRegion(0).empty())
@@ -80,7 +62,7 @@ LogicalResult GENX::YieldOp::verify() {
 // genx.matrix.map
 //===----------------------------------------------------------------------===//
 
-#if 0
+#if 1
 ParseResult GENX::MatrixMapOp::parse(OpAsmParser &parser,
                                      OperationState &result) {
   // Parse <Scope>
@@ -125,12 +107,12 @@ void GENX::MatrixMapOp::print(OpAsmPrinter &p) {
   p.increaseIndent();
   p.printNewline();
   p << "(";
-  Block *mapper = getBody();
-  llvm::interleaveComma(mapper->getArguments(), p,
+  Region &rgn = getBody();
+  llvm::interleaveComma(rgn.getArguments(), p,
                         [&](auto arg) { p.printRegionArgument(arg); });
   p << ") ";
 
-  p.printRegion(getMapper(), /*printEntryBlockArgs=*/false);
+  p.printRegion(rgn, /*printEntryBlockArgs=*/false);
   p.decreaseIndent();
 }
 #endif

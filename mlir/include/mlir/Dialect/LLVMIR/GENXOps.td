@@ -413,24 +413,16 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
 
 def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
     Arguments<(ins Variadic<AnyType>:$values)> {
-  let summary = "GENX dialect yield operation";
+  let summary = "Terminates and yields values from GENX regions";
 
   string baseDescription = [{
-    The `genx.yield` operation performs an element-wise operation on every element of 
-    the input joint matrix $mat.
-
-    Example:
-
-    ```mlir
-       $add = genx.matrix.map %map, %val 
-            (%elem: f32) {
-              %0 = arith.addf %elem, %val : f32
-            } (!genx.jointmatrix<8x32xf32, RowMajor>, f32) -> !genx.jointmatrix<8x32xf32, RowMajor>
-    ```
+    The `genx.yield` operation yields one or more SSA value from a GENX dialect op 
+    region and terminates the region. The operands of this operation must correspond 
+    to the parent operation results.
   }];
 
   let builders = [OpBuilder<(ins), [{ /* nothing to do */ }]>];
-  let hasCustomAssemblyFormat = 1;
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))?";
   let hasVerifier = 1;
 }
 
@@ -455,14 +447,9 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
       "function_ref<void(OpBuilder &, Location, Value, ValueRange)>")>,
   ];
 
-
-  let assemblyFormat = [{
-    $scope operands $body attr-dict `:` type($res)
-  }];
-
-  let regions = (region SizedRegion<1>:$body);  
+  let regions = (region SizedRegion<1>:$body);
+  let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
-//  let hasRegionVerifier = 1;
 }
 
 #endif // GENXIR_OPS

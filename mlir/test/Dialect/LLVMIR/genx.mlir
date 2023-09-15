@@ -122,7 +122,8 @@ func.func @genx.matrix.load(%ptr : !llvm.ptr<vector<4xi32>>, %stride : index) {
 
 func.func @genx.matrix.map(%mat: !genx.jointmatrix<8x32xf32, RowMajor>, %val: f32) {
   // CHECK-LABEL: genx.matrix.map
-  genx.matrix.map <Subgroup> %mat 
+  genx.matrix.map <Subgroup> %mat, %val 
+      ()
      {
       ^bb0(%elem: f32, %v : f32): 
         %0 = arith.addf %elem, %v : f32
