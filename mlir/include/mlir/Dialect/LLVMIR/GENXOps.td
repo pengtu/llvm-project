@@ -411,6 +411,76 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   let hasVerifier = 1;
 }
 
+def GENX_MatrixStoreOp : GENX_Op<"matrix.store">,
+  Arguments<(ins Arg<LLVM_AnyPointer,"", [MemWrite]>:$ptr, GENX_AnyJointMatrix:$val, 
+             Index:$stride, MatrixLayoutAttr:$layout, ScopeAttr:$scope,
+             OptionalAttr<MemoryAccessAttr>:$memory_access)> {
+  let summary = "Store a matrix through a pointer";
+
+  string baseDescription = [{
+    The `genx.matrix.store` operation stores the joint matrix value $val at the memory
+    location specified by the pointer argument $ptr. The $stride argument specifies 
+    the number of elements in memory between consecutive rows (for the row major layout) 
+    and columns (for the column major layout) in the result. The matrix elements stored
+    to memory are arranged according to the specified $layout. The $scope indicates the 
+    synchronization scope for operations on the matrix.
+  }];
+
+  string llvmBuilder = [{
+    createMatrixStore(builder, $ptr, $val, $stride, $layout, $scope, $memory_access);
+  }];
+
+  let assemblyFormat = [{
+    $scope $layout operands attr-dict `:` `(` type(operands) `)`
+  }];
+
+  let hasVerifier = 1;  
+}
+
+def GENX_MatrixMadOp : GENX_Op<"matrix.mad", [Pure, AllTypesMatch<["c", "res"]>]>,
+  Results<(outs GENX_AnyJointMatrix:$res)>,
+  Arguments<(ins GENX_AnyJointMatrix:$a, GENX_AnyJointMatrix:$b, GENX_AnyJointMatrix:$c, 
+            ScopeAttr:$scope)> {
+  let summary = "Multiply and add operation on joint matrices";
+
+  string baseDescription = [{
+    The `genx.matrix.mad` operation multiplies matrices $a and $b and adds matrix $c to 
+    the result. Matrix $a is a M x K matrix, $b is a K x N matrix and $c is a M x N matrix. 
+    The scope operand indicates the synchronization scope for operations on the matrix.
+  }];
+
+  string llvmBuilder = [{
+    $res = createMatrixMad(builder, $a, $b, $c, $scope);
+  }];
+
+  let assemblyFormat = [{
+    $scope operands attr-dict`:` type(operands) `->` type($res)
+  }];
+
+  let hasVerifier = 1;  
+}
+
+def GENX_MatrixInitOp : GENX_Op<"matrix.init">,
+  Arguments<(ins GENX_AnyJointMatrix:$mat, IntegerOrFloatType:$val, ScopeAttr:$scope)> {
+  let summary = "Initialize a joint matrix";
+
+  string baseDescription = [{
+    The `genx.matrix.init` operation initializes the matrix $mat by filling it with 
+    the value $val. The scope operand indicates the synchronization scope for operations 
+    on the matrix.
+  }];
+
+  string llvmBuilder = [{
+    createMatrixInit(builder, $mat, $val, $scope);
+  }];
+
+  let assemblyFormat = [{
+    $scope operands attr-dict`:` `(` type(operands) `)`
+  }];
+
+  let hasVerifier = 1;
+}
+
 def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
     Arguments<(ins Variadic<AnyType>:$values)> {
   let summary = "Terminates and yields values from GENX regions";
@@ -441,11 +511,11 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
 //    $res = createMatrixMap(builder, $res, $mat, $body, $scope);
 //  }];
 
-  let builders = [
+//  let builders = [
     // Build op and populate its body per callback function.
-    OpBuilder<(ins "Type":$resultTy, "Value":$src, "ValueRange":$inputs,
-      "function_ref<void(OpBuilder &, Location, Value, ValueRange)>")>,
-  ];
+//    OpBuilder<(ins "Type":$resultTy, "Value":$src, "ValueRange":$inputs,
+//      "function_ref<void(OpBuilder &, Location, Value, ValueRange)>")>,
+//  ];
 
   let regions = (region SizedRegion<1>:$body);
   let hasCustomAssemblyFormat = 1;
