@@ -14,7 +14,6 @@
 #include "mlir/Dialect/LLVMIR/GENXTypes.h"
 
 using namespace mlir;
-using namespace mlir::GENX;
 
 //===----------------------------------------------------------------------===//
 // genx.matrix.load

@@ -401,7 +401,7 @@ def GENX_MatrixLoadOp : GENX_Op<"matrix.load">,
   }];
 
   string llvmBuilder = [{
-    $res = createMatrixLoad(builder, $res, $ptr, $stride, $layout, $scope, $memory_access);
+    createMatrixLoad(builder, $res, $ptr, $stride, $layout, $scope, $memory_access);
   }];
 
   let assemblyFormat = [{
@@ -449,8 +449,15 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
 //    $res = createMatrixMap(builder, $res, $mat, $body, $scope);
 //  }];
 
+  let builders = [
+    // Build op and populate its body per callback function.
+    OpBuilder<(ins "Type":$resultTy, "Value":$src, "ValueRange":$inputs,
+      "function_ref<void(OpBuilder &, Location, Value, ValueRange)>")>,
+  ];
+
+
   let assemblyFormat = [{
-    $scope operands $body attr-dict `:` `(` type(operands) `)` `->` type($res)
+    $scope operands $body attr-dict `:` type($res)
   }];
 
   let regions = (region SizedRegion<1>:$body);  
