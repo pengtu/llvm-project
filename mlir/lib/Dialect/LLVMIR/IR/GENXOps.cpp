@@ -32,6 +32,23 @@ LogicalResult GENX::MatrixLoadOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// genx.matrix.store
+//===----------------------------------------------------------------------===//
+
+LogicalResult GENX::MatrixStoreOp::verify() {
+  // The scope attribute must be 'Subgroup' currently.
+  if (getScope() != GENX::Scope::Subgroup)
+    return this->emitOpError("scope attribute must have value 'Subgroup'");
+
+  auto valType = getVal().getType().cast<GENX::JointMatrixType>();
+  if (getLayout() != valType.getMatrixLayout())
+    return this->emitOpError(
+        "layout of value to store must match layout attribute");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // genx.matrix.mad
 //===----------------------------------------------------------------------===//
 
@@ -94,6 +111,22 @@ LogicalResult GENX::MatrixMadOp::verify() {
         cast<FloatType>(CElemType).getWidth() != 32)
       return this->emitOpError("3rd operand element type must be f32");
   }
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// genx.matrix.init
+//===----------------------------------------------------------------------===//
+
+LogicalResult GENX::MatrixInitOp::verify() {
+  // The scope attribute must be 'Subgroup' currently.
+  if (getScope() != GENX::Scope::Subgroup)
+    return this->emitOpError("scope attribute must have value 'Subgroup'");
+
+  auto matType = getMat().getType().cast<GENX::JointMatrixType>();
+  if (matType.getElementType() != getVal().getType())
+    return this->emitOpError("initializer type must match matrix element type");
 
   return success();
 }
