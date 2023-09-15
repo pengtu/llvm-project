@@ -417,7 +417,7 @@ def GENX_MatrixStoreOp : GENX_Op<"matrix.store">,
   let summary = "Store a matrix through a pointer";
 
   string baseDescription = [{
-    The `genx.matrix.stored` operation stores the joint matrix value $val at the memory
+    The `genx.matrix.store` operation stores the joint matrix value $val at the memory
     location specified by the pointer argument $ptr. The $stride argument specifies 
     the number of elements in memory between consecutive rows (for the row major layout) 
     and columns (for the column major layout) in the result. The matrix elements stored
