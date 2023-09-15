@@ -33,7 +33,7 @@ func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xi32, RowMajor>, %b : !ge
 // -----
 
 func.func @joint_matrix_mad(%a : !genx.jointmatrix<8x16xf32, RowMajor>, %b : !genx.jointmatrix<16x8xi32, RowMajor>, %c : !genx.jointmatrix<8x8xi32, RowMajor>) {
-  // expected-error @+1 {{matrix element types must match}}
+  // expected-error @+1 {{'genx.matrix.mad' op matrix element types must match}}
   %r = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x16xf32, RowMajor>, !genx.jointmatrix<16x8xi32, RowMajor> -> !genx.jointmatrix<8x8xi32, RowMajor>
   llvm.return
 }
