@@ -213,7 +213,6 @@ createMatrixLoad(llvm::IRBuilderBase &builder, llvm::Value *res,
   return nullptr;
 }
 
-// Create a call to SPIR function for storing into a joint matrix.
 static void createMatrixStore(llvm::IRBuilderBase &builder, llvm::Value *ptr,
                               llvm::Value *val, llvm::Value *stride,
                               GENX::MatrixLayout layout, GENX::Scope scope,
