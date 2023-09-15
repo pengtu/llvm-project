@@ -120,9 +120,9 @@ func.func @genx.matrix.load(%ptr : !llvm.ptr<vector<4xi32>>, %stride : index) {
   llvm.return  
 }
 
-func.func @genx.matrix.mad(%a : !genx.jointmatrix<8x32xi8, RowMajor>, %b : !genx.jointmatrix<32x8xi8, ColumnMajor>, %c : !genx.jointmatrix<8x8xi32, RowMajor>) {
+func.func @genx.matrix.mad(%a : !genx.jointmatrix<8x32xi8, RowMajor>, %b : !genx.jointmatrix<32x16xi8, ColumnMajor>, %c : !genx.jointmatrix<8x16xi32, RowMajor>) {
   // CHECK-LABEL: genx.matrix.mad
-  // CHECK: %0 = genx.matrix.mad <Subgroup> %arg0, %arg1, %arg2 : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x8xi8, ColumnMajor>, !genx.jointmatrix<8x8xi32, RowMajor> -> !genx.jointmatrix<8x8xi32, RowMajor>
-  %0 = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x8xi8, ColumnMajor>, !genx.jointmatrix<8x8xi32, RowMajor> -> !genx.jointmatrix<8x8xi32, RowMajor>
+  // CHECK: %0 = genx.matrix.mad <Subgroup> %arg0, %arg1, %arg2 : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x16xi8, ColumnMajor>, !genx.jointmatrix<8x16xi32, RowMajor> -> !genx.jointmatrix<8x16xi32, RowMajor>
+  %0 = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x16xi8, ColumnMajor>, !genx.jointmatrix<8x16xi32, RowMajor> -> !genx.jointmatrix<8x16xi32, RowMajor>
   llvm.return  
 }
