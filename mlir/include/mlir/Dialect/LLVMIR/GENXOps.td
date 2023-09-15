@@ -427,7 +427,7 @@ def GENX_MatrixMadOp : GENX_Op<"matrix.mad", [Pure, AllTypesMatch<["c", "res"]>]
   }];
 
   let assemblyFormat = [{
-    $scope operands attr-dict`:` type($a) `,` type($b) `->` type($c)    
+    $scope operands attr-dict`:` type(operands) `->` type($res)
   }];
 
   let hasVerifier = 1;  
