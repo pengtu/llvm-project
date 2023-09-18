@@ -112,3 +112,9 @@ llvm.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
   %7 = genx.atomic.rmw XCHG %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
   llvm.return  
 }
+
+func.func @genx.2Dblockload(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32, %elem_size_in_bits : i32, %tile_width : i32, %tile_height: i32, %v_blocks : i32, %transpose : i1, %vnni_transform : i1) {
+  // CHECK: genx.matrix.2Dblockload %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7, %arg8, %arg9, %arg10, %arg11 : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) -> vector<4xi32>
+  %0 = genx.matrix.2Dblockload %ptr, %base_width, %base_height, %base_pitch, %x, %y, %elem_size_in_bits, %tile_width, %tile_height, %v_blocks, %transpose, %vnni_transform : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) -> vector<4xi32>
+  llvm.return
+}

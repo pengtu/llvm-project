@@ -16,6 +16,7 @@
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/Target/LLVMIR/ModuleTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/GENX/GenIntrinsics.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -200,6 +201,16 @@ static llvm::Value *createAtomicRMW(llvm::IRBuilderBase &builder,
 
   return createDeviceFunctionCall(builder, fnName, retType,
                                   {ptr->getType(), val->getType()}, {ptr, val});
+}
+
+// Create call to a GenISAIntrinsic function
+static llvm::Value *createGenISAIntrinsicCall(
+    llvm::IRBuilderBase &builder, llvm::GenISAIntrinsic::ID intrin_id, ArrayRef<llvm::Value *> args, 
+    ArrayRef<llvm::Type *> tys) {
+  llvm::Module *module = builder.GetInsertBlock()->getModule();
+  llvm::Function * fn = 
+    llvm::GenISAIntrinsic::getDeclaration(module, intrin_id, tys);
+  return builder.CreateCall(fn, args);
 }
 
 namespace {

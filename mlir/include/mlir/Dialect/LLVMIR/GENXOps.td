@@ -326,4 +326,55 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
   }];
 }
 
+//===----------------------------------------------------------------------===//
+// Joint Matrix operations
+//===----------------------------------------------------------------------===//
+def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
+def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
+  Results<(outs FixedVectorOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>:$res)>,
+  Arguments<(ins 
+    Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemRead]>:$ptr,
+    I32:$base_width,
+    I32:$base_height,
+    I32:$base_pitch,
+    I32:$x,
+    I32:$y,
+    I32:$elem_size_in_bits,
+    I32:$tile_width,
+    I32:$tile_height,
+    I32:$v_blocks,
+    I1:$transpose,
+    I1:$vnni_transform
+  )> {
+
+  let summary = "GEN 2D block Load";
+
+  string baseDescription = [{
+    The 'genx.matrix.2Dblockload' operation loads a submatrix from an array in memory.
+    $ptr - the base address of the memory array
+    $base_width, $base_height, $base_pitch - the shape of the memory array
+    $x, $y, $tile_width, $tile_height - the starting offets and shape of the submatrix to load
+    $elem_size_in_bits - 32 for f32, bf32; 16 for f16, int16, bf16; 8 for int8, int4, int2 and etc
+    $v_blocks - number of blocks to load
+    $tranpose - transpose the submatrix in vector register (useful for 32 bit element types)
+    $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
+
+    The $transpose and $vnni_transform are mutual exclusive. These transformations are used for
+    the B matrix in MMA (DPAS) operations D = C + A * B, where A should have row-major layout in register
+    and B should have column-major layout.
+
+    If the submatrix contains out of bound elements of the memory array, they are filled with 0.
+  }];
+
+  string llvmBuilder = [{
+    $res = createGenISAIntrinsicCall(builder,
+      llvm::GenISAIntrinsic::GenISA_LSC2DBlockRead,
+      {$ptr, $base_width, $base_height, $base_pitch, $x, $y, $elem_size_in_bits, $tile_width, 
+        $tile_height, $v_blocks, $transpose, $vnni_transform}, {$_resultType});
+  }];
+    
+  let assemblyFormat = [{
+    operands attr-dict `:` `(` type(operands) `)` `->` type($res)
+  }];
+}
 #endif // GENXIR_OPS
