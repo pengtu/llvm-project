@@ -143,12 +143,11 @@ func.func @genx.matrix.init(%mat : !genx.jointmatrix<8x32xi32, RowMajor>, %val :
 
 func.func @genx.matrix.map(%mat: !genx.jointmatrix<8x32xf32, RowMajor>, %val: f32) {
   // CHECK-LABEL: genx.matrix.map
-  genx.matrix.map <Subgroup> %mat, %val 
-      ()
-     {
-      ^bb0(%elem: f32, %v : f32): 
-        %0 = arith.addf %elem, %v : f32
-        genx.yield %0 : f32
-     } {} : !genx.jointmatrix<8x32xf32, RowMajor> , f32 -> !genx.jointmatrix<8x32xf32, RowMajor>
+  %0 = genx.matrix.map <Subgroup>
+    ins(%mat, %val : !genx.jointmatrix<8x32xf32, RowMajor>, f32)
+    (%elem: f32, %v: f32) {
+       %0 = arith.addf %elem, %v : f32
+       genx.yield %0 : f32
+    } : !genx.jointmatrix<8x32xf32, RowMajor>
   llvm.return
 }

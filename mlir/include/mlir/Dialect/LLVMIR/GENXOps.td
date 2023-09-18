@@ -17,6 +17,7 @@ include "mlir/IR/EnumAttr.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/IR/OpAsmInterface.td"
 
 // spirv::CrossWorkGroup: 1
 def LLVM_i8Ptr_cross_workgroup : LLVM_IntPtrBase<8, 1>;
@@ -475,7 +476,7 @@ def GENX_MatrixInitOp : GENX_Op<"matrix.init">,
   }];
 
   let assemblyFormat = [{
-    $scope operands attr-dict`:` `(` type(operands) `)`
+    $scope operands attr-dict `:` `(` type(operands) `)`
   }];
 
   let hasVerifier = 1;
@@ -497,27 +498,27 @@ def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
 }
 
 def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
-  RecursiveMemoryEffects,
-  SingleBlockImplicitTerminator<"YieldOp">]>,
-  Results<(outs GENX_AnyJointMatrix:$res)>,
-  Arguments<(ins GENX_AnyJointMatrix:$src, Variadic<IntegerOrFloatType>:$inputs, ScopeAttr:$scope)> {
+        DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
+        RecursiveMemoryEffects,
+        SingleBlockImplicitTerminator<"YieldOp">,
+        TypesMatchWith<"result #0 and operand #0 have the same type",
+                       "res", "mat", "$_self">]>,
+    Results<(outs GENX_AnyJointMatrix:$res)>,    
+    Arguments<(ins GENX_AnyJointMatrix:$mat, Variadic<IntegerOrFloatType>:$inputs, ScopeAttr:$scope)> {
   let summary = "Elementwise operation on a joint matrix";
 
   string baseDescription = [{
-    The `genx.matrix.map` operation 
+    The `genx.matrix.map` operation performs an element-wise operation where the 
+    same operation is performed on every element of the joint matrix.
   }];
 
-//  string llvmBuilder = [{
-//    $res = createMatrixMap(builder, $res, $mat, $body, $scope);
-//  }];
+  let builders = [
+    OpBuilder<(ins "Value":$mat, "ValueRange":$inputs, 
+      "function_ref<void(OpBuilder &, Location, ValueRange)>",
+      CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes)>
+  ];
 
-//  let builders = [
-    // Build op and populate its body per callback function.
-//    OpBuilder<(ins "Type":$resultTy, "Value":$src, "ValueRange":$inputs,
-//      "function_ref<void(OpBuilder &, Location, Value, ValueRange)>")>,
-//  ];
-
-  let regions = (region SizedRegion<1>:$body);
+  let regions = (region SizedRegion<1>:$mapper);
   let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }

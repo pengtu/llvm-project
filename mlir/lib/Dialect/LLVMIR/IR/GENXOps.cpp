@@ -150,10 +150,11 @@ LogicalResult GENX::YieldOp::verify() {
     return emitOpError() << "parent of yield must have same number of "
                             "results as the yield operands";
 
-  for (auto it : llvm::zip(results, operands)) {
-    if (std::get<0>(it).getType() != std::get<1>(it).getType())
-      return emitOpError() << "types mismatch between yield op and its parent";
-  }
+  //  for (auto it : llvm::zip(results, operands)) {
+  //    if (std::get<0>(it).getType() != std::get<1>(it).getType())
+  //      return emitOpError() << "types mismatch between yield op and its
+  //      parent";
+  //  }
 
   return success();
 }
@@ -162,26 +163,43 @@ LogicalResult GENX::YieldOp::verify() {
 // genx.matrix.map
 //===----------------------------------------------------------------------===//
 
+void GENX::MatrixMapOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  setNameFn(getResult(), "mapped");
+}
+
+#if 1
 ParseResult GENX::MatrixMapOp::parse(OpAsmParser &parser,
                                      OperationState &result) {
-  // Parse <Scope>
-  StringRef keyword;
-  if (parser.parseLess())
-    return failure();
-  if (parser.parseKeyword(&keyword))
-    return failure();
-  if (!GENX::symbolizeEnum<Scope>(keyword))
-    return failure();
-  if (parser.parseGreater())
+  // Parse scope attribute.
+  ScopeAttr scopeAttr;
+  if (parser.parseCustomAttributeWithFallback(scopeAttr, Type{}, "scope",
+                                              result.attributes))
     return failure();
 
-  // Parse operands
-  SmallVector<OpAsmParser::UnresolvedOperand, 4> operands;
-  SMLoc loc = parser.getCurrentLocation();
-  if (parser.parseOperandList(operands))
+  SmallVector<OpAsmParser::UnresolvedOperand, 4> inputsOperands;
+  SmallVector<Type> inputTypes;
+  SMLoc inputsOperandsLoc = parser.getCurrentLocation();
+
+  // Parse input operands.
+  if (parser.parseKeyword("ins") || parser.parseLParen() ||
+      parser.parseOperandList(inputsOperands) ||
+      parser.parseColonTypeList(inputTypes) || parser.parseRParen())
+    return failure();
+  if (parser.resolveOperands(inputsOperands, inputTypes, inputsOperandsLoc,
+                             result.operands))
     return failure();
 
-  // Parse lambda region
+  // Parse optional attributes.
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return failure();
+
+  //  Type outputType = inputTypes.front();
+  // assert(outputType.isa<GENX::JointMatrixType>() &&
+  //     "Expecting outpuyt operand to ge a genx.jointmatrix");
+  //  result.addTypes(outputType);
+
+  // Parse lambda.
   SmallVector<OpAsmParser::Argument> regionArgs;
   if (parser.parseArgumentList(regionArgs, OpAsmParser::Delimiter::Paren,
                                /*allowType=*/true, /*allowAttrs=*/true))
@@ -191,33 +209,89 @@ ParseResult GENX::MatrixMapOp::parse(OpAsmParser &parser,
   if (parser.parseRegion(*body, regionArgs))
     return failure();
 
-  llvm::errs() << "at line " << __LINE__ << "\n";
+  // Parse result type.
+  Type resType;
+  if (parser.parseColon() || parser.parseCustomTypeWithFallback(resType))
+    return failure();
+
+  result.addTypes(resType);
 
   return success();
 }
 
 void GENX::MatrixMapOp::print(OpAsmPrinter &p) {
-  OperandRange operands(operand_begin(), operand_end());
-  for (auto op : this->getOperands())
-    p << '(' << op << ')';
+  p << " ";
+  p.printStrippedAttrOrType(getScopeAttr());
+  p.printNewline();
 
-  p.printOptionalAttrDict((*this)->getAttrs());
+  SmallVector<Value> inputs{this->getMat()};
+  SmallVector<Type> inputTypes{this->getMat().getType()};
+  for (Value input : this->getInputs()) {
+    inputs.push_back(input);
+    inputTypes.push_back(input.getType());
+  }
 
-  p.increaseIndent();
+  p << "ins(";
+  p.printOperands(inputs);
+  p << " : " << inputTypes << ")";
+
+  SmallVector<::llvm::StringRef, 2> elidedAttrs;
+  elidedAttrs.push_back("scope");
+  p.printOptionalAttrDict((*this)->getAttrs(), elidedAttrs);
+
   p.printNewline();
   p << "(";
-  Region &rgn = getBody();
-  llvm::interleaveComma(rgn.getArguments(), p,
+  Block *body = getBody();
+  llvm::interleaveComma(body->getArguments(), p,
                         [&](auto arg) { p.printRegionArgument(arg); });
   p << ") ";
 
-  p.printRegion(rgn, /*printEntryBlockArgs=*/false);
-  p.decreaseIndent();
+  p.printRegion(getMapper(), /*printEntryBlockArgs=*/false);
+
+  p << " : ";
+  auto resType = getRes().getType();
+  if (auto validType = resType.dyn_cast<Type>())
+    p.printStrippedAttrOrType(validType);
+  else
+    p << resType;
 }
+#endif
 
 LogicalResult GENX::MatrixMapOp::verify() {
-  // auto *bodyBlock = getBody();
-  //  auto blockArgs = bodyBlock->getArguments();
+  // The scope attribute must be 'Subgroup' currently.
+  if (getScope() != GENX::Scope::Subgroup)
+    return this->emitOpError("scope attribute must have value 'Subgroup'");
+
+  SmallVector<Value> inputs{getMat()};
+  for (Value input : getInputs())
+    inputs.push_back(input);
+
+  Block *bodyBlock = getBody();
+  auto blockArgs = bodyBlock->getArguments();
+
+  // Checks that the arity of the `mapper` region is equal to the matrix
+  // argument plus the number of variadic arguments.
+  if (inputs.size() != blockArgs.size())
+    return emitOpError() << "expects number of operands to match the arity of "
+                            "mapper, but got: "
+                         << inputs.size() << " and " << blockArgs.size();
+
+  // The first parameters of the mapper should match the matrix element type.
+  auto matType = cast<GENX::JointMatrixType>(inputs.front().getType());
+  auto argTypes = bodyBlock->getArgumentTypes();
+  if (matType.getElementType() != argTypes.front())
+    return emitOpError() << "expected element type of input "
+                         << matType.getElementType() << " to match bbArg type "
+                         << argTypes.front();
+
+  // The remaining parameters of the mapper should match the types of the
+  // variadic arguments.
+  for (const auto &[bbArgType, inputArg] :
+       llvm::zip(bodyBlock->getArgumentTypes(), getInputs())) {
+    if (bbArgType != inputArg.getType())
+      return emitOpError() << "expected type of input " << inputArg.getType()
+                           << " to match bbArg type " << bbArgType;
+  }
 
   return success();
 }
