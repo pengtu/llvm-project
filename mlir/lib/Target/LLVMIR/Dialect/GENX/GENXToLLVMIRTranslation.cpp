@@ -213,6 +213,37 @@ static llvm::Value *createGenISAIntrinsicCall(
   return builder.CreateCall(fn, args);
 }
 
+// Create a call to SPIR function for loading a joint matrix.
+static llvm::Value *
+createMatrixLoad(llvm::IRBuilderBase &builder, llvm::Value *res,
+                 llvm::Value *ptr, llvm::Value *stride,
+                 GENX::MatrixLayout layout, GENX::Scope scope,
+                 std::optional<GENX::MemoryAccess> memoryAccess) {
+  assert(isa<llvm::PointerType>(ptr->getType()) && "Expecting a pointer type");
+  assert(false && "TODO");
+  return nullptr;
+}
+
+static void createMatrixStore(llvm::IRBuilderBase &builder, llvm::Value *ptr,
+                              llvm::Value *val, llvm::Value *stride,
+                              GENX::MatrixLayout layout, GENX::Scope scope,
+                              std::optional<GENX::MemoryAccess> memoryAccess) {
+  assert(isa<llvm::PointerType>(ptr->getType()) && "Expecting a pointer type");
+  assert(false && "TODO");
+}
+
+static llvm::Value *createMatrixMad(llvm::IRBuilderBase &builder,
+                                    llvm::Value *a, llvm::Value *b,
+                                    llvm::Value *c, GENX::Scope scope) {
+  assert(false && "TODO");
+  return nullptr;
+}
+
+static void createMatrixInit(llvm::IRBuilderBase &builder, llvm::Value *mat,
+                             llvm::Value *val, GENX::Scope scope) {
+  assert(false && "TODO");
+}
+
 namespace {
 /// Implementation of the dialect interface that converts operations belonging
 /// to the GENX dialect to LLVM IR.

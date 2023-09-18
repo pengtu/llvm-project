@@ -85,14 +85,14 @@ func.func @genx.sub_group_shuffle() {
   llvm.return
 }
 
-llvm.func @genx.atomic.cmpxchg.i32(%ptr : !llvm.ptr<i32>, %cmp : i32, %val : i32)  {
+func.func @genx.atomic.cmpxchg.i32(%ptr : !llvm.ptr<i32>, %cmp : i32, %val : i32)  {
   // CHECK-LABEL: genx.atomic.cmpxchg.i32
   // CHECK: %0 = genx.atomic.cmpxchg %arg0, %arg1, %arg2 : (!llvm.ptr<i32>, i32, i32) -> i32
   %0 = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i32>, i32, i32) -> i32
   llvm.return
 }
 
-llvm.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
+func.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
   // CHECK-LABEL: genx.atomic.rmw.i32
   // CHECK: genx.atomic.rmw AND %arg0, %arg1 : (!llvm.ptr<i32>, i32) -> i32
   %0 = genx.atomic.rmw AND %ptr, %val : (!llvm.ptr<i32>, i32) -> i32
@@ -117,4 +117,31 @@ func.func @genx.2Dblockload(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_heig
   // CHECK: genx.matrix.2Dblockload %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7, %arg8, %arg9, %arg10, %arg11 : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) -> vector<4xi32>
   %0 = genx.matrix.2Dblockload %ptr, %base_width, %base_height, %base_pitch, %x, %y, %elem_size_in_bits, %tile_width, %tile_height, %v_blocks, %transpose, %vnni_transform : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) -> vector<4xi32>
   llvm.return
+}
+func.func @genx.matrix.load(%ptr : !llvm.ptr<vector<4xi32>>, %stride : index) {
+  // CHECK-LABEL: genx.matrix.load
+  // CHECK: %0 = genx.matrix.load <Subgroup> <RowMajor> %arg0, %arg1 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
+  %0 = genx.matrix.load <Subgroup> <RowMajor> %ptr, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
+  llvm.return  
+}
+
+func.func @genx.matrix.store(%ptr : !llvm.ptr<vector<4xi32>>, %val: !genx.jointmatrix<8x16xi32, RowMajor>, %stride : index) {
+  // CHECK-LABEL: genx.matrix.store
+  // CHECK: genx.matrix.store <Subgroup> <RowMajor> %arg0, %arg1, %arg2 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, !genx.jointmatrix<8x16xi32, RowMajor>, index)
+  genx.matrix.store <Subgroup> <RowMajor> %ptr, %val, %stride {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, !genx.jointmatrix<8x16xi32, RowMajor>, index)
+  llvm.return  
+}
+
+func.func @genx.matrix.mad(%a : !genx.jointmatrix<8x32xi8, RowMajor>, %b : !genx.jointmatrix<32x16xi8, ColumnMajor>, %c : !genx.jointmatrix<8x16xi32, RowMajor>) {
+  // CHECK-LABEL: genx.matrix.mad
+  // CHECK: %0 = genx.matrix.mad <Subgroup> %arg0, %arg1, %arg2 : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x16xi8, ColumnMajor>, !genx.jointmatrix<8x16xi32, RowMajor> -> !genx.jointmatrix<8x16xi32, RowMajor>
+  %0 = genx.matrix.mad <Subgroup> %a, %b, %c : !genx.jointmatrix<8x32xi8, RowMajor>, !genx.jointmatrix<32x16xi8, ColumnMajor>, !genx.jointmatrix<8x16xi32, RowMajor> -> !genx.jointmatrix<8x16xi32, RowMajor>
+  llvm.return  
+}
+
+func.func @genx.matrix.init(%mat : !genx.jointmatrix<8x32xi32, RowMajor>, %val : i32) {
+  // CHECK-LABEL: genx.matrix.init
+  // CHECK: genx.matrix.init <Subgroup> %arg0, %arg1 : (!genx.jointmatrix<8x32xi32, RowMajor>, i32)
+  genx.matrix.init <Subgroup> %mat, %val : (!genx.jointmatrix<8x32xi32, RowMajor>, i32)
+  llvm.return  
 }
