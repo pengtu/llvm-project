@@ -374,10 +374,9 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
   }];
 
   string llvmBuilder = [{
-    $res = createGenISAIntrinsicCall(builder,
-      llvm::GenISAIntrinsic::GenISA_LSC2DBlockRead,
-      {$ptr, $base_width, $base_height, $base_pitch, $x, $y, $elem_size_in_bits, $tile_width, 
-        $tile_height, $v_blocks, $transpose, $vnni_transform}, {$_resultType});
+    $res = createGenISA2DBlockRead(builder,
+      $ptr, $base_width, $base_height, $base_pitch, $x, $y, $elem_size_in_bits, $tile_width, 
+      $tile_height, $v_blocks, $transpose, $vnni_transform, {$_resultType});
   }];
     
   let assemblyFormat = [{

@@ -134,3 +134,9 @@ llvm.func @genx.atomic.rmw(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, 
 
   llvm.return
 }
+
+llvm.func @genx.2Dblockload(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32, %elem_size_in_bits : i32, %tile_width : i32, %tile_height: i32, %v_blocks : i32, %transpose : i1, %vnni_transform : i1) {
+  // CHECK: call <4 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v4i32(i64 %13, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32 %7, i32 %8, i32 %9, i1 %10, i1 %11)
+  %0 = genx.matrix.2Dblockload %ptr, %base_width, %base_height, %base_pitch, %x, %y, %elem_size_in_bits, %tile_width, %tile_height, %v_blocks, %transpose, %vnni_transform : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) -> vector<4xi32>
+  llvm.return
+}

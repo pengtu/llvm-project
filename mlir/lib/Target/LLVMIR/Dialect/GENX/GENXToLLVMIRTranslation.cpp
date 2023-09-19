@@ -15,8 +15,8 @@
 #include "mlir/Dialect/LLVMIR/GENXDialect.h"
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/IR/Operation.h"
-#include "mlir/Target/LLVMIR/ModuleTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/GENX/GenIntrinsics.h"
+#include "mlir/Target/LLVMIR/ModuleTranslation.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -203,13 +203,37 @@ static llvm::Value *createAtomicRMW(llvm::IRBuilderBase &builder,
                                   {ptr->getType(), val->getType()}, {ptr, val});
 }
 
-// Create call to a GenISAIntrinsic function
-static llvm::Value *createGenISAIntrinsicCall(
-    llvm::IRBuilderBase &builder, llvm::GenISAIntrinsic::ID intrin_id, ArrayRef<llvm::Value *> args, 
-    ArrayRef<llvm::Type *> tys) {
+// Create a call to GenISA_LSC2DBlockRead for loading a 2D submatrix
+static llvm::Value *createGenISA2DBlockRead(
+    llvm::IRBuilderBase &builder, llvm::Value *ptr, llvm::Value *base_width,
+    llvm::Value *base_height, llvm::Value *base_pitch, llvm::Value *x,
+    llvm::Value *y, llvm::Value *elem_size_in_bits, llvm::Value *tile_width,
+    llvm::Value *tile_height, llvm::Value *v_blocks, llvm::Value *transpose,
+    llvm::Value *vnni_transform, ArrayRef<llvm::Type *> tys) {
   llvm::Module *module = builder.GetInsertBlock()->getModule();
-  llvm::Function * fn = 
-    llvm::GenISAIntrinsic::getDeclaration(module, intrin_id, tys);
+  llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
+      module, llvm::GenISAIntrinsic::GenISA_LSC2DBlockRead, tys);
+  // Temporary workaround: IGC library build LLVM version (LLVM 14) has
+  // different Attribute enum. Remove after building IGC library with the LLVM
+  // mainline
+  fn->removeFnAttr(llvm::Attribute::NoUndef);
+  fn->setDoesNotThrow();
+
+  // The IGC intrinsic requires the first argument be int64
+  auto base = builder.CreatePointerCast(ptr, builder.getInt64Ty());
+  llvm::SmallVector<llvm::Value *, 12> args;
+  args.push_back(base);
+  args.push_back(base_width);
+  args.push_back(base_height);
+  args.push_back(base_pitch);
+  args.push_back(x);
+  args.push_back(y);
+  args.push_back(elem_size_in_bits);
+  args.push_back(tile_width);
+  args.push_back(tile_height);
+  args.push_back(v_blocks);
+  args.push_back(transpose);
+  args.push_back(vnni_transform);
   return builder.CreateCall(fn, args);
 }
 
