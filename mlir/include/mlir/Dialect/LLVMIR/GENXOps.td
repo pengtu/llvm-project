@@ -535,7 +535,7 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
     to each element of the matrix.
 
     Example:
-    
+
     %res = genx.matrix.map <Subgroup>
     ins(%mat, %val : !genx.jointmatrix<8x32xf32, RowMajor>, f32)
     (%elem: f32, %v: f32) {
@@ -552,7 +552,6 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
 
   let regions = (region SizedRegion<1>:$mapper);
   let hasCustomAssemblyFormat = 1;
-
   let hasVerifier = 1;
 }
 
