@@ -144,6 +144,30 @@ func.func @joint_matrix_init(%mat : !genx.jointmatrix<8x16xi32, RowMajor>, %val 
 
 // -----
 
+func.func @joint_matrix_copy(%src : !genx.jointmatrix<8x16xi32, RowMajor>) {
+  // expected-error @+1 {{'genx.matrix.copy' op scope attribute must have value 'Subgroup'}}
+  %0 = genx.matrix.copy <Workgroup> %src : (!genx.jointmatrix<8x16xi32, RowMajor>) -> !genx.jointmatrix<8x16xi32, RowMajor>
+  llvm.return
+}
+
+// -----
+
+func.func @joint_matrix_copy(%src : !genx.jointmatrix<8x16xi32, RowMajor>) {
+  // expected-error @+1 {{'genx.matrix.copy' op result shape must match source shape}}
+  %0 = genx.matrix.copy <Subgroup> %src : (!genx.jointmatrix<8x16xi32, RowMajor>) -> !genx.jointmatrix<16x8xi32, RowMajor>
+  llvm.return
+}
+
+// -----
+
+func.func @joint_matrix_copy(%src : !genx.jointmatrix<8x16xi32, RowMajor>) {
+  // expected-error @+1 {{'genx.matrix.copy' op result layout must match source layout}}
+  %0 = genx.matrix.copy <Subgroup> %src : (!genx.jointmatrix<8x16xi32, RowMajor>) -> !genx.jointmatrix<8x16xf32, ColumnMajor>
+  llvm.return
+}
+
+// -----
+
 func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>) {
   // expected-error @+1 {{'genx.matrix.map' op scope attribute must have value 'Subgroup'}}
   %r = genx.matrix.map <Workgroup> 

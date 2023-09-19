@@ -132,6 +132,28 @@ LogicalResult GENX::MatrixInitOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// genx.matrix.copy
+//===----------------------------------------------------------------------===//
+
+LogicalResult GENX::MatrixCopyOp::verify() {
+  // The scope attribute must be 'Subgroup' currently.
+  if (getScope() != GENX::Scope::Subgroup)
+    return this->emitOpError("scope attribute must have value 'Subgroup'");
+
+  auto resType = getResult().getType().cast<GENX::JointMatrixType>();
+  auto srcType = getSrc().getType().cast<GENX::JointMatrixType>();
+
+  if ((resType.getNumRows() != srcType.getNumRows()) ||
+      (resType.getNumColumns() != srcType.getNumColumns()))
+    return this->emitOpError("result shape must match source shape");
+
+  if (resType.getMatrixLayout() != srcType.getMatrixLayout())
+    return this->emitOpError("result layout must match source layout");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // genx.yield
 //===----------------------------------------------------------------------===//
 
@@ -140,21 +162,12 @@ LogicalResult GENX::YieldOp::verify() {
   if (parentOp->getNumRegions() != 1 || parentOp->getRegion(0).empty())
     return emitOpError("expected single non-empty parent region");
 
-  auto results = parentOp->getResults();
-  auto operands = getOperands();
-
   if (!isa<GENX::MatrixMapOp>(parentOp))
     return emitOpError() << "only terminates genx.matrix.map regions";
 
   if (parentOp->getNumResults() != getNumOperands())
     return emitOpError() << "parent of yield must have same number of "
                             "results as the yield operands";
-
-  //  for (auto it : llvm::zip(results, operands)) {
-  //    if (std::get<0>(it).getType() != std::get<1>(it).getType())
-  //      return emitOpError() << "types mismatch between yield op and its
-  //      parent";
-  //  }
 
   return success();
 }
@@ -168,7 +181,6 @@ void GENX::MatrixMapOp::getAsmResultNames(
   setNameFn(getResult(), "mapped");
 }
 
-#if 1
 ParseResult GENX::MatrixMapOp::parse(OpAsmParser &parser,
                                      OperationState &result) {
   // Parse scope attribute.
@@ -193,11 +205,6 @@ ParseResult GENX::MatrixMapOp::parse(OpAsmParser &parser,
   // Parse optional attributes.
   if (parser.parseOptionalAttrDict(result.attributes))
     return failure();
-
-  //  Type outputType = inputTypes.front();
-  // assert(outputType.isa<GENX::JointMatrixType>() &&
-  //     "Expecting outpuyt operand to ge a genx.jointmatrix");
-  //  result.addTypes(outputType);
 
   // Parse lambda.
   SmallVector<OpAsmParser::Argument> regionArgs;
@@ -255,7 +262,6 @@ void GENX::MatrixMapOp::print(OpAsmPrinter &p) {
   else
     p << resType;
 }
-#endif
 
 LogicalResult GENX::MatrixMapOp::verify() {
   // The scope attribute must be 'Subgroup' currently.

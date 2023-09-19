@@ -482,6 +482,28 @@ def GENX_MatrixInitOp : GENX_Op<"matrix.init">,
   let hasVerifier = 1;
 }
 
+def GENX_MatrixCopyOp : GENX_Op<"matrix.copy">,
+  Results<(outs GENX_AnyJointMatrix:$res)>,
+  Arguments<(ins GENX_AnyJointMatrix:$src, ScopeAttr:$scope)> {
+  let summary = "Copy a joint matrix";
+
+  string baseDescription = [{
+    The `genx.matrix.copy` operation copies the input matrix $src and returns the 
+    new matrix. The result type must be a joint matrix with the same shape, and layout 
+    as the source matrix. The element type might be different.
+  }];
+
+  string llvmBuilder = [{
+    $res = createMatrixCopy(builder, $res, $src, $scope);
+  }];
+
+  let assemblyFormat = [{
+    $scope operands attr-dict `:` functional-type(operands, results)
+  }];
+
+  let hasVerifier = 1;
+}
+
 def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
     Arguments<(ins Variadic<AnyType>:$values)> {
   let summary = "Terminates and yields values from GENX regions";
@@ -520,6 +542,7 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
 
   let regions = (region SizedRegion<1>:$mapper);
   let hasCustomAssemblyFormat = 1;
+
   let hasVerifier = 1;
 }
 
