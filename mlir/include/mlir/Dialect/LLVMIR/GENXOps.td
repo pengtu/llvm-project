@@ -530,8 +530,18 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
   let summary = "Elementwise operation on a joint matrix";
 
   string baseDescription = [{
-    The `genx.matrix.map` operation performs an element-wise operation where the 
-    same operation is performed on every element of the joint matrix.
+    The `genx.matrix.map` operation performs an element-wise on the joint matrix $mat.
+    The region attached to the operation should contain the workload and it is applied 
+    to each element of the matrix.
+
+    Example:
+    
+    %res = genx.matrix.map <Subgroup>
+    ins(%mat, %val : !genx.jointmatrix<8x32xf32, RowMajor>, f32)
+    (%elem: f32, %v: f32) {
+       %0 = arith.addf %elem, %v : f32
+       genx.yield %0 : f32
+    } : !genx.jointmatrix<8x32xf32, RowMajor>
   }];
 
   let builders = [
