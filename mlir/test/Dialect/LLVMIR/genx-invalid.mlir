@@ -206,3 +206,17 @@ func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>, %val: 
     } : !genx.jointmatrix<8x16xf32, RowMajor>  
   llvm.return
 }
+
+// -----
+
+func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>, %val: f32) {
+  // expected-error @+1 {{'genx.matrix.map' op expected type of input 'f32' to match bbArg type 'i32'}}
+  %r = genx.matrix.map <Subgroup> 
+    ins(%mat, %val : !genx.jointmatrix<8x16xf32, RowMajor>, f32)
+    (%elem: f32, %v: i32) {
+       %cast = llvm.bitcast %v : i32 to f32
+       %add = arith.addf %elem, %cast : f32
+       genx.yield %add : f32
+    } : !genx.jointmatrix<8x16xf32, RowMajor>  
+  llvm.return
+}

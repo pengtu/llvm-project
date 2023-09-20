@@ -275,6 +275,8 @@ LogicalResult GENX::MatrixMapOp::verify() {
   Block *bodyBlock = getBody();
   auto blockArgs = bodyBlock->getArguments();
 
+  assert(inputs.size() == 2);
+
   // Checks that the arity of the `mapper` region is equal to the matrix
   // argument plus the number of variadic arguments.
   if (inputs.size() != blockArgs.size())
@@ -292,11 +294,12 @@ LogicalResult GENX::MatrixMapOp::verify() {
 
   // The remaining parameters of the mapper should match the types of the
   // variadic arguments.
-  for (const auto &[bbArgType, inputArg] :
-       llvm::zip(bodyBlock->getArgumentTypes(), getInputs())) {
-    if (bbArgType != inputArg.getType())
-      return emitOpError() << "expected type of input " << inputArg.getType()
-                           << " to match bbArg type " << bbArgType;
+  for (size_t i = 1; i < argTypes.size(); ++i) {
+    Type argType = argTypes[i];
+    Type inType = inputs[i].getType();
+    if (argType != inType)
+      return emitOpError() << "expected type of input " << inType
+                           << " to match bbArg type " << argType;
   }
 
   return success();
