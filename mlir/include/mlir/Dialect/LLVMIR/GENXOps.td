@@ -544,6 +544,10 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
     } : !genx.jointmatrix<8x32xf32, RowMajor>
   }];
 
+  string llvmBuilder = [{
+    assert(false); // TODO
+  }];
+
   let builders = [
     OpBuilder<(ins "Value":$mat, "ValueRange":$inputs, 
       "function_ref<void(OpBuilder &, Location, ValueRange)>",
