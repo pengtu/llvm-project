@@ -530,9 +530,9 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
   let summary = "Elementwise operation on a joint matrix";
 
   string baseDescription = [{
-    The `genx.matrix.map` operation performs an element-wise on the joint matrix $mat.
-    The region attached to the operation should contain the workload and it is applied 
-    to each element of the matrix.
+    The `genx.matrix.map` operation performs an element-wise operation on the joint 
+    matrix $mat. The region attached to the operation should contain the workload and 
+    it is applied to each element of the matrix.
 
     Example:
 

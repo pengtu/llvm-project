@@ -183,13 +183,12 @@ func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>) {
 // -----
 
 func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>, %val: f32) {
-  // expected-error @+1 {{'genx.matrix.map' op expects number of operands to match the arity of mapper, but got: 2 and 1}}
+  // expected-error @+1 {{'genx.matrix.map' op expected element type of input 'f32' to match bbArg type 'i32'}}
   %r = genx.matrix.map <Subgroup> 
     ins(%mat, %val : !genx.jointmatrix<8x16xf32, RowMajor>, f32)
-    (%elem: f32) {
-       %cst = arith.constant 1.0 : f32
-       %add = arith.addf %elem, %cst : f32
-       genx.yield %add : f32
+    (%elem: i32, %v: i32) {
+       %add = arith.addf %elem, %v : i32
+       genx.yield %add : i32
     } : !genx.jointmatrix<8x16xf32, RowMajor>  
   llvm.return
 }
@@ -197,12 +196,13 @@ func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>, %val: 
 // -----
 
 func.func @joint_matrix_mad(%mat : !genx.jointmatrix<8x16xf32, RowMajor>, %val: f32) {
-  // expected-error @+1 {{'genx.matrix.map' op expected element type of input 'f32' to match bbArg type 'i32'}}
+  // expected-error @+1 {{'genx.matrix.map' op expects number of operands to match the arity of mapper, but got: 2 and 1}}
   %r = genx.matrix.map <Subgroup> 
     ins(%mat, %val : !genx.jointmatrix<8x16xf32, RowMajor>, f32)
-    (%elem: i32, %v: i32) {
-       %add = arith.addf %elem, %v : i32
-       genx.yield %add : i32
+    (%elem: f32) {
+       %cst = arith.constant 1.0 : f32
+       %add = arith.addf %elem, %cst : f32
+       genx.yield %add : f32
     } : !genx.jointmatrix<8x16xf32, RowMajor>  
   llvm.return
 }
