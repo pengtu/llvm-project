@@ -338,7 +338,7 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
 //===----------------------------------------------------------------------===//
 def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
 def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
-  Results<(outs FixedVectorOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>:$res)>,
+  Results<(outs FixedVectorOf<[GENX_MatrixElemType]>:$res)>,
   Arguments<(ins 
     Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemRead]>:$ptr,
     I32:$base_width,
