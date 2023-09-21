@@ -13,7 +13,6 @@
 
 #include "GenIntrinsicEnum.h"
 
-#include "llvm/ADT/None.h"
 #include "llvm/IR/Function.h"
 
 #include <string>
