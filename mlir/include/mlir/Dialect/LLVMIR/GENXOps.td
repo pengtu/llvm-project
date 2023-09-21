@@ -346,12 +346,12 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
     I32:$base_pitch,
     I32:$x,
     I32:$y,
-    I32:$elem_size_in_bits,
-    I32:$tile_width,
-    I32:$tile_height,
-    I32:$v_blocks,
-    I1:$transpose,
-    I1:$vnni_transform
+    I32Attr:$elem_size_in_bits,
+    I32Attr:$tile_width,
+    I32Attr:$tile_height,
+    I32Attr:$v_blocks,
+    I1Attr:$transpose,
+    I1Attr:$vnni_transform
   )> {
 
   let summary = "GEN 2D block Load";
@@ -363,7 +363,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
     $x, $y, $tile_width, $tile_height - the starting offets and shape of the submatrix to load
     $elem_size_in_bits - 32 for f32, bf32; 16 for f16, int16, bf16; 8 for int8, int4, int2 and etc
     $v_blocks - number of blocks to load
-    $tranpose - transpose the submatrix in vector register (useful for 32 bit element types)
+    $transpose - transpose the submatrix in vector register (useful for 32 bit element types)
     $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
 
     The $transpose and $vnni_transform are mutual exclusive. These transformations are used for
@@ -380,7 +380,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
   }];
     
   let assemblyFormat = [{
-    operands attr-dict `:` `(` type(operands) `)` `->` type($res)
+   `<` $tile_height `x` $tile_width `>` $elem_size_in_bits $v_blocks $transpose $vnni_transform operands attr-dict `:` `(` type(operands) `)` `->` type($res)
   }];
 }
 

@@ -1,10 +1,14 @@
-/*========================== begin_copyright_notice ============================
-
-Copyright (C) 2017-2021 Intel Corporation
-
-SPDX-License-Identifier: MIT
-
-============================= end_copyright_notice ===========================*/
+//===- GenIntrinsics.h - IGC GenISAIntrinsics interface ---------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This provides IGC GenISAIntrinsic interfaces for GENX dialect
+//
+//===----------------------------------------------------------------------===//
 #pragma once
 
 #include "GenIntrinsicEnum.h"
@@ -23,7 +27,7 @@ namespace GenISAIntrinsic
 
 /// Intrinsic::getName(ID) - Return the LLVM name for an intrinsic, such as
 /// "llvm.ppc.altivec.lvx".
-// std::string getName(ID id, ArrayRef<Type*> Tys = None);
+std::string getName(ID id, ArrayRef<Type*> Tys = std::nullopt);
 
 
 struct IntrinsicComments
@@ -33,7 +37,7 @@ struct IntrinsicComments
     std::vector<const char*> inputs;
 };
 
-//IntrinsicComments getIntrinsicComments(ID id);
+IntrinsicComments getIntrinsicComments(ID id);
 
 /// Intrinsic::getDeclaration(M, ID) - Create or insert an LLVM Function
 /// declaration for an intrinsic, and return it.
@@ -62,7 +66,7 @@ inline bool isIntrinsic(const Function *CF)
 {
     return (CF->getName().startswith(getGenIntrinsicPrefix()));
 }
-//ID getIntrinsicID(const Function *F);
+ID getIntrinsicID(const Function *F);
 
 } // namespace GenISAIntrinsic
 
