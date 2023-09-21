@@ -115,7 +115,7 @@ func.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
 
 func.func @genx.2Dblockload1x4.32.1.0.0(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32) {
   // CHECK: genx.matrix.2Dblockload<1 x 4> 32 1 false false %arg0, %arg1, %arg2, %arg3, %arg4, %arg5 : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
-  %0 = genx.matrix.2Dblockload<1 x 4> 32 1 0 0 %ptr, %base_width, %base_height, %base_pitch, %x, %y : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  %0 = genx.matrix.2Dblockload<1 x 4> 32 1 false false %ptr, %base_width, %base_height, %base_pitch, %x, %y : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
   llvm.return
 }
 
