@@ -15,7 +15,9 @@
 
 include "mlir/IR/EnumAttr.td"
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/IR/OpAsmInterface.td"
 
 // spirv::CrossWorkGroup: 1
 def LLVM_i8Ptr_cross_workgroup : LLVM_IntPtrBase<8, 1>;
@@ -336,6 +338,53 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
 //===----------------------------------------------------------------------===//
 // Joint Matrix operations
 //===----------------------------------------------------------------------===//
+def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
+def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
+  Results<(outs FixedVectorOf<[GENX_MatrixElemType]>:$res)>,
+  Arguments<(ins 
+    Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemRead]>:$ptr,
+    I32:$base_width,
+    I32:$base_height,
+    I32:$base_pitch,
+    I32:$x,
+    I32:$y,
+    I32Attr:$elem_size_in_bits,
+    I32Attr:$tile_width,
+    I32Attr:$tile_height,
+    I32Attr:$v_blocks,
+    I1Attr:$transpose,
+    I1Attr:$vnni_transform
+  )> {
+
+  let summary = "GEN 2D block Load";
+
+  string baseDescription = [{
+    The 'genx.matrix.2Dblockload' operation loads a submatrix from an array in memory.
+    $ptr - the base address of the memory array
+    $base_width, $base_height, $base_pitch - the shape of the memory array
+    $x, $y, $tile_width, $tile_height - the starting offets and shape of the submatrix to load
+    $elem_size_in_bits - 32 for f32, bf32; 16 for f16, int16, bf16; 8 for int8, int4, int2 and etc
+    $v_blocks - number of blocks to load
+    $transpose - transpose the submatrix in vector register (useful for 32 bit element types)
+    $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
+
+    The $transpose and $vnni_transform are mutual exclusive. These transformations are used for
+    the B matrix in MMA (DPAS) operations D = C + A * B, where A should have row-major layout in register
+    and B should have column-major layout.
+
+    If the submatrix contains out of bound elements of the memory array, they are filled with 0.
+  }];
+
+  string llvmBuilder = [{
+    $res = createGenISA2DBlockRead(builder,
+      $ptr, $base_width, $base_height, $base_pitch, $x, $y, $elem_size_in_bits, $tile_width, 
+      $tile_height, $v_blocks, $transpose, $vnni_transform, {$_resultType});
+  }];
+    
+  let assemblyFormat = [{
+   `<` $tile_height `x` $tile_width `>` $elem_size_in_bits $v_blocks $transpose $vnni_transform operands attr-dict `:` `(` type(operands) `)` `->` type($res)
+  }];
+}
 
 def GENX_IsJointMatrixType :
   CPred<"$_self.isa<::mlir::GENX::JointMatrixType>()">;
@@ -474,7 +523,7 @@ def GENX_MatrixInitOp : GENX_Op<"matrix.init">,
   }];
 
   let assemblyFormat = [{
-    $scope operands attr-dict`:` `(` type(operands) `)`
+    $scope operands attr-dict `:` `(` type(operands) `)`
   }];
 
   let hasVerifier = 1;
@@ -499,6 +548,61 @@ def GENX_MatrixCopyOp : GENX_Op<"matrix.copy">,
     $scope operands attr-dict `:` functional-type(operands, results)
   }];
 
+  let hasVerifier = 1;
+}
+
+def GENX_YieldOp : GENX_Op<"yield", [Pure, ReturnLike, Terminator]>,
+    Arguments<(ins Variadic<AnyType>:$values)> {
+  let summary = "Terminates and yields values from GENX regions";
+
+  string baseDescription = [{
+    The `genx.yield` operation yields one or more SSA value from a GENX dialect op 
+    region and terminates the region. The operands of this operation must correspond 
+    to the parent operation results.
+  }];
+
+  let builders = [OpBuilder<(ins), [{ /* nothing to do */ }]>];
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))?";
+  let hasVerifier = 1;
+}
+
+def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
+        DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
+        RecursiveMemoryEffects,
+        SingleBlockImplicitTerminator<"YieldOp">,
+        TypesMatchWith<"result #0 and operand #0 have the same type",
+                       "res", "mat", "$_self">]>,
+    Results<(outs GENX_AnyJointMatrix:$res)>,    
+    Arguments<(ins GENX_AnyJointMatrix:$mat, Variadic<IntegerOrFloatType>:$inputs, ScopeAttr:$scope)> {
+  let summary = "Elementwise operation on a joint matrix";
+
+  string baseDescription = [{
+    The `genx.matrix.map` operation performs an element-wise operation on the joint 
+    matrix $mat. The region attached to the operation should contain the workload and 
+    it is applied to each element of the matrix.
+
+    Example:
+
+    %res = genx.matrix.map <Subgroup>
+    ins(%mat, %val : !genx.jointmatrix<8x32xf32, RowMajor>, f32)
+    (%elem: f32, %v: f32) {
+       %0 = arith.addf %elem, %v : f32
+       genx.yield %0 : f32
+    } : !genx.jointmatrix<8x32xf32, RowMajor>
+  }];
+
+  string llvmBuilder = [{
+    assert(false); // TODO
+  }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$mat, "ValueRange":$inputs, 
+      "function_ref<void(OpBuilder &, Location, ValueRange)>",
+      CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes)>
+  ];
+
+  let regions = (region SizedRegion<1>:$mapper);
+  let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }
 

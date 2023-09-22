@@ -113,6 +113,12 @@ func.func @genx.atomic.rmw.i32(%ptr : !llvm.ptr<i32>, %val : i32) {
   llvm.return  
 }
 
+func.func @genx.2Dblockload1x4.32.1.0.0(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32) {
+  // CHECK: genx.matrix.2Dblockload<1 x 4> 32 1 false false %arg0, %arg1, %arg2, %arg3, %arg4, %arg5 : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  %0 = genx.matrix.2Dblockload<1 x 4> 32 1 false false %ptr, %base_width, %base_height, %base_pitch, %x, %y : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  llvm.return
+}
+
 func.func @genx.matrix.load(%ptr : !llvm.ptr<vector<4xi32>>, %stride : index) {
   // CHECK-LABEL: genx.matrix.load
   // CHECK: %0 = genx.matrix.load <Subgroup> <RowMajor> %arg0, %arg1 {memory_access = #genx.memory_access<Volatile>} : (!llvm.ptr<vector<4xi32>>, index) -> !genx.jointmatrix<8x16xi32, RowMajor>
@@ -146,4 +152,21 @@ func.func @genx.matrix.copy(%src: !genx.jointmatrix<8x32xi32, RowMajor>) {
   // CHECK: %0 = genx.matrix.copy <Subgroup>  %arg0 : (!genx.jointmatrix<8x32xi32, RowMajor>) -> !genx.jointmatrix<8x32xf32, RowMajor>
   %0 = genx.matrix.copy <Subgroup> %src : (!genx.jointmatrix<8x32xi32, RowMajor>) -> !genx.jointmatrix<8x32xf32, RowMajor>
   llvm.return  
+}
+
+func.func @genx.matrix.map(%mat: !genx.jointmatrix<8x32xf32, RowMajor>, %val: f32) {
+  // CHECK-LABEL: genx.matrix.map
+  // CHECK:       %mapped = genx.matrix.map <Subgroup>
+  // CHECK-NEXT:  ins(%arg0, %arg1 : !genx.jointmatrix<8x32xf32, RowMajor>, f32)  
+  // CHECK-NEXT:  (%arg2: f32, %arg3: f32) {
+  // CHECK-NEXT:     %0 = arith.addf %arg2, %arg3 : f32
+  // CHECK-NEXT:     genx.yield %0 : f32
+  // CHECK-NEXT:  } : !genx.jointmatrix<8x32xf32, RowMajor>
+  %0 = genx.matrix.map <Subgroup>
+    ins(%mat, %val : !genx.jointmatrix<8x32xf32, RowMajor>, f32)
+    (%elem: f32, %v: f32) {
+       %0 = arith.addf %elem, %v : f32
+       genx.yield %0 : f32
+    } : !genx.jointmatrix<8x32xf32, RowMajor>
+  llvm.return
 }
