@@ -350,8 +350,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
     I32Attr:$pa,
     I32Attr:$pb,
     I32Attr:$sd,
-    I32Attr:$rc,
-    I1Attr:$isDpasw
+    I32Attr:$rc
   )> {
 
   let summary = "GEN matrix multiply-add";
@@ -382,7 +381,6 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
     $pa, $pb - precision of matrix A and B resepectively
     $sd - systolic depth
     $rc - repect count
-    $isDpasw - is dpas wide instruction
   }];
 
   string llvmBuilder = [{

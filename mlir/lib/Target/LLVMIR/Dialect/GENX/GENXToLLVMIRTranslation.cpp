@@ -226,7 +226,7 @@ createGenISADPAS(GENX::MatrixDPASOp op, llvm::IRBuilderBase &builder,
   args.push_back(llvm::ConstantInt::get(int32Ty, op.getPb()));
   args.push_back(llvm::ConstantInt::get(int32Ty, op.getSd()));
   args.push_back(llvm::ConstantInt::get(int32Ty, op.getRc()));
-  args.push_back(llvm::ConstantInt::get(int1Ty, op.getIsDpasw()));
+  args.push_back(llvm::ConstantInt::get(int1Ty, false));
   return builder.CreateCall(fn, args);
 }
 
