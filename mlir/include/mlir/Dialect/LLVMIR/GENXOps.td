@@ -353,7 +353,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
     I32Attr:$rc
   )> {
 
-  let summary = "GEN matrix multiply-add";
+  let summary = "GENX matrix multiply-add";
 
   string baseDescription = [{
     The 'genx.matrix.dpas' operation is a matrix multiply-add operation as follows:
@@ -367,7 +367,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
           B : KxN
 
           M : repeat count ($rc)
-          N : fixed execution size, either 8 or 16
+          N : fixed execution size, must be 16 for PVC
           K : depth * OPS_PER_CHAN
               OPS_PER_CHAN
                  1 : for TF32
@@ -411,7 +411,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
     I1Attr:$vnni_transform
   )> {
 
-  let summary = "GEN 2D block Load";
+  let summary = "GENX 2D block Load";
 
   string baseDescription = [{
     The 'genx.matrix.2Dblockload' operation loads a submatrix from an array in memory.

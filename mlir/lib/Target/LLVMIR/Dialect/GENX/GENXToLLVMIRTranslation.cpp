@@ -215,9 +215,12 @@ createGenISADPAS(GENX::MatrixDPASOp op, llvm::IRBuilderBase &builder,
        moduleTranslation.convertType(opTypes[0]),
        moduleTranslation.convertType(opTypes[1]),
        moduleTranslation.convertType(opTypes[2])});
-  // FIXME: Attribute mismatch - Attribute 'noundef' does not apply to
-  // @llvm.genx.GenISA.dpas.v8i32.v8i32.v8i32.v8i32.
+
+  // FIXME: Temporary workaround: IGC library build LLVM version (LLVM 14) has
+  // different Attribute enum. Remove after building IGC library with the LLVM
+  // mainline.
   fn->removeFnAttr(llvm::Attribute::NoUndef);
+
   SmallVector<llvm::Value *> args(
       moduleTranslation.lookupValues(op.getOperands()));
   auto int32Ty = builder.getInt32Ty();
