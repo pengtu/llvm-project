@@ -437,7 +437,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
   }];
     
   let assemblyFormat = [{
-   `<` $tile_height `x` $tile_width `>` $elem_size_in_bits $v_blocks $transpose $vnni_transform operands attr-dict `:` `(` type(operands) `)` `->` type($res)
+    operands attr-dict `:` functional-type(operands, results)
   }];
 }
 
