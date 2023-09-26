@@ -225,11 +225,6 @@ static llvm::Value *createGenISA2DBlockRead(
   llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
       module, llvm::GenISAIntrinsic::GenISA_LSC2DBlockRead, retTys);
   assert(fn && "GenISAIntrinsic::getDeclaration() returns NULL");
-  // Temporary workaround: IGC library build LLVM version (LLVM 14) has
-  // different Attribute enum. Remove after building IGC library with the LLVM
-  // mainline
-  fn->removeFnAttr(llvm::Attribute::NoUndef);
-  fn->setDoesNotThrow();
 
   // The IGC intrinsic requires the first argument be int64
   auto base = builder.CreatePointerCast(ptr, builder.getInt64Ty());
@@ -285,9 +280,6 @@ static void createMatrixInit(llvm::IRBuilderBase &builder, llvm::Value *mat,
 static llvm::Value *createMatrixCopy(llvm::IRBuilderBase &builder,
                                      llvm::Value *res, llvm::Value *src,
                                      GENX::Scope scope) {
-  assert((isa<GENX::JointMatrixType>(res->getType()) &&
-          isa<GENX::JointMatrixType>(src->getType())) &&
-         "Expecting a joint matrix type");
   assert(false && "TODO");
   return nullptr;
 }
