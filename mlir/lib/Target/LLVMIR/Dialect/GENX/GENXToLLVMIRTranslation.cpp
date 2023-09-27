@@ -246,11 +246,6 @@ createGenISA2DBlockRead(GENX::Matrix2DBlockLoadOp op,
          "Expecting a pointer type");
   args[0] = builder.CreatePointerCast(args[0], builder.getInt64Ty());
 
-  llvm::ConstantInt *width = dyn_cast<llvm::ConstantInt>(args[1]);
-  llvm::ConstantInt *pitch = dyn_cast<llvm::ConstantInt>(args[2]);
-  assert((!width || !pitch || width->getZExtValue() <= pitch->getZExtValue()) &&
-         "Base pitch should be >= base width");
-
   auto int32Ty = builder.getInt32Ty();
   auto int1Ty = builder.getInt1Ty();
   args.push_back(llvm::ConstantInt::get(int32Ty, op.getElemSizeInBits()));
