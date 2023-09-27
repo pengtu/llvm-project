@@ -257,6 +257,44 @@ createGenISA2DBlockRead(GENX::Matrix2DBlockLoadOp op,
   return builder.CreateCall(fn, args);
 }
 
+// Create a call to GenISA_LSC2DBlockWrite for storing to a 2D submatrix.
+static void
+createGenISA2DBlockWrite(GENX::Matrix2DBlockStoreOp op,
+                         llvm::IRBuilderBase &builder,
+                         LLVM::ModuleTranslation &moduleTranslation) {
+  llvm::Module *module = builder.GetInsertBlock()->getModule();
+  auto opTypes = op->getOperandTypes();
+  llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
+      module, llvm::GenISAIntrinsic::GenISA_LSC2DBlockWrite,
+      {moduleTranslation.convertType(opTypes[opTypes.size() - 1])});
+  assert(fn && "GenISAIntrinsic::getDeclaration() returns NULL");
+
+  SmallVector<llvm::Value *> args(
+      moduleTranslation.lookupValues(op.getOperands()));
+
+  // The IGC intrinsic requires the first argument be int64
+  assert(isa<llvm::PointerType>(args[0]->getType()) &&
+         "Expecting a pointer type");
+  args[0] = builder.CreatePointerCast(args[0], builder.getInt64Ty());
+  llvm::Value *lastOperand = args.pop_back_val();
+
+  llvm::ConstantInt *width = dyn_cast<llvm::ConstantInt>(args[1]);
+  llvm::ConstantInt *pitch = dyn_cast<llvm::ConstantInt>(args[2]);
+  assert((!width || !pitch || width->getZExtValue() <= pitch->getZExtValue()) &&
+         "Base pitch should be >= base width");
+
+  auto int32Ty = builder.getInt32Ty();
+  auto int1Ty = builder.getInt1Ty();
+  args.push_back(llvm::ConstantInt::get(int32Ty, op.getElemSizeInBits()));
+  args.push_back(llvm::ConstantInt::get(int32Ty, op.getTileWidth()));
+  args.push_back(llvm::ConstantInt::get(int32Ty, op.getTileHeight()));
+  args.push_back(llvm::ConstantInt::get(int32Ty, op.getVBlocks()));
+  args.push_back(llvm::ConstantInt::get(int1Ty, op.getTranspose()));
+  args.push_back(llvm::ConstantInt::get(int1Ty, op.getVnniTransform()));
+  args.push_back(lastOperand);
+  builder.CreateCall(fn, args);
+}
+
 // Create a call to SPIR function for loading a joint matrix.
 static llvm::Value *
 createMatrixLoad(llvm::IRBuilderBase &builder, llvm::Value *res,

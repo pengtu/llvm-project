@@ -68,6 +68,22 @@ LogicalResult GENX::Matrix2DBlockLoadOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// genx.matrix.2Dblockstore
+//===----------------------------------------------------------------------===//
+
+LogicalResult GENX::Matrix2DBlockStoreOp::verify() {
+  if (getElemSizeInBits() != 8 && getElemSizeInBits() != 16 &&
+      getElemSizeInBits() != 32)
+    return this->emitOpError("invalid element size");
+
+  if (getTranspose() && getVnniTransform())
+    return this->emitOpError(
+        "transpose and vnni transform are mutually exclusive");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // genx.matrix.load
 //===----------------------------------------------------------------------===//
 
