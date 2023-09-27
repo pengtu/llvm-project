@@ -443,7 +443,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
 
 def GENX_Matrix2DBlockStoreOp : GENX_Op<"matrix.2Dblockstore">,
   Arguments<(ins 
-    Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemRead]>:$ptr,
+    Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemWrite]>:$ptr,
     I32:$base_width,
     I32:$base_height,
     I32:$base_pitch,
