@@ -411,7 +411,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
     I1Attr:$vnni_transform
   )> {
 
-  let summary = "GENX 2D block Load";
+  let summary = "GENX 2D block load";
 
   string baseDescription = [{
     The 'genx.matrix.2Dblockload' operation loads a submatrix from an array in memory.

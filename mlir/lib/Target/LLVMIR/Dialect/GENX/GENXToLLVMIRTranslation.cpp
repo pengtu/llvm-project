@@ -227,7 +227,7 @@ createGenISADPAS(GENX::MatrixDPASOp op, llvm::IRBuilderBase &builder,
   return builder.CreateCall(fn, args);
 }
 
-// Create a call to GenISA_LSC2DBlockRead for loading a 2D submatrix
+// Create a call to GenISA_LSC2DBlockRead for loading a 2D submatrix.
 static llvm::Value *
 createGenISA2DBlockRead(GENX::Matrix2DBlockLoadOp op,
                         llvm::IRBuilderBase &builder,
