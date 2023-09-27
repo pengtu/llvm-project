@@ -61,7 +61,8 @@ LogicalResult GENX::Matrix2DBlockLoadOp::verify() {
   std::optional<int> width = getConstantInt(getBaseWidth());
   std::optional<int> pitch = getConstantInt(getBasePitch());
   if (pitch && width && *pitch < *width)
-    return this->emitOpError("base pitch should be >= base width");
+    return this->emitOpError(
+        "4th operand (base pitch) should be >= 2nd operand (base width)");
 
   return success();
 }
