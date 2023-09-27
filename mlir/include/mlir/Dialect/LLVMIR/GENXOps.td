@@ -455,7 +455,7 @@ def GENX_Matrix2DBlockStoreOp : GENX_Op<"matrix.2Dblockstore">,
     I32Attr:$v_blocks,
     I1Attr:$transpose,
     I1Attr:$vnni_transform,
-    AnyInteger:$stored_val
+    FixedVectorOf<[GENX_MatrixElemType]>:$stored_val
   )> {
 
   let summary = "GENX 2D block store";
@@ -469,7 +469,7 @@ def GENX_Matrix2DBlockStoreOp : GENX_Op<"matrix.2Dblockstore">,
     $v_blocks - number of blocks to load
     $transpose - transpose the submatrix in vector register (useful for 32 bit element types)
     $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
-    $stored_val - value to store
+    $stored_val - block to store
 
     The $transpose and $vnni_transform are mutual exclusive. These transformations are used for
     the B matrix in MMA (DPAS) operations D = C + A * B, where A should have row-major layout in register
