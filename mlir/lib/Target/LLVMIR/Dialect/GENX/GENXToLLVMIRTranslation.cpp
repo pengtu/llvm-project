@@ -208,7 +208,7 @@ static llvm::Value *
 createGenISADPAS(GENX::MatrixDPASOp op, llvm::IRBuilderBase &builder,
                  LLVM::ModuleTranslation &moduleTranslation) {
   llvm::Module *module = builder.GetInsertBlock()->getModule();
-  auto opTypes = op->getOperandTypes();
+  TypeRange opTypes = op->getOperandTypes();
   llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
       module, llvm::GenISAIntrinsic::GenISA_dpas,
       {moduleTranslation.convertType(op->getResultTypes()[0]),
@@ -263,7 +263,7 @@ createGenISA2DBlockWrite(GENX::Matrix2DBlockStoreOp op,
                          llvm::IRBuilderBase &builder,
                          LLVM::ModuleTranslation &moduleTranslation) {
   llvm::Module *module = builder.GetInsertBlock()->getModule();
-  auto opTypes = op->getOperandTypes();
+  TypeRange opTypes = op->getOperandTypes();
   llvm::Function *fn = llvm::GenISAIntrinsic::getDeclaration(
       module, llvm::GenISAIntrinsic::GenISA_LSC2DBlockWrite,
       {moduleTranslation.convertType(opTypes[opTypes.size() - 1])});
@@ -277,11 +277,6 @@ createGenISA2DBlockWrite(GENX::Matrix2DBlockStoreOp op,
          "Expecting a pointer type");
   args[0] = builder.CreatePointerCast(args[0], builder.getInt64Ty());
   llvm::Value *lastOperand = args.pop_back_val();
-
-  llvm::ConstantInt *width = dyn_cast<llvm::ConstantInt>(args[1]);
-  llvm::ConstantInt *pitch = dyn_cast<llvm::ConstantInt>(args[2]);
-  assert((!width || !pitch || width->getZExtValue() <= pitch->getZExtValue()) &&
-         "Base pitch should be >= base width");
 
   auto int32Ty = builder.getInt32Ty();
   auto int1Ty = builder.getInt1Ty();
