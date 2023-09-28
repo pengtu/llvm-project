@@ -466,7 +466,7 @@ def GENX_Matrix2DBlockStoreOp : GENX_Op<"matrix.2Dblockstore">,
     $base_width, $base_height, $base_pitch - the shape of the memory array
     $x, $y, $tile_width, $tile_height - the starting offets and shape of the submatrix to load
     $elem_size_in_bits - 32 for f32, bf32; 16 for f16, int16, bf16; 8 for int8, int4, int2 and etc
-    $v_blocks - number of blocks to load
+    $v_blocks - number of blocks to store
     $transpose - transpose the submatrix in vector register (useful for 32 bit element types)
     $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
     $stored_val - block to store
