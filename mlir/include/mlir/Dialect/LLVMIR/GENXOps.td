@@ -341,14 +341,36 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
 
 def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
 
+/// Enum attribute of the different precision types.
+def PrecisionType : I32EnumAttr<"PrecisionType", "GENX precision type",
+  [
+    I32EnumAttrCase<"PRECISION_UNUSED", 0>,
+    I32EnumAttrCase<"U8",               1>,
+    I32EnumAttrCase<"U4",               2>,
+    I32EnumAttrCase<"U2",               3>,
+    I32EnumAttrCase<"S8",               4>,
+    I32EnumAttrCase<"S4",               5>,
+    I32EnumAttrCase<"S2",               6>,
+    I32EnumAttrCase<"BF8",              7>,
+    I32EnumAttrCase<"TF32",             8>,
+    I32EnumAttrCase<"BF16",             9>,
+    I32EnumAttrCase<"FP16",             10>
+  ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::GENX";
+}
+def PrecisionTypeAttr : EnumAttr<GENX_Dialect, PrecisionType, "precision_type"> {
+  let assemblyFormat = "`<` $value `>`";
+}
+
 def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
   Results<(outs FixedVectorOf<[GENX_MatrixElemType]>:$d)>,
   Arguments<(ins
     FixedVectorOf<[GENX_MatrixElemType]>:$c,
     FixedVectorOf<[GENX_MatrixElemType]>:$a,
     FixedVectorOf<[GENX_MatrixElemType]>:$b,
-    I32Attr:$pa,
-    I32Attr:$pb,
+    PrecisionTypeAttr:$pa,
+    PrecisionTypeAttr:$pb,
     I32Attr:$sd,
     I32Attr:$rc
   )> {
