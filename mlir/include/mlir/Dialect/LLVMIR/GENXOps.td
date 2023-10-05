@@ -371,7 +371,6 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
     FixedVectorOf<[GENX_MatrixElemType]>:$b,
     PrecisionTypeAttr:$pa,
     PrecisionTypeAttr:$pb,
-    I32Attr:$sd,
     I32Attr:$rc
   )> {
 
@@ -401,7 +400,6 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
 
     $a, $b, $c, $d - matrix A, B, C, D, respectively
     $pa, $pb - precision of matrix A and B resepectively
-    $sd - systolic depth
     $rc - repect count
   }];
 

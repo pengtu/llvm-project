@@ -1,16 +1,8 @@
 // RUN: mlir-opt -split-input-file -verify-diagnostics %s
 
 func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi32>, %b : vector<8xi32>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op expecting systolic depth to be 8}}
-  %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<BF8>, pb=#genx.precision_type<BF8>, sd=1:i32, rc=1:i32} : (vector<8xi32>, vector<8xi32>, vector<8xi32>) -> vector<8xi32>
-  llvm.return
-}
-
-// -----
-
-func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi32>, %b : vector<8xi32>) {
   // expected-error @+1 {{'genx.matrix.dpas' op expecting repect count to be 1, 2, 4, or 8}}
-  %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<BF8>, pb=#genx.precision_type<BF8>, sd=8:i32, rc=6:i32} : (vector<8xi32>, vector<8xi32>, vector<8xi32>) -> vector<8xi32>
+  %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<BF8>, pb=#genx.precision_type<BF8>, rc=6:i32} : (vector<8xi32>, vector<8xi32>, vector<8xi32>) -> vector<8xi32>
   llvm.return
 }
 
