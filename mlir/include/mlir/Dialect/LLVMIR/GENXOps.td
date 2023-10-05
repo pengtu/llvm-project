@@ -158,16 +158,20 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
 }
 
 /// Enum attribute of the different memory fence flags.
-def MemoryFenceFlag : I32EnumAttr<"MemoryFenceFlag", "GENX memory fence flag",
+def MemoryFenceFlag : I32BitEnumAttr<"MemoryFenceFlag", "GENX memory fence flag",
   [
-    I32EnumAttrCase<"LOCAL_MEM_FENCE",  1>,
-    I32EnumAttrCase<"GLOBAL_MEM_FENCE", 2>,
-    I32EnumAttrCase<"IMAGE_MEM_FENCE",  4>
+    I32BitEnumAttrCaseBit<"LOCAL_MEM_FENCE",  0>,
+    I32BitEnumAttrCaseBit<"GLOBAL_MEM_FENCE", 1>,
+    I32BitEnumAttrCaseBit<"IMAGE_MEM_FENCE",  2>
   ]> {
-  let genSpecializedAttr = 0;
+  let separator = ", ";
   let cppNamespace = "::mlir::GENX";
+  let genSpecializedAttr = 0;
+  let printBitEnumPrimaryGroups = 1;
 }
-def MemoryFenceFlagAttr : EnumAttr<GENX_Dialect, MemoryFenceFlag, "memory_fence_flag">;
+def MemoryFenceFlagAttr : EnumAttr<GENX_Dialect, MemoryFenceFlag, "memory_fence_flag"> {
+  let assemblyFormat = "`<` $value `>`";
+}
 
 /// Enum attribute of the different memory order.
 def MemoryOrder : I32EnumAttr<"MemoryOrder", "GENX memory order",
@@ -181,7 +185,9 @@ def MemoryOrder : I32EnumAttr<"MemoryOrder", "GENX memory order",
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
 }
-def MemoryOrderAttr : EnumAttr<GENX_Dialect, MemoryOrder, "memory_order">;
+def MemoryOrderAttr : EnumAttr<GENX_Dialect, MemoryOrder, "memory_order"> {
+  let assemblyFormat = "`<` $value `>`";
+}
 
 /// Enum attribute of the different memory scope.
 def MemoryScope : I32EnumAttr<"MemoryScope", "GENX memory scope",
@@ -195,10 +201,12 @@ def MemoryScope : I32EnumAttr<"MemoryScope", "GENX memory scope",
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::GENX";
 }
-def MemoryScopeAttr : EnumAttr<GENX_Dialect, MemoryScope, "memory_scope">;
+def MemoryScopeAttr : EnumAttr<GENX_Dialect, MemoryScope, "memory_scope"> {
+  let assemblyFormat = "`<` $value `>`";
+}
 
 def GENX_FenceOp : GENX_Op<"atomic_work_item_fence">,
-  Arguments<(ins ConfinedAttr<I32Attr, [IntMinValue<0>, IntMaxValue<7>]>:$flags,
+  Arguments<(ins MemoryFenceFlagAttr:$flags,
                  MemoryOrderAttr:$order,
                  MemoryScopeAttr:$scope)> {
   let summary = "Fence of memory accesses";
@@ -215,7 +223,7 @@ def GENX_FenceOp : GENX_Op<"atomic_work_item_fence">,
     createFence(builder, $flags, $order, $scope);
   }];
   let assemblyFormat = [{
-    ` ` `<` custom<MemoryFenceFlags>($flags) ` ``>` `,` $order `,` $scope attr-dict
+    attr-dict
   }];
 }
 
@@ -343,7 +351,7 @@ def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
 
 def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
   Results<(outs FixedVectorOf<[GENX_MatrixElemType]>:$d)>,
-  Arguments<(ins 
+  Arguments<(ins
     FixedVectorOf<[GENX_MatrixElemType]>:$c,
     FixedVectorOf<[GENX_MatrixElemType]>:$a,
     FixedVectorOf<[GENX_MatrixElemType]>:$b,
@@ -386,7 +394,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
   string llvmBuilder = [{
     $d = createGenISADPAS(op, builder, moduleTranslation);
   }];
-    
+ 
   let assemblyFormat = [{
     operands attr-dict `:` functional-type(operands, results)
   }];
@@ -396,7 +404,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
 
 def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
   Results<(outs FixedVectorOf<[GENX_MatrixElemType]>:$res)>,
-  Arguments<(ins 
+  Arguments<(ins
     Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemRead]>:$ptr,
     I32:$base_width,
     I32:$base_height,
@@ -411,7 +419,7 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
     I1Attr:$vnni_transform
   )> {
 
-  let summary = "GENX 2D block Load";
+  let summary = "GENX 2D block load";
 
   string baseDescription = [{
     The 'genx.matrix.2Dblockload' operation loads a submatrix from an array in memory.
@@ -431,14 +439,62 @@ def GENX_Matrix2DBlockLoadOp : GENX_Op<"matrix.2Dblockload">,
   }];
 
   string llvmBuilder = [{
-    $res = createGenISA2DBlockRead(builder,
-      $ptr, $base_width, $base_height, $base_pitch, $x, $y, $elem_size_in_bits, $tile_width, 
-      $tile_height, $v_blocks, $transpose, $vnni_transform, {$_resultType});
+    $res = createGenISA2DBlockRead(op, builder, moduleTranslation);
   }];
-    
+ 
   let assemblyFormat = [{
-   `<` $tile_height `x` $tile_width `>` $elem_size_in_bits $v_blocks $transpose $vnni_transform operands attr-dict `:` `(` type(operands) `)` `->` type($res)
+    operands attr-dict `:` functional-type(operands, results)
   }];
+
+  let hasVerifier = 1;
+}
+
+def GENX_Matrix2DBlockStoreOp : GENX_Op<"matrix.2Dblockstore">,
+  Arguments<(ins
+    Arg<LLVM_PointerTo<GENX_MatrixElemType>, "", [MemWrite]>:$ptr,
+    I32:$base_width,
+    I32:$base_height,
+    I32:$base_pitch,
+    I32:$x,
+    I32:$y,
+    I32Attr:$elem_size_in_bits,
+    I32Attr:$tile_width,
+    I32Attr:$tile_height,
+    I32Attr:$v_blocks,
+    I1Attr:$transpose,
+    I1Attr:$vnni_transform,
+    FixedVectorOf<[GENX_MatrixElemType]>:$stored_val
+  )> {
+
+  let summary = "GENX 2D block store";
+
+  string baseDescription = [{
+    The 'genx.matrix.2Dblockstore' operation stores to a submatrix from an array in memory.
+    $ptr - the base address of the memory array
+    $base_width, $base_height, $base_pitch - the shape of the memory array
+    $x, $y, $tile_width, $tile_height - the starting offets and shape of the submatrix to load
+    $elem_size_in_bits - 32 for f32, bf32; 16 for f16, int16, bf16; 8 for int8, int4, int2 and etc
+    $v_blocks - number of blocks to store
+    $transpose - transpose the submatrix in vector register (useful for 32 bit element types)
+    $vnni_transform - transpose and pack the submatrix in register (useful for < 32 bit element types)
+    $stored_val - block to store
+
+    The $transpose and $vnni_transform are mutual exclusive. These transformations are used for
+    the B matrix in MMA (DPAS) operations D = C + A * B, where A should have row-major layout in register
+    and B should have column-major layout.
+
+    If the submatrix contains out of bound elements of the memory array, they are filled with 0.
+  }];
+
+  string llvmBuilder = [{
+    createGenISA2DBlockWrite(op, builder, moduleTranslation);
+  }];
+ 
+  let assemblyFormat = [{
+    operands attr-dict `:` `(` type(operands) `)`
+  }];
+
+  let hasVerifier = 1;
 }
 
 def GENX_IsJointMatrixType :

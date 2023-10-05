@@ -38,18 +38,18 @@ func.func @genx.barrier() {
 
 func.func @genx.atomic_work_item_fence() {
   // CHECK-LABEL: genx.atomic_work_item_fence
-  // CHECK: genx.atomic_work_item_fence < LOCAL_MEM_FENCE >,  Relaxed,  work_item
-  genx.atomic_work_item_fence <LOCAL_MEM_FENCE>, Relaxed, work_item
-  // CHECK: genx.atomic_work_item_fence < GLOBAL_MEM_FENCE >,  Acquire,  work_group
-  genx.atomic_work_item_fence <GLOBAL_MEM_FENCE>, Acquire, work_group
-  // CHECK: genx.atomic_work_item_fence < IMAGE_MEM_FENCE >,  Release,  device
-  genx.atomic_work_item_fence <IMAGE_MEM_FENCE>, Release, device
-  // CHECK: genx.atomic_work_item_fence < LOCAL_MEM_FENCE >,  AcquireRelease,  all_svm_devices
-  genx.atomic_work_item_fence <LOCAL_MEM_FENCE>, AcquireRelease, all_svm_devices
-  // CHECK: genx.atomic_work_item_fence < GLOBAL_MEM_FENCE >,  SequentiallyConsistent,  sub_group
-  genx.atomic_work_item_fence <GLOBAL_MEM_FENCE>, SequentiallyConsistent, sub_group
-  // CHECK: genx.atomic_work_item_fence < LOCAL_MEM_FENCE, IMAGE_MEM_FENCE >,  Acquire,  sub_group
-  genx.atomic_work_item_fence <LOCAL_MEM_FENCE, IMAGE_MEM_FENCE>, Acquire, sub_group
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<LOCAL_MEM_FENCE>, order = #genx.memory_order<Relaxed>, scope = #genx.memory_scope<work_item>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<LOCAL_MEM_FENCE>, order=#genx.memory_order<Relaxed>, scope=#genx.memory_scope<work_item>}
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<GLOBAL_MEM_FENCE>, order = #genx.memory_order<Acquire>, scope = #genx.memory_scope<work_group>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<GLOBAL_MEM_FENCE>, order=#genx.memory_order<Acquire>, scope=#genx.memory_scope<work_group>}
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<IMAGE_MEM_FENCE>, order = #genx.memory_order<Release>, scope = #genx.memory_scope<device>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<IMAGE_MEM_FENCE>, order=#genx.memory_order<Release>, scope=#genx.memory_scope<device>}
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<LOCAL_MEM_FENCE>, order = #genx.memory_order<AcquireRelease>, scope = #genx.memory_scope<all_svm_devices>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<LOCAL_MEM_FENCE>, order=#genx.memory_order<AcquireRelease>, scope=#genx.memory_scope<all_svm_devices>}
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<GLOBAL_MEM_FENCE>, order = #genx.memory_order<SequentiallyConsistent>, scope = #genx.memory_scope<sub_group>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<GLOBAL_MEM_FENCE>, order=#genx.memory_order<SequentiallyConsistent>, scope=#genx.memory_scope<sub_group>}
+  // CHECK: genx.atomic_work_item_fence {flags = #genx.memory_fence_flag<LOCAL_MEM_FENCE, IMAGE_MEM_FENCE>, order = #genx.memory_order<Acquire>, scope = #genx.memory_scope<sub_group>}
+  genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<LOCAL_MEM_FENCE, IMAGE_MEM_FENCE>, order=#genx.memory_order<Acquire>, scope=#genx.memory_scope<sub_group>}
   llvm.return
 }
 
@@ -120,8 +120,14 @@ llvm.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi32>, %b : vector<8xi32>)
 }
 
 func.func @genx.2Dblockload1x4.32.1.0.0(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32) {
-  // CHECK: genx.matrix.2Dblockload<1 x 4> 32 1 false false %arg0, %arg1, %arg2, %arg3, %arg4, %arg5 : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
-  %0 = genx.matrix.2Dblockload<1 x 4> 32 1 false false %ptr, %base_width, %base_height, %base_pitch, %x, %y : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  // CHECK: %0 = genx.matrix.2Dblockload %arg0, %arg1, %arg2, %arg3, %arg4, %arg5 {elem_size_in_bits = 32 : i32, tile_height = 1 : i32, tile_width = 4 : i32, transpose = false, v_blocks = 1 : i32, vnni_transform = false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  %0 = genx.matrix.2Dblockload %ptr, %base_width, %base_height, %base_pitch, %x, %y {elem_size_in_bits=32:i32, tile_width=4:i32, tile_height=1:i32, v_blocks=1:i32, transpose=false, vnni_transform=false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
+  llvm.return
+}
+
+func.func @genx.2Dblockstore(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32, %stored_val : vector<4xi32>) {
+  // CHECK: genx.matrix.2Dblockstore %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6 {elem_size_in_bits = 32 : i32, tile_height = 1 : i32, tile_width = 4 : i32, transpose = false, v_blocks = 1 : i32, vnni_transform = false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, vector<4xi32>)
+  genx.matrix.2Dblockstore %ptr, %base_width, %base_height, %base_pitch, %x, %y, %stored_val {elem_size_in_bits=32:i32, tile_width=4:i32, tile_height=1:i32, v_blocks=1:i32, transpose=false, vnni_transform=false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, vector<4xi32>)
   llvm.return
 }
 
