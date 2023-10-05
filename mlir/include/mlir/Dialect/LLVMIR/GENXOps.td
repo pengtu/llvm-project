@@ -374,7 +374,7 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
     I32Attr:$rc
   )> {
 
-  let summary = "GENX matrix multiply-add";
+  let summary = "GENX matrix multiply-add (for PVC)";
 
   string baseDescription = [{
     The 'genx.matrix.dpas' operation is a matrix multiply-add operation as follows:
@@ -387,8 +387,8 @@ def GENX_MatrixDPASOp : GENX_Op<"matrix.dpas">,
           A : MxK
           B : KxN
 
-          M : repeat count ($rc)
-          N : fixed execution size, must be 16 for PVC
+          M : repeat count ($rc), must be 1, 2, 4, or 8
+          N : fixed execution size, must be 16
           K : depth * OPS_PER_CHAN
               OPS_PER_CHAN
                  1 : for TF32
