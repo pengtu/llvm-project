@@ -13,6 +13,7 @@
 #include "mlir/Dialect/LLVMIR/GENXDialect.h"
 #include "mlir/Dialect/LLVMIR/GENXTypes.h"
 #include "mlir/IR/OpDefinition.h"
+#include "llvm/ADT/TypeSwitch.h"
 
 using namespace mlir;
 
@@ -21,12 +22,68 @@ using namespace mlir;
 //===----------------------------------------------------------------------===//
 
 LogicalResult GENX::MatrixDPASOp::verify() {
-  // TODO: Add verification for matrices and precisions.
-
   if (getRc() != 1 && getRc() != 2 && getRc() != 4 && getRc() != 8)
     return this->emitOpError("expecting repect count to be 1, 2, 4, or 8");
 
-  return success();
+  GENX::PrecisionType precision = getPa();
+  if (getPa() != getPb())
+    return this->emitOpError(
+        "expecting precision of matrix A and B to be the same");
+
+  Type AElemTy = getA().getType().getElementType();
+  Type BElemTy = getB().getType().getElementType();
+  Type CElemTy = getC().getType().getElementType();
+  Type DElemTy = getD().getType().getElementType();
+  if (AElemTy != BElemTy || CElemTy != DElemTy)
+    return this->emitOpError("element type of A and B or C and D must match");
+
+  return TypeSwitch<Type, LogicalResult>(AElemTy)
+      .Case<Float32Type>([&](auto ty) -> LogicalResult {
+        if (precision != GENX::PrecisionType::TF32)
+          return this->emitOpError("precision of f32 should be TF32");
+        if (!CElemTy.isF32())
+          return this->emitOpError(
+              "expecting f32 element type of matrix C and D");
+        return success();
+      })
+      .Case<BFloat16Type>([&](auto ty) -> LogicalResult {
+        if (precision != GENX::PrecisionType::BF16)
+          return this->emitOpError("precision of bfloat16 should be BF16");
+        if (!CElemTy.isF32() && !CElemTy.isBF16())
+          return this->emitOpError(
+              "expecting f32 or bfloat16 element type of matrix C and D");
+        return success();
+      })
+      .Case<Float16Type>([&](auto ty) -> LogicalResult {
+        if (precision != GENX::PrecisionType::FP16)
+          return this->emitOpError("precision of f16 should be FP16");
+        if (!CElemTy.isF32() && !CElemTy.isF16())
+          return this->emitOpError(
+              "expecting f32 or f16 element type of matrix C and D");
+        return success();
+      })
+      .Case<IntegerType>([&](auto ty) -> LogicalResult {
+        if (!ty.isInteger(8))
+          return this->emitOpError("unexpected element type of matrix A and B");
+
+        if (precision == GENX::PrecisionType::U8) {
+          if (ty.isSigned())
+            return this->emitOpError("precision of signed i8 should be S8");
+        } else if (precision == GENX::PrecisionType::S8) {
+          if (ty.isUnsigned())
+            return this->emitOpError("precision of unsigned i8 should be U8");
+        } else
+          return this->emitOpError("precision of i8 should be U8 or S8");
+
+        if (!CElemTy.isInteger(32))
+          return this->emitOpError(
+              "expecting i32 element type of matrix C and D");
+
+        return success();
+      })
+      .Default([&](mlir::Type) -> LogicalResult {
+        return this->emitOpError("unexpected element type of matrix A and B");
+      });
 }
 
 //===----------------------------------------------------------------------===//
