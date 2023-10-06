@@ -25,7 +25,7 @@ func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi8>, %b : vector<8xi32>) 
 // -----
 
 func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xsi8>, %b : vector<8xsi8>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op precision of signed i8 should be S8}}
+  // expected-error @+1 {{'genx.matrix.dpas' op precision should be S8 when A (or B) element type is signed i8}}
   %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<U8>, pb=#genx.precision_type<U8>, rc=1:i32} : (vector<8xi32>, vector<8xsi8>, vector<8xsi8>) -> vector<8xi32>
   llvm.return
 }
@@ -33,7 +33,7 @@ func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xsi8>, %b : vector<8xsi8>)
 // -----
 
 func.func @genx.dpas(%c : vector<8xi8>, %a : vector<8xi8>, %b : vector<8xi8>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op expecting i32 element type of matrix C and D}}
+  // expected-error @+1 {{'genx.matrix.dpas' op the element type for matrix C (and the result) should be i32}}
   %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<S8>, pb=#genx.precision_type<S8>, rc=1:i32} : (vector<8xi8>, vector<8xi8>, vector<8xi8>) -> vector<8xi8>
   llvm.return
 }

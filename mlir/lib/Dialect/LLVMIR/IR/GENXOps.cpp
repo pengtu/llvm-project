@@ -40,26 +40,29 @@ LogicalResult GENX::MatrixDPASOp::verify() {
   return TypeSwitch<Type, LogicalResult>(AElemTy)
       .Case<Float32Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::TF32)
-          return this->emitOpError("precision of f32 should be TF32");
+          return this->emitOpError(
+              "precision should be TF32 when A (or B) element type is f32");
         if (!CElemTy.isF32())
           return this->emitOpError(
-              "expecting f32 element type of matrix C and D");
+              "the element type for matrix C (and the result) should be f32");
         return success();
       })
       .Case<BFloat16Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::BF16)
-          return this->emitOpError("precision of bfloat16 should be BF16");
+          return this->emitOpError("precision should be BF16 when A (or B) "
+                                   "element type is bfloat16");
         if (!CElemTy.isF32() && !CElemTy.isBF16())
-          return this->emitOpError(
-              "expecting f32 or bfloat16 element type of matrix C and D");
+          return this->emitOpError("the element type for matrix C (and the "
+                                   "result) should be f32 or bfloat16");
         return success();
       })
       .Case<Float16Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::FP16)
-          return this->emitOpError("precision of f16 should be FP16");
-        if (!CElemTy.isF32() && !CElemTy.isF16())
           return this->emitOpError(
-              "expecting f32 or f16 element type of matrix C and D");
+              "precision should be FP16 when A (or B) element type is f16");
+        if (!CElemTy.isF32() && !CElemTy.isF16())
+          return this->emitOpError("the element type for matrix C (and the "
+                                   "result) should be f32 or f16");
         return success();
       })
       .Case<IntegerType>([&](auto ty) -> LogicalResult {
@@ -68,16 +71,19 @@ LogicalResult GENX::MatrixDPASOp::verify() {
 
         if (precision == GENX::PrecisionType::U8) {
           if (ty.isSigned())
-            return this->emitOpError("precision of signed i8 should be S8");
+            return this->emitOpError("precision should be S8 when A (or B) "
+                                     "element type is signed i8");
         } else if (precision == GENX::PrecisionType::S8) {
           if (ty.isUnsigned())
-            return this->emitOpError("precision of unsigned i8 should be U8");
+            return this->emitOpError("precision should be U8 when A (or B) "
+                                     "element type is unsigned i8");
         } else
-          return this->emitOpError("precision of i8 should be U8 or S8");
+          return this->emitOpError(
+              "precision should be U8 or S8 when A (or B) element type is i8");
 
         if (!CElemTy.isInteger(32))
           return this->emitOpError(
-              "expecting i32 element type of matrix C and D");
+              "the element type for matrix C (and the result) should be i32");
 
         return success();
       })

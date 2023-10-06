@@ -348,11 +348,12 @@ def GENX_AtomicRMWOp : GENX_Op<"atomic.rmw", [
 //===----------------------------------------------------------------------===//
 
 class FixedVectorOfRankAndType<list<int> allowedRanks,
-                                    list<Type> allowedTypes> : AllOfType<
+                               list<Type> allowedTypes> : AllOfType<
   [FixedVectorOf<allowedTypes>, FixedVectorOfRank<allowedRanks>],
   FixedVectorOf<allowedTypes>.summary #
   FixedVectorOfRank<allowedRanks>.summary,
   "::mlir::VectorType">;
+
 def GENX_MatrixElemType : AnyTypeOf<[AnyI8, AnyI16, AnyI32, F32, F16, BF16]>;
 
 /// Enum attribute of the different precision types.
