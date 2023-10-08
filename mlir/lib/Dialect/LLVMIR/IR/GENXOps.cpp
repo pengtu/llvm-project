@@ -35,60 +35,69 @@ LogicalResult GENX::MatrixDPASOp::verify() {
   Type CElemTy = getC().getType().getElementType();
   Type DElemTy = getD().getType().getElementType();
   if (AElemTy != BElemTy || CElemTy != DElemTy)
-    return this->emitOpError("element type of A and B or C and D must match");
+    return this->emitOpError("element type of 2nd (A) and 3rd (B) operands or "
+                             "1st operand (C) and result (D) must match");
 
   return TypeSwitch<Type, LogicalResult>(AElemTy)
       .Case<Float32Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::TF32)
-          return this->emitOpError(
-              "precision should be TF32 when A (or B) element type is f32");
+          return this->emitOpError("precision should be TF32 when 2nd (A) or "
+                                   "3rd (B) operand element type is f32");
         if (!CElemTy.isF32())
-          return this->emitOpError(
-              "the element type for matrix C (and the result) should be f32");
+          return this->emitOpError("the element type for 1st operand (C) and "
+                                   "the result should be f32");
         return success();
       })
       .Case<BFloat16Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::BF16)
-          return this->emitOpError("precision should be BF16 when A (or B) "
-                                   "element type is bfloat16");
-        if (!CElemTy.isF32() && !CElemTy.isBF16())
-          return this->emitOpError("the element type for matrix C (and the "
-                                   "result) should be f32 or bfloat16");
+          return this->emitOpError(
+              "precision should be BF16 when 2nd (A) or 3rd (B) operand "
+              "element type is bfloat16");
+        if (!CElemTy.isF32())
+          return this->emitOpError(
+              "the element type for 1st operand (C) and the "
+              "result should be f32");
         return success();
       })
       .Case<Float16Type>([&](auto ty) -> LogicalResult {
         if (precision != GENX::PrecisionType::FP16)
+          return this->emitOpError("precision should be FP16 when 2nd (A) or "
+                                   "3rd (B) operand element type is f16");
+        if (!CElemTy.isF32())
           return this->emitOpError(
-              "precision should be FP16 when A (or B) element type is f16");
-        if (!CElemTy.isF32() && !CElemTy.isF16())
-          return this->emitOpError("the element type for matrix C (and the "
-                                   "result) should be f32 or f16");
+              "the element type for 1st operand (C) and the "
+              "result should be f32");
         return success();
       })
       .Case<IntegerType>([&](auto ty) -> LogicalResult {
         if (!ty.isInteger(8))
-          return this->emitOpError("unexpected element type of matrix A and B");
+          return this->emitOpError(
+              "expecting 2nd (A) or 3rd (B) operand element type to be f32, "
+              "bfloat16, f16, or i8");
 
         if (precision == GENX::PrecisionType::U8) {
           if (ty.isSigned())
-            return this->emitOpError("precision should be S8 when A (or B) "
-                                     "element type is signed i8");
+            return this->emitOpError(
+                "precision should be S8 when 2nd (A) or 3rd (B) operand "
+                "element type is signed i8");
         } else if (precision == GENX::PrecisionType::S8) {
           if (ty.isUnsigned())
-            return this->emitOpError("precision should be U8 when A (or B) "
-                                     "element type is unsigned i8");
+            return this->emitOpError(
+                "precision should be U8 when 2nd (A) or 3rd (B) operand "
+                "element type is unsigned i8");
         } else
-          return this->emitOpError(
-              "precision should be U8 or S8 when A (or B) element type is i8");
+          return this->emitOpError("precision should be U8 or S8 when 2nd (A) "
+                                   "or 3rd (B) operand element type is i8");
 
         if (!CElemTy.isInteger(32))
-          return this->emitOpError(
-              "the element type for matrix C (and the result) should be i32");
+          return this->emitOpError("the element type for 1st operand (C) and "
+                                   "the result should be i32");
 
         return success();
       })
       .Default([&](mlir::Type) -> LogicalResult {
-        return this->emitOpError("unexpected element type of matrix A and B");
+        return this->emitOpError("expecting 2nd (A) or 3rd (B) operand element "
+                                 "type to be f32, bfloat16, f16, or i8");
       });
 }
 
