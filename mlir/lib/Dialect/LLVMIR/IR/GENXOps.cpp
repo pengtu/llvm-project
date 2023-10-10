@@ -52,7 +52,7 @@ LogicalResult GENX::MatrixDPASOp::verify() {
         if (precision != GENX::PrecisionType::BF16)
           return this->emitOpError(
               "precision should be BF16 when 2nd (A) or 3rd (B) operand "
-              "element type is bfloat16");
+              "element type is bf16");
         if (!CElemTy.isF32())
           return this->emitOpError(
               "the element type for 1st operand (C) and the "
@@ -73,7 +73,7 @@ LogicalResult GENX::MatrixDPASOp::verify() {
         if (!ty.isInteger(8))
           return this->emitOpError(
               "expecting 2nd (A) or 3rd (B) operand element type to be f32, "
-              "bfloat16, f16, or i8");
+              "bf16, f16, or i8");
 
         if (precision == GENX::PrecisionType::U8) {
           if (ty.isSigned())
@@ -97,7 +97,7 @@ LogicalResult GENX::MatrixDPASOp::verify() {
       })
       .Default([&](mlir::Type) -> LogicalResult {
         return this->emitOpError("expecting 2nd (A) or 3rd (B) operand element "
-                                 "type to be f32, bfloat16, f16, or i8");
+                                 "type to be f32, bf16, f16, or i8");
       });
 }
 

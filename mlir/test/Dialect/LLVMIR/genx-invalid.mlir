@@ -41,7 +41,7 @@ func.func @genx.dpas(%c : vector<8xi8>, %a : vector<8xi8>, %b : vector<8xi8>) {
 // -----
 
 func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi32>, %b : vector<8xi32>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op expecting 2nd (A) or 3rd (B) operand element type to be f32, bfloat16, f16, or i8}}
+  // expected-error @+1 {{'genx.matrix.dpas' op expecting 2nd (A) or 3rd (B) operand element type to be f32, bf16, f16, or i8}}
   %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<S8>, pb=#genx.precision_type<S8>, rc=1:i32} : (vector<8xi32>, vector<8xi32>, vector<8xi32>) -> vector<8xi32>
   llvm.return
 }
