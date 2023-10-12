@@ -49,11 +49,14 @@ LogicalResult GENX::MatrixDPASOp::verify() {
     return this->emitOpError(
         "element type of 2nd (A) and 3rd (B) operands must match");
 
+  // ATy is required to be vector<RC x i16> as hard coded by IGC.
   if (ATy.getNumElements() * AElemTy.getIntOrFloatBitWidth() != getRc() * 16)
     return this->emitOpError(
         "2nd operand (A) bit-size should be repeat count times 16");
 
-  if (BTy.getNumElements() * BElemTy.getIntOrFloatBitWidth() != 8 * 32)
+  // BTy is required to be vector<SD x i32> as hard coded by IGC.
+  constexpr unsigned SD = 8;
+  if (BTy.getNumElements() * BElemTy.getIntOrFloatBitWidth() != SD * 32)
     return this->emitOpError(
         "3rd operand (B) bit-size should be systolic depth (8) times 32");
 
