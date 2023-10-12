@@ -41,7 +41,7 @@ func.func @genx.dpas(%c : vector<8xi32>, %a : vector<16xi8>, %b : vector<8xi32>)
 // -----
 
 func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi8>, %b : vector<8xi8>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op 2nd operand (A) size should be repeat count times 16}}
+  // expected-error @+1 {{'genx.matrix.dpas' op 2nd operand (A) bit-size should be repeat count times 16}}
   %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<S8>, pb=#genx.precision_type<S8>, rc=8:i32} : (vector<8xi32>, vector<8xi8>, vector<8xi8>) -> vector<8xi32>
   llvm.return
 }
@@ -49,7 +49,7 @@ func.func @genx.dpas(%c : vector<8xi32>, %a : vector<8xi8>, %b : vector<8xi8>) {
 // -----
 
 func.func @genx.dpas(%c : vector<8xi32>, %a : vector<16xi8>, %b : vector<16xi8>) {
-  // expected-error @+1 {{'genx.matrix.dpas' op 3rd operand (B) size should be systolic depth (8) times 16}}
+  // expected-error @+1 {{'genx.matrix.dpas' op 3rd operand (B) bit-size should be systolic depth (8) times 32}}
   %0 = genx.matrix.dpas %c, %a, %b {pa=#genx.precision_type<S8>, pb=#genx.precision_type<S8>, rc=8:i32} : (vector<8xi32>, vector<16xi8>, vector<16xi8>) -> vector<8xi32>
   llvm.return
 }

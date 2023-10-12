@@ -51,11 +51,11 @@ LogicalResult GENX::MatrixDPASOp::verify() {
 
   if (ATy.getNumElements() * AElemTy.getIntOrFloatBitWidth() != getRc() * 16)
     return this->emitOpError(
-        "2nd operand (A) size should be repeat count times 16");
+        "2nd operand (A) bit-size should be repeat count times 16");
 
   if (BTy.getNumElements() * BElemTy.getIntOrFloatBitWidth() != 8 * 32)
     return this->emitOpError(
-        "3rd operand (B) size should be systolic depth (8) times 16");
+        "3rd operand (B) bit-size should be systolic depth (8) times 32");
 
   return TypeSwitch<Type, LogicalResult>(AElemTy)
       .Case<Float32Type>([&](auto ty) -> LogicalResult {
