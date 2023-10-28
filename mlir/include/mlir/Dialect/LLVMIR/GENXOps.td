@@ -144,7 +144,8 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
     llvm::Type *argType = builder.getInt32Ty();
     int memFence = 3; // local + global memory fence
     llvm::Value *arg = llvm::ConstantInt::get(argType, memFence);
-    createDeviceFunctionCall(builder, "_Z7barrierj", retType, {argType}, {arg});
+    llvm::CallInst *ci = createDeviceFunctionCall(builder, "_Z7barrierj", retType, {argType}, {arg});
+    ci->setCannotDuplicate();
   }];
 
   let assemblyFormat = "attr-dict";
