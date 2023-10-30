@@ -145,7 +145,10 @@ def GENX_BarrierOp : GENX_Op<"barrier"> {
     int memFence = 3; // local + global memory fence
     llvm::Value *arg = llvm::ConstantInt::get(argType, memFence);
     llvm::CallInst *ci = createDeviceFunctionCall(builder, "_Z7barrierj", retType, {argType}, {arg});
-    ci->setCannotDuplicate();
+    ci->setConvergent();
+    llvm::Function *callee = dyn_cast_or_null<llvm::Function>(ci->getCalledOperand());
+    assert(callee && "Expected valid callee");
+    callee->setConvergent();
   }];
 
   let assemblyFormat = "attr-dict";

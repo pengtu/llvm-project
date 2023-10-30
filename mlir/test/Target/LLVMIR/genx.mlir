@@ -34,11 +34,11 @@ llvm.func @genx_special_regs() -> i64 {
 
 llvm.func @genx.barrier() {
   // CHECK-LABEL: genx.barrier
-  // CHECK: call void @_Z7barrierj(i32 3) [[NODUP:#.*]]
+  // CHECK: call void @_Z7barrierj(i32 3) [[ATTR:#.*]]
   genx.barrier
   llvm.return
 }
-// CHECK: attributes [[NODUP]] = { noduplicate }
+// CHECK: attributes [[ATTR]] = { convergent }
 
 // -----
 
