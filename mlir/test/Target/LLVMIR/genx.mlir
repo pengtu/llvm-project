@@ -1,4 +1,4 @@
-// RUN: mlir-translate -mlir-to-llvmir %s | FileCheck %s
+// RUN: mlir-translate -mlir-to-llvmir -split-input-file %s | FileCheck %s
 
 llvm.func @genx_special_regs() -> i64 {
   // CHECK-LABEL: genx_special_regs
@@ -30,12 +30,17 @@ llvm.func @genx_special_regs() -> i64 {
   llvm.return %1 : i64
 }
 
+// -----
+
 llvm.func @genx.barrier() {
   // CHECK-LABEL: genx.barrier
-  // CHECK: call void @_Z7barrierj(i32 3)
+  // CHECK: call void @_Z7barrierj(i32 3) [[ATTR:#.*]]
   genx.barrier
   llvm.return
 }
+// CHECK: attributes [[ATTR]] = { convergent }
+
+// -----
 
 llvm.func @genx.atomic_work_item_fence() {
   // CHECK-LABEL: genx.atomic_work_item_fence
@@ -53,6 +58,8 @@ llvm.func @genx.atomic_work_item_fence() {
   genx.atomic_work_item_fence {flags=#genx.memory_fence_flag<LOCAL_MEM_FENCE, IMAGE_MEM_FENCE>, order=#genx.memory_order<Acquire>, scope=#genx.memory_scope<sub_group>}
   llvm.return
 }
+
+// -----
 
 llvm.func @genx.sub_group_shuffle() {
   // CHECK-LABEL: genx.sub_group_shuffle
@@ -86,6 +93,8 @@ llvm.func @genx.sub_group_shuffle() {
   llvm.return
 }
 
+// -----
+
 llvm.func @genx.atomic.cmpxchg.global.i32(%ptr : !llvm.ptr<i32, 1>, %cmp : i32, %val : i32)  {
   // CHECK-LABEL: genx.atomic.cmpxchg.global.i32
   // CHECK: call i32 @_Z12atom_cmpxchgPU8CLglobalViii(ptr addrspace(1) %0, i32 %1, i32 %2)
@@ -99,6 +108,8 @@ llvm.func @genx.atomic.cmpxchg.shared.u64(%ptr : !llvm.ptr<i64, 3>, %cmp : i64, 
   %0 = genx.atomic.cmpxchg %ptr, %cmp, %val : (!llvm.ptr<i64, 3>, i64, i64) -> i64
   llvm.return
 }
+
+// -----
 
 llvm.func @genx.atomic.rmw(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, %val1 : i32, %val2 : i64) {
   // CHECK-LABEL: genx.atomic.rmw
@@ -135,6 +146,8 @@ llvm.func @genx.atomic.rmw(%ptr : !llvm.ptr<i32, 1>, %sptr : !llvm.ptr<i64, 3>, 
   llvm.return
 }
 
+// -----
+
 llvm.func @genx.dpas.f32(%c : vector<8xf32>, %a : vector<4xf32>, %b : vector<8xf32>) {
   // CHECK-DAG:  [[A:%.*]] = bitcast <4 x float> %1 to <8 x i16>
   // CHECK-DAG:  [[B:%.*]] = bitcast <8 x float> %2 to <8 x i32>
@@ -159,12 +172,16 @@ llvm.func @genx.dpas.i8(%c : vector<8xi32>, %a : vector<16xi8>, %b : vector<32xi
   llvm.return
 }
 
+// -----
+
 llvm.func @genx.2Dblockload1x4.32.1.0.0(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32) {
   // CHECK: [[PTR:%.*]] = ptrtoint ptr %0 to i64
   // CHECK-NEXT: call <4 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v4i32(i64 [[PTR]], i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 32, i32 4, i32 1, i32 1, i1 false, i1 false)
   %0 = genx.matrix.2Dblockload %ptr, %base_width, %base_height, %base_pitch, %x, %y {elem_size_in_bits=32:i32, tile_width=4:i32, tile_height=1:i32, v_blocks=1:i32, transpose=false, vnni_transform=false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32) -> vector<4xi32>
   llvm.return
 }
+
+// -----
 
 llvm.func @genx.2Dblockstore(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_height : i32, %base_pitch : i32, %x : i32, %y : i32, %stored_val : vector<4xi32>) {
   // CHECK: [[PTR:%.*]] = ptrtoint ptr %0 to i64

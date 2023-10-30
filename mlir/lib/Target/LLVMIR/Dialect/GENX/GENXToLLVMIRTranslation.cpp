@@ -28,11 +28,11 @@ using namespace mlir::LLVM;
 using mlir::LLVM::detail::createIntrinsicCall;
 
 // Create a call to SPIR device function.
-static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
-                                             StringRef fnName,
-                                             llvm::Type *retType,
-                                             ArrayRef<llvm::Type *> argTypes,
-                                             ArrayRef<llvm::Value *> args) {
+static llvm::CallInst *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
+                                                StringRef fnName,
+                                                llvm::Type *retType,
+                                                ArrayRef<llvm::Type *> argTypes,
+                                                ArrayRef<llvm::Value *> args) {
   llvm::Module *module = builder.GetInsertBlock()->getModule();
   auto *functionType =
       llvm::FunctionType::get(retType, argTypes, /*isVarArg*/ false);
