@@ -28,11 +28,11 @@ using namespace mlir::LLVM;
 using mlir::LLVM::detail::createIntrinsicCall;
 
 // Create a call to SPIR device function.
-static llvm::Value *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
-                                             StringRef fnName,
-                                             llvm::Type *retType,
-                                             ArrayRef<llvm::Type *> argTypes,
-                                             ArrayRef<llvm::Value *> args) {
+static llvm::CallInst *createDeviceFunctionCall(llvm::IRBuilderBase &builder,
+                                                StringRef fnName,
+                                                llvm::Type *retType,
+                                                ArrayRef<llvm::Type *> argTypes,
+                                                ArrayRef<llvm::Value *> args) {
   llvm::Module *module = builder.GetInsertBlock()->getModule();
   auto *functionType =
       llvm::FunctionType::get(retType, argTypes, /*isVarArg*/ false);
@@ -117,10 +117,10 @@ static llvm::Value *createAtomicCmpXchg(llvm::IRBuilderBase &builder,
 
   std::string fnName = "_Z12atom_cmpxchgPU";
   switch (addrSpace) {
-  case mlir::GENX::GENXDialect::kGlobalMemoryAddressSpace:
+  case mlir::GENX::GENXMemorySpace::kCrossWorkgroup:
     fnName += "8CLglobal";
     break;
-  case mlir::GENX::GENXDialect::kSharedMemoryAddressSpace:
+  case mlir::GENX::GENXMemorySpace::kWorkgroup:
     fnName += "7CLlocal";
     break;
   default:
@@ -179,10 +179,10 @@ static llvm::Value *createAtomicRMW(llvm::IRBuilderBase &builder,
   }
 
   switch (addrSpace) {
-  case mlir::GENX::GENXDialect::kGlobalMemoryAddressSpace:
+  case mlir::GENX::GENXMemorySpace::kCrossWorkgroup:
     fnName += "8CLglobal";
     break;
-  case mlir::GENX::GENXDialect::kSharedMemoryAddressSpace:
+  case mlir::GENX::GENXMemorySpace::kWorkgroup:
     fnName += "7CLlocal";
     break;
   default:
