@@ -108,7 +108,13 @@ using namespace slpvectorizer;
 
 STATISTIC(NumVectorInstructions, "Number of vector instructions generated");
 
-cl::opt<bool> RunSLPVectorization("vectorize-slp", cl::init(true), cl::Hidden,
+// SLPVectorizer generates LLVM intrinsic (e.g., `llvm.vector.reduce.*`) which
+// may not be supported or correctly handled by llvm-spirv translator or IGC.
+// The support of `llvm.vector.reduce.*` in llvm-spirv translator is tracked
+// in https://jira.devtools.intel.com/browse/CMPLRLLVM-49720, planned for
+// 2024.1. We can consider to reenable SLP vectorization when it is implemented
+// in the translator.
+cl::opt<bool> RunSLPVectorization("vectorize-slp", cl::init(false), cl::Hidden,
                                   cl::desc("Run the SLP vectorization passes"));
 
 static cl::opt<int>
