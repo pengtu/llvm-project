@@ -55,3 +55,78 @@ gpu.module @test_module {
           index, index, index, index, index, index
   }
 }
+
+// -----
+
+gpu.module @test_module {
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_exp_f32(f32) -> f32
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_exp_f64(f64) -> f64
+  // CHECK-LABEL: func @gpu_exp
+  func.func @gpu_exp(%arg_f32 : f32, %arg_f64 : f64) -> (f32, f64) {
+    %result32 = math.exp %arg_f32 : f32
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_exp_f32(%{{.*}}) : (f32) -> f32
+    %result64 = math.exp %arg_f64 : f64
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_exp_f64(%{{.*}}) : (f64) -> f64
+    func.return %result32, %result64 : f32, f64
+  }
+}
+
+// -----
+
+gpu.module @test_module {
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_log_f32(f32) -> f32
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_log_f64(f64) -> f64
+  // CHECK-LABEL: func @gpu_log
+  func.func @gpu_log(%arg_f32 : f32, %arg_f64 : f64) -> (f32, f64) {
+    %result32 = math.log %arg_f32 : f32
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_log_f32(%{{.*}}) : (f32) -> f32
+    %result64 = math.log %arg_f64 : f64
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_log_f64(%{{.*}}) : (f64) -> f64
+    func.return %result32, %result64 : f32, f64
+  }
+}
+
+// -----
+
+gpu.module @test_module {
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_sin_f32(f32) -> f32
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_sin_f64(f64) -> f64
+  // CHECK-LABEL: func @gpu_sin
+  func.func @gpu_sin(%arg_f32 : f32, %arg_f64 : f64) -> (f32, f64) {
+    %result32 = math.sin %arg_f32 : f32
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_sin_f32(%{{.*}}) : (f32) -> f32
+    %result64 = math.sin %arg_f64 : f64
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_sin_f64(%{{.*}}) : (f64) -> f64
+    func.return %result32, %result64 : f32, f64
+  }
+}
+
+// -----
+
+gpu.module @test_module {
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_cos_f32(f32) -> f32
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_cos_f64(f64) -> f64
+  // CHECK-LABEL: func @gpu_cos
+  func.func @gpu_cos(%arg_f32 : f32, %arg_f64 : f64) -> (f32, f64) {
+    %result32 = math.cos %arg_f32 : f32
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_cos_f32(%{{.*}}) : (f32) -> f32
+    %result64 = math.cos %arg_f64 : f64
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_cos_f64(%{{.*}}) : (f64) -> f64
+    func.return %result32, %result64 : f32, f64
+  }
+}
+
+// -----
+
+gpu.module @test_module {
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_sin_f32(f32) -> f32
+  // CHECK: llvm.func @__builtin_spirv_OpenCL_sin_f64(f64) -> f64
+  // CHECK-LABEL: func @gpu_sin
+  func.func @gpu_sin(%arg_f32 : f32, %arg_f64 : f64) -> (f32, f64) {
+    %result32 = math.sin %arg_f32 : f32
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_sin_f32(%{{.*}}) : (f32) -> f32
+    %result64 = math.sin %arg_f64 : f64
+    // CHECK: llvm.call @__builtin_spirv_OpenCL_sin_f64(%{{.*}}) : (f64) -> f64
+    func.return %result32, %result64 : f32, f64
+  }
+}
