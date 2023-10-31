@@ -108,7 +108,7 @@ using namespace slpvectorizer;
 
 STATISTIC(NumVectorInstructions, "Number of vector instructions generated");
 
-cl::opt<bool> RunSLPVectorization("vectorize-slp", cl::init(true), cl::Hidden,
+cl::opt<bool> RunSLPVectorization("vectorize-slp", cl::init(false), cl::Hidden,
                                   cl::desc("Run the SLP vectorization passes"));
 
 static cl::opt<int>
