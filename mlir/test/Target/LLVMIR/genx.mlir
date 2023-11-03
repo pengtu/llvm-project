@@ -189,3 +189,14 @@ llvm.func @genx.2Dblockstore(%ptr : !llvm.ptr<i32>, %base_width : i32, %base_hei
   genx.matrix.2Dblockstore %ptr, %base_width, %base_height, %base_pitch, %x, %y, %stored_val {elem_size_in_bits=32:i32, tile_width=4:i32, tile_height=1:i32, v_blocks=1:i32, transpose=false, vnni_transform=false} : (!llvm.ptr<i32>, i32, i32, i32, i32, i32, vector<4xi32>)
   llvm.return
 }
+
+// -----
+
+llvm.func @genx.assert(%msg_ptr : !llvm.ptr<i8, 4>, %file_ptr : !llvm.ptr<i8, 4>, %line_number : i32, %func_ptr : !llvm.ptr<i8, 4>) {
+  // CHECK: call spir_func void @__assert_fail(ptr addrspace(4) %0, ptr addrspace(4) %1, i32 %2, ptr addrspace(4) %3) [[ATTR1:#.*]]
+  genx.assert %msg_ptr, %file_ptr, %line_number, %func_ptr : (!llvm.ptr<i8, 4>, !llvm.ptr<i8, 4>, i32, !llvm.ptr<i8, 4>)
+  llvm.return
+}
+// CHECK: declare spir_func void @__assert_fail(ptr addrspace(4), ptr addrspace(4), i32, ptr addrspace(4)) [[ATTR0:#.*]]
+// CHECK: attributes [[ATTR0]] = { convergent mustprogress norecurse }
+// CHECK: attributes [[ATTR1]] = { convergent nounwind }

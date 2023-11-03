@@ -182,3 +182,9 @@ func.func @genx.matrix.map(%mat: !genx.jointmatrix<8x32xf32, RowMajor>, %val: f3
     } : !genx.jointmatrix<8x32xf32, RowMajor>
   llvm.return
 }
+
+func.func @genx.assert(%msg_ptr : !llvm.ptr<i8, 4>, %file_ptr : !llvm.ptr<i8, 4>, %line_number : i32, %func_ptr : !llvm.ptr<i8, 4>) {
+  // CHECK: genx.assert %arg0, %arg1, %arg2, %arg3 : (!llvm.ptr<i8, 4>, !llvm.ptr<i8, 4>, i32, !llvm.ptr<i8, 4>)
+  genx.assert %msg_ptr, %file_ptr, %line_number, %func_ptr : (!llvm.ptr<i8, 4>, !llvm.ptr<i8, 4>, i32, !llvm.ptr<i8, 4>)
+  llvm.return
+}

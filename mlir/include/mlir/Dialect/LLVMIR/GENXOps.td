@@ -741,4 +741,43 @@ def GENX_MatrixMapOp : GENX_Op<"matrix.map", [
   let hasVerifier = 1;
 }
 
+//===----------------------------------------------------------------------===//
+// Assert Op
+//===----------------------------------------------------------------------===//
+
+def GENX_AssertOp : GENX_Op<"assert">, 
+  Arguments<(ins LLVM_i8Ptr_generic: $msg_ptr,
+             LLVM_i8Ptr_generic: $file_ptr,
+             I32: $line_number,
+             LLVM_i8Ptr_generic: $func_ptr)> {
+  let summary = "Workitem assert";
+
+  string baseDescription = [{
+    The `genx.assert` operation performs a workitem assert message with file
+    name, line number and function name for its location
+  }];
+
+  string llvmBuilder = [{
+    llvm::Type *retType = builder.getVoidTy();
+    llvm::Type *ptrType = builder.getInt8PtrTy(/* spirv::Generic */4);
+    llvm::Type *lnType = builder.getInt32Ty();
+    llvm::CallInst *ci = createDeviceFunctionCall(
+                            builder, "__assert_fail", retType,
+                            {ptrType, ptrType, lnType, ptrType}, 
+                            {$msg_ptr, $file_ptr, $line_number, $func_ptr});
+    ci->addFnAttr(llvm::Attribute::Convergent);
+    ci->addFnAttr(llvm::Attribute::NoUnwind);
+    ci->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+    llvm::Function *callee = dyn_cast_or_null<llvm::Function>(ci->getCalledOperand());
+    assert(callee && "Expected valid callee");
+    callee->addFnAttr(llvm::Attribute::Convergent);
+    callee->addFnAttr(llvm::Attribute::NoRecurse);
+    callee->addFnAttr(llvm::Attribute::MustProgress);
+    callee->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+  }];
+
+  let assemblyFormat = [{
+    operands attr-dict `:` `(` type(operands) `)`
+  }];
+}
 #endif // GENXIR_OPS
