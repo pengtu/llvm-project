@@ -75,7 +75,7 @@ static cl::opt<bool> PrintMachineBlockFreq(
 
 // Command line option to specify the name of the function for block frequency
 // dump. Defined in Analysis/BlockFrequencyInfo.cpp.
-extern cl::opt<std::string> PrintBFIFuncName;
+extern cl::opt<std::string> PrintBlockFreqFuncName;
 } // namespace llvm
 
 static GVDAGType getGVDT() {
@@ -203,7 +203,8 @@ void MachineBlockFrequencyInfo::calculate(
     view("MachineBlockFrequencyDAGS." + F.getName());
   }
   if (PrintMachineBlockFreq &&
-      (PrintBFIFuncName.empty() || F.getName().equals(PrintBFIFuncName))) {
+      (PrintBlockFreqFuncName.empty() ||
+       F.getName().equals(PrintBlockFreqFuncName))) {
     MBFI->print(dbgs());
   }
 }
@@ -227,7 +228,7 @@ void MachineBlockFrequencyInfo::view(const Twine &Name, bool isSimple) const {
 
 BlockFrequency
 MachineBlockFrequencyInfo::getBlockFreq(const MachineBasicBlock *MBB) const {
-  return MBFI ? MBFI->getBlockFreq(MBB) : BlockFrequency(0);
+  return MBFI ? MBFI->getBlockFreq(MBB) : 0;
 }
 
 std::optional<uint64_t> MachineBlockFrequencyInfo::getBlockProfileCount(
@@ -240,7 +241,7 @@ std::optional<uint64_t> MachineBlockFrequencyInfo::getBlockProfileCount(
 }
 
 std::optional<uint64_t>
-MachineBlockFrequencyInfo::getProfileCountFromFreq(BlockFrequency Freq) const {
+MachineBlockFrequencyInfo::getProfileCountFromFreq(uint64_t Freq) const {
   if (!MBFI)
     return std::nullopt;
 
@@ -262,7 +263,7 @@ void MachineBlockFrequencyInfo::onEdgeSplit(
   auto NewSuccFreq = MBFI->getBlockFreq(&NewPredecessor) *
                      MBPI.getEdgeProbability(&NewPredecessor, &NewSuccessor);
 
-  MBFI->setBlockFreq(&NewSuccessor, NewSuccFreq);
+  MBFI->setBlockFreq(&NewSuccessor, NewSuccFreq.getFrequency());
 }
 
 const MachineFunction *MachineBlockFrequencyInfo::getFunction() const {
@@ -273,18 +274,18 @@ const MachineBranchProbabilityInfo *MachineBlockFrequencyInfo::getMBPI() const {
   return MBFI ? &MBFI->getBPI() : nullptr;
 }
 
-BlockFrequency MachineBlockFrequencyInfo::getEntryFreq() const {
-  return MBFI ? MBFI->getEntryFreq() : BlockFrequency(0);
+raw_ostream &
+MachineBlockFrequencyInfo::printBlockFreq(raw_ostream &OS,
+                                          const BlockFrequency Freq) const {
+  return MBFI ? MBFI->printBlockFreq(OS, Freq) : OS;
 }
 
-Printable llvm::printBlockFreq(const MachineBlockFrequencyInfo &MBFI,
-                               BlockFrequency Freq) {
-  return Printable([&MBFI, Freq](raw_ostream &OS) {
-    printBlockFreqImpl(OS, MBFI.getEntryFreq(), Freq);
-  });
+raw_ostream &
+MachineBlockFrequencyInfo::printBlockFreq(raw_ostream &OS,
+                                          const MachineBasicBlock *MBB) const {
+  return MBFI ? MBFI->printBlockFreq(OS, MBB) : OS;
 }
 
-Printable llvm::printBlockFreq(const MachineBlockFrequencyInfo &MBFI,
-                               const MachineBasicBlock &MBB) {
-  return printBlockFreq(MBFI, MBFI.getBlockFreq(&MBB));
+uint64_t MachineBlockFrequencyInfo::getEntryFreq() const {
+  return MBFI ? MBFI->getEntryFreq() : 0;
 }

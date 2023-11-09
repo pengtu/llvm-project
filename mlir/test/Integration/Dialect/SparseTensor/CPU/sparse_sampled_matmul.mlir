@@ -32,10 +32,10 @@
 // vectorization.
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | env %{env} %{run_sve} | FileCheck %s %}
 
-!Filename = !llvm.ptr
+!Filename = !llvm.ptr<i8>
 
 #SparseMatrix = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed, d1 : compressed),
+  lvlTypes = [ "compressed", "compressed" ],
   posWidth = 32,
   crdWidth = 32
 }>

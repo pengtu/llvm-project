@@ -38,8 +38,10 @@ class TlsGlobalTestCase(TestBase):
     # TLS works differently on Windows, this would need to be implemented
     # separately.
     @skipIfWindows
-    @skipIf(oslist=["linux"], archs=["arm", "aarch64"])
-    @skipIf(oslist=no_match([lldbplatformutil.getDarwinOSTriples(), "linux"]))
+    @expectedFailureAll(
+        bugnumber="llvm.org/pr28392",
+        oslist=no_match(lldbplatformutil.getDarwinOSTriples()),
+    )
     def test(self):
         """Test thread-local storage."""
         self.build()

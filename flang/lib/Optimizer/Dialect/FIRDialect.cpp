@@ -14,7 +14,6 @@
 #include "flang/Optimizer/Dialect/FIRAttr.h"
 #include "flang/Optimizer/Dialect/FIROps.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Transforms/InliningUtils.h"
 
 using namespace fir;
@@ -59,7 +58,6 @@ struct FIRInlinerInterface : public mlir::DialectInlinerInterface {
 
 fir::FIROpsDialect::FIROpsDialect(mlir::MLIRContext *ctx)
     : mlir::Dialect("fir", ctx, mlir::TypeID::get<FIROpsDialect>()) {
-  getContext()->loadDialect<mlir::LLVM::LLVMDialect>();
   registerTypes();
   registerAttributes();
   addOperations<

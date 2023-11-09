@@ -266,12 +266,12 @@ DeclarationFragments DeclarationFragmentsBuilder::getFragmentsForType(
     After.append("[", DeclarationFragments::FragmentKind::Text);
 
     switch (AT->getSizeModifier()) {
-    case ArraySizeModifier::Normal:
+    case ArrayType::Normal:
       break;
-    case ArraySizeModifier::Static:
+    case ArrayType::Static:
       Fragments.append("static", DeclarationFragments::FragmentKind::Keyword);
       break;
-    case ArraySizeModifier::Star:
+    case ArrayType::Star:
       Fragments.append("*", DeclarationFragments::FragmentKind::Text);
       break;
     }
@@ -297,7 +297,7 @@ DeclarationFragments DeclarationFragmentsBuilder::getFragmentsForType(
   // qualified name, e.g., `N::M::type`, or both.
   if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T)) {
     ElaboratedTypeKeyword Keyword = ET->getKeyword();
-    if (Keyword != ElaboratedTypeKeyword::None) {
+    if (Keyword != ETK_None) {
       Fragments
           .append(ElaboratedType::getKeywordName(Keyword),
                   DeclarationFragments::FragmentKind::Keyword)

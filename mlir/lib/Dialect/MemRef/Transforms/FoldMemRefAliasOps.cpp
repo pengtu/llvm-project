@@ -128,16 +128,10 @@ resolveSourceIndicesCollapseShape(Location loc, PatternRewriter &rewriter,
     dynamicIndices.push_back(indices[cnt++]);
     int64_t groupSize = groups.size();
 
-    // Calculate suffix product for all collapse op source dimension sizes
-    // except the most major one of each group.
-    // We allow the most major source dimension to be dynamic but enforce all
-    // others to be known statically.
-    SmallVector<int64_t> sizes(groupSize, 1);
-    for (int64_t i = 1; i < groupSize; ++i) {
+    // Calculate suffix product for all collapse op source dimension sizes.
+    SmallVector<int64_t> sizes(groupSize);
+    for (int64_t i = 0; i < groupSize; ++i)
       sizes[i] = collapseShapeOp.getSrcType().getDimSize(groups[i]);
-      if (sizes[i] == ShapedType::kDynamic)
-        return failure();
-    }
     SmallVector<int64_t> suffixProduct = computeSuffixProduct(sizes);
 
     // Derive the index values along all dimensions of the source corresponding
@@ -186,8 +180,6 @@ static Value getMemRefOperand(nvgpu::LdMatrixOp op) {
 }
 
 static Value getMemRefOperand(vector::LoadOp op) { return op.getBase(); }
-
-static Value getMemRefOperand(vector::MaskedLoadOp op) { return op.getBase(); }
 
 static Value getMemRefOperand(vector::TransferWriteOp op) {
   return op.getSource();
@@ -416,11 +408,6 @@ LogicalResult LoadOpOfSubViewOpFolder<OpTy>::matchAndRewrite(
       .Case([&](vector::LoadOp op) {
         rewriter.replaceOpWithNewOp<vector::LoadOp>(
             op, op.getType(), subViewOp.getSource(), sourceIndices);
-      })
-      .Case([&](vector::MaskedLoadOp op) {
-        rewriter.replaceOpWithNewOp<vector::MaskedLoadOp>(
-            op, op.getType(), subViewOp.getSource(), sourceIndices,
-            op.getMask(), op.getPassThru());
       })
       .Case([&](vector::TransferReadOp op) {
         rewriter.replaceOpWithNewOp<vector::TransferReadOp>(
@@ -694,7 +681,6 @@ void memref::populateFoldMemRefAliasOpPatterns(RewritePatternSet &patterns) {
                LoadOpOfSubViewOpFolder<memref::LoadOp>,
                LoadOpOfSubViewOpFolder<nvgpu::LdMatrixOp>,
                LoadOpOfSubViewOpFolder<vector::LoadOp>,
-               LoadOpOfSubViewOpFolder<vector::MaskedLoadOp>,
                LoadOpOfSubViewOpFolder<vector::TransferReadOp>,
                LoadOpOfSubViewOpFolder<gpu::SubgroupMmaLoadMatrixOp>,
                StoreOpOfSubViewOpFolder<affine::AffineStoreOp>,

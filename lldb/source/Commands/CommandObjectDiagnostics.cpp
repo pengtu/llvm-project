@@ -77,12 +77,12 @@ protected:
     return Diagnostics::CreateUniqueDirectory();
   }
 
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     llvm::Expected<FileSpec> directory = GetDirectory();
 
     if (!directory) {
       result.AppendError(llvm::toString(directory.takeError()));
-      return;
+      return result.Succeeded();
     }
 
     llvm::Error error = Diagnostics::Instance().Create(*directory);
@@ -90,13 +90,13 @@ protected:
       result.AppendErrorWithFormat("failed to write diagnostics to %s",
                                    directory->GetPath().c_str());
       result.AppendError(llvm::toString(std::move(error)));
-      return;
+      return result.Succeeded();
     }
 
     result.GetOutputStream() << "diagnostics written to " << *directory << '\n';
 
     result.SetStatus(eReturnStatusSuccessFinishResult);
-    return;
+    return result.Succeeded();
   }
 
   CommandOptions m_options;

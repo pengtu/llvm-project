@@ -1,6 +1,8 @@
 # RUN: %PYTHON %s | FileCheck %s
 
 import gc
+import io
+import itertools
 from mlir.ir import *
 
 
@@ -25,8 +27,6 @@ def test_insert_at_block_end():
         )
         entry_block = module.body.operations[0].regions[0].blocks[0]
         ip = InsertionPoint(entry_block)
-        assert ip.block == entry_block
-        assert ip.ref_operation is None
         ip.insert(Operation.create("custom.op2"))
         # CHECK: "custom.op1"
         # CHECK: "custom.op2"
@@ -51,8 +51,6 @@ def test_insert_before_operation():
         )
         entry_block = module.body.operations[0].regions[0].blocks[0]
         ip = InsertionPoint(entry_block.operations[1])
-        assert ip.block == entry_block
-        assert ip.ref_operation == entry_block.operations[1]
         ip.insert(Operation.create("custom.op3"))
         # CHECK: "custom.op1"
         # CHECK: "custom.op3"
@@ -77,8 +75,6 @@ def test_insert_at_block_begin():
         )
         entry_block = module.body.operations[0].regions[0].blocks[0]
         ip = InsertionPoint.at_block_begin(entry_block)
-        assert ip.block == entry_block
-        assert ip.ref_operation == entry_block.operations[0]
         ip.insert(Operation.create("custom.op1"))
         # CHECK: "custom.op1"
         # CHECK: "custom.op2"
@@ -112,8 +108,6 @@ def test_insert_at_terminator():
         )
         entry_block = module.body.operations[0].regions[0].blocks[0]
         ip = InsertionPoint.at_block_terminator(entry_block)
-        assert ip.block == entry_block
-        assert ip.ref_operation == entry_block.operations[1]
         ip.insert(Operation.create("custom.op2"))
         # CHECK: "custom.op1"
         # CHECK: "custom.op2"

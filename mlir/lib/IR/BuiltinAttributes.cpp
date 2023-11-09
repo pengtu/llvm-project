@@ -20,11 +20,8 @@
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/Sequence.h"
 #include "llvm/ADT/TypeSwitch.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/Endian.h"
 #include <optional>
-
-#define DEBUG_TYPE "builtinattributes"
 
 using namespace mlir;
 using namespace mlir::detail;
@@ -470,7 +467,8 @@ static bool getBit(const char *rawData, size_t bitPos) {
 /// BE format.
 static void copyAPIntToArrayForBEmachine(APInt value, size_t numBytes,
                                          char *result) {
-  assert(llvm::endianness::native == llvm::endianness::big);
+  assert(llvm::support::endian::system_endianness() == // NOLINT
+         llvm::support::endianness::big);              // NOLINT
   assert(value.getNumWords() * APInt::APINT_WORD_SIZE >= numBytes);
 
   // Copy the words filled with data.
@@ -499,7 +497,8 @@ static void copyAPIntToArrayForBEmachine(APInt value, size_t numBytes,
 /// format.
 static void copyArrayToAPIntForBEmachine(const char *inArray, size_t numBytes,
                                          APInt &result) {
-  assert(llvm::endianness::native == llvm::endianness::big);
+  assert(llvm::support::endian::system_endianness() == // NOLINT
+         llvm::support::endianness::big);              // NOLINT
   assert(result.getNumWords() * APInt::APINT_WORD_SIZE >= numBytes);
 
   // Copy the data that fills the word of `result` from `inArray`.
@@ -540,7 +539,8 @@ static void writeBits(char *rawData, size_t bitPos, APInt value) {
 
   // Otherwise, the bit position is guaranteed to be byte aligned.
   assert((bitPos % CHAR_BIT) == 0 && "expected bitPos to be 8-bit aligned");
-  if (llvm::endianness::native == llvm::endianness::big) {
+  if (llvm::support::endian::system_endianness() ==
+      llvm::support::endianness::big) {
     // Copy from `value` to `rawData + (bitPos / CHAR_BIT)`.
     // Copying the first `llvm::divideCeil(bitWidth, CHAR_BIT)` bytes doesn't
     // work correctly in BE format.
@@ -565,7 +565,8 @@ static APInt readBits(const char *rawData, size_t bitPos, size_t bitWidth) {
   // Otherwise, the bit position must be 8-bit aligned.
   assert((bitPos % CHAR_BIT) == 0 && "expected bitPos to be 8-bit aligned");
   APInt result(bitWidth, 0);
-  if (llvm::endianness::native == llvm::endianness::big) {
+  if (llvm::support::endian::system_endianness() ==
+      llvm::support::endianness::big) {
     // Copy from `rawData + (bitPos / CHAR_BIT)` to `result`.
     // Copying the first `llvm::divideCeil(bitWidth, CHAR_BIT)` bytes doesn't
     // work correctly in BE format.
@@ -1101,44 +1102,24 @@ bool DenseElementsAttr::isValidRawBuffer(ShapedType type,
 static bool isValidIntOrFloat(Type type, int64_t dataEltSize, bool isInt,
                               bool isSigned) {
   // Make sure that the data element size is the same as the type element width.
-  auto denseEltBitWidth = getDenseElementBitWidth(type);
-  auto dataSize = static_cast<size_t>(dataEltSize * CHAR_BIT);
-  if (denseEltBitWidth != dataSize) {
-    LLVM_DEBUG(llvm::dbgs() << "expected dense element bit width "
-                            << denseEltBitWidth << " to match data size "
-                            << dataSize << " for type " << type << "\n");
+  if (getDenseElementBitWidth(type) !=
+      static_cast<size_t>(dataEltSize * CHAR_BIT))
     return false;
-  }
 
   // Check that the element type is either float or integer or index.
-  if (!isInt) {
-    bool valid = llvm::isa<FloatType>(type);
-    if (!valid)
-      LLVM_DEBUG(llvm::dbgs()
-                 << "expected float type when isInt is false, but found "
-                 << type << "\n");
-    return valid;
-  }
+  if (!isInt)
+    return llvm::isa<FloatType>(type);
   if (type.isIndex())
     return true;
 
   auto intType = llvm::dyn_cast<IntegerType>(type);
-  if (!intType) {
-    LLVM_DEBUG(llvm::dbgs()
-               << "expected integer type when isInt is true, but found " << type
-               << "\n");
+  if (!intType)
     return false;
-  }
 
   // Make sure signedness semantics is consistent.
   if (intType.isSignless())
     return true;
-
-  bool valid = intType.isSigned() == isSigned;
-  if (!valid)
-    LLVM_DEBUG(llvm::dbgs() << "expected signedness " << isSigned
-                            << " to match type " << type << "\n");
-  return valid;
+  return intType.isSigned() ? isSigned : !isSigned;
 }
 
 /// Defaults down the subclass implementation.
@@ -1270,14 +1251,12 @@ DenseElementsAttr DenseElementsAttr::bitcast(Type newElType) {
 DenseElementsAttr
 DenseElementsAttr::mapValues(Type newElementType,
                              function_ref<APInt(const APInt &)> mapping) const {
-  return llvm::cast<DenseIntElementsAttr>(*this).mapValues(newElementType,
-                                                           mapping);
+  return llvm::cast<DenseIntElementsAttr>(*this).mapValues(newElementType, mapping);
 }
 
 DenseElementsAttr DenseElementsAttr::mapValues(
     Type newElementType, function_ref<APInt(const APFloat &)> mapping) const {
-  return llvm::cast<DenseFPElementsAttr>(*this).mapValues(newElementType,
-                                                          mapping);
+  return llvm::cast<DenseFPElementsAttr>(*this).mapValues(newElementType, mapping);
 }
 
 ShapedType DenseElementsAttr::getType() const {
@@ -1356,9 +1335,8 @@ DenseElementsAttr DenseIntOrFPElementsAttr::getRawComplex(ShapedType type,
                                                           bool isInt,
                                                           bool isSigned) {
   assert(::isValidIntOrFloat(
-             llvm::cast<ComplexType>(type.getElementType()).getElementType(),
-             dataEltSize / 2, isInt, isSigned) &&
-         "Try re-running with -debug-only=builtinattributes");
+      llvm::cast<ComplexType>(type.getElementType()).getElementType(),
+      dataEltSize / 2, isInt, isSigned));
 
   int64_t numElements = data.size() / dataEltSize;
   (void)numElements;
@@ -1373,9 +1351,8 @@ DenseElementsAttr
 DenseIntOrFPElementsAttr::getRawIntOrFloat(ShapedType type, ArrayRef<char> data,
                                            int64_t dataEltSize, bool isInt,
                                            bool isSigned) {
-  assert(::isValidIntOrFloat(type.getElementType(), dataEltSize, isInt,
-                             isSigned) &&
-         "Try re-running with -debug-only=builtinattributes");
+  assert(
+      ::isValidIntOrFloat(type.getElementType(), dataEltSize, isInt, isSigned));
 
   int64_t numElements = data.size() / dataEltSize;
   assert(numElements == 1 || numElements == type.getNumElements());
@@ -1390,7 +1367,8 @@ void DenseIntOrFPElementsAttr::convertEndianOfCharForBEmachine(
   using llvm::support::ulittle32_t;
   using llvm::support::ulittle64_t;
 
-  assert(llvm::endianness::native == llvm::endianness::big);
+  assert(llvm::support::endian::system_endianness() == // NOLINT
+         llvm::support::endianness::big);              // NOLINT
   // NOLINT to avoid warning message about replacing by static_assert()
 
   // Following std::copy_n always converts endianness on BE machine.

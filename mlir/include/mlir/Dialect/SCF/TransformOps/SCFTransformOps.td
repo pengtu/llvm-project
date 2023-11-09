@@ -27,45 +27,30 @@ def ApplyForLoopCanonicalizationPatternsOp : Op<Transform_Dialect,
   let assemblyFormat = "attr-dict";
 }
 
-def ApplySCFStructuralConversionPatternsOp : Op<Transform_Dialect,
-    "apply_conversion_patterns.scf.structural_conversions",
-    [DeclareOpInterfaceMethods<ConversionPatternDescriptorOpInterface,
-      ["populateConversionTargetRules"]>]> {
-  let description = [{
-    Collects patterns for performing structural conversions of SCF operations.
-  }];
-
-  let assemblyFormat = "attr-dict";
-}
-
 def Transform_ScfForOp : Transform_ConcreteOpType<"scf.for">;
 
-def ForallToForOp : Op<Transform_Dialect, "loop.forall_to_for",
-    [FunctionalStyleTransformOpTrait, MemoryEffectsOpInterface,
+def GetParentForOp : Op<Transform_Dialect, "loop.get_parent_for",
+    [NavigationTransformOpTrait, MemoryEffectsOpInterface,
      DeclareOpInterfaceMethods<TransformOpInterface>]> {
-  let summary = "Converts scf.forall into a nest of scf.for operations";
+  let summary = "Gets a handle to the parent 'for' loop of the given operation";
   let description = [{
-    Converts the `scf.forall` operation pointed to by the given handle into a
-    set of nested `scf.for` operations. Each new operation corresponds to one
-    induction variable of the original "multifor" loop.
-
-    The operand handle must be associated with exactly one payload operation.
-
-    Loops with shared outputs are currently not supported.
-
-    #### Return Modes
-
-    Consumes the operand handle. Produces a silenceable failure if the operand
-    is not associated with a single `scf.forall` payload operation.
-    Returns as many handles as the given `forall` op has induction variables
-    that are associated with the generated `scf.for` loops.
-    Produces a silenceable failure if another number of resulting handles is
-    requested.
+    Produces a handle to the n-th (default 1) parent `scf.for` or `affine.for`
+    (when the affine flag is true) loop for each Payload IR operation
+    associated with the operand. Fails if such a loop cannot be found. The list
+    of operations associated with the handle contains parent operations in the
+    same order as the list associated with the operand, except for operations
+    that are parents to more than one input which are only present once.
   }];
-  let arguments = (ins TransformHandleTypeInterface:$target);
-  let results = (outs Variadic<TransformHandleTypeInterface>:$transformed);
 
-  let assemblyFormat = "$target attr-dict `:` functional-type(operands, results)";
+  let arguments =
+    (ins TransformHandleTypeInterface:$target,
+         DefaultValuedAttr<ConfinedAttr<I64Attr, [IntPositive]>,
+                           "1">:$num_loops,
+         DefaultValuedAttr<BoolAttr, "false">:$affine);
+  let results = (outs TransformHandleTypeInterface : $parent);
+
+  let assemblyFormat =
+    "$target attr-dict `:` functional-type(operands, results)";
 }
 
 def LoopOutlineOp : Op<Transform_Dialect, "loop.outline",
@@ -118,22 +103,23 @@ def LoopPeelOp : Op<Transform_Dialect, "loop.peel",
 
      This operation ignores non-scf::ForOp ops and drops them in the return.
 
-     This operation returns two scf::ForOp Ops, with the first Op satisfying
-     the postcondition: "the loop trip count is divisible by the step". The
-     second loop Op contains the remaining iteration. Note that even though the
-     Payload IR modification may be performed in-place, this operation consumes
-     the operand handle and produces a new one.
+     This operation always succeeds and returns the scf::ForOp with the
+     postcondition: "the loop trip count is divisible by the step".
+     This operation may return the same unmodified loop handle when peeling did
+     not modify the IR (i.e. the loop trip count was already divisible).
 
-     #### Return Modes
+     Note that even though the Payload IR modification may be performed
+     in-place, this operation consumes the operand handle and produces a new
+     one.
 
-     Produces a definite failure if peeling fails.
+     TODO: Return both the peeled loop and the remainder loop.
   }];
 
   let arguments =
       (ins Transform_ScfForOp:$target,
            DefaultValuedAttr<BoolAttr, "false">:$fail_if_already_divisible);
-  let results = (outs TransformHandleTypeInterface:$peeled_loop,
-                      TransformHandleTypeInterface:$remainder_loop);
+  // TODO: Return both the peeled loop and the remainder loop.
+  let results = (outs TransformHandleTypeInterface:$transformed);
 
   let assemblyFormat =
     "$target attr-dict `:` functional-type(operands, results)";
@@ -287,8 +273,8 @@ def TakeAssumedBranchOp : Op<Transform_Dialect, "scf.take_assumed_branch", [
   TransformOpInterface, TransformEachOpTrait]> {
   let description = [{
     Given an scf.if conditional, inject user-defined information that it is
-    always safe to execute only the if or else branch.
-
+    always safe to execute only the if or else branch. 
+    
     This is achieved by just replacing the scf.if by the content of one of its
     branches.
 

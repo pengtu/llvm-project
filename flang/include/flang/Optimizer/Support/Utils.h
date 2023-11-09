@@ -36,22 +36,21 @@ using BindingTables = llvm::DenseMap<llvm::StringRef, BindingTable>;
 inline void buildBindingTables(BindingTables &bindingTables,
                                mlir::ModuleOp mod) {
 
-  // The binding tables are defined in FIR after lowering inside fir.type_info
-  // operations. Go through each binding tables and store the procedure name and
+  // The binding tables are defined in FIR from lowering as fir.dispatch_table
+  // operation. Go through each binding tables and store the procedure name and
   // binding index for later use by the fir.dispatch conversion pattern.
-  for (auto typeInfo : mod.getOps<fir::TypeInfoOp>()) {
+  for (auto dispatchTableOp : mod.getOps<fir::DispatchTableOp>()) {
     unsigned bindingIdx = 0;
     BindingTable bindings;
-    if (typeInfo.getDispatchTable().empty()) {
-      bindingTables[typeInfo.getSymName()] = bindings;
+    if (dispatchTableOp.getRegion().empty()) {
+      bindingTables[dispatchTableOp.getSymName()] = bindings;
       continue;
     }
-    for (auto dtEntry :
-         typeInfo.getDispatchTable().front().getOps<fir::DTEntryOp>()) {
+    for (auto dtEntry : dispatchTableOp.getBlock().getOps<fir::DTEntryOp>()) {
       bindings[dtEntry.getMethod()] = bindingIdx;
       ++bindingIdx;
     }
-    bindingTables[typeInfo.getSymName()] = bindings;
+    bindingTables[dispatchTableOp.getSymName()] = bindings;
   }
 }
 

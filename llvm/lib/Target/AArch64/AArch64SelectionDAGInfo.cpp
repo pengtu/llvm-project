@@ -46,16 +46,21 @@ SDValue AArch64SelectionDAGInfo::EmitMOPS(AArch64ISD::NodeType SDOpcode,
     }
   }();
 
+  MachineMemOperand::Flags Flags = MachineMemOperand::MOStore;
+  if (isVolatile)
+    Flags |= MachineMemOperand::MOVolatile;
+  if (!IsSet)
+    Flags |= MachineMemOperand::MOLoad;
+
   MachineFunction &MF = DAG.getMachineFunction();
 
-  auto Vol =
-      isVolatile ? MachineMemOperand::MOVolatile : MachineMemOperand::MONone;
-  auto DstFlags = MachineMemOperand::MOStore | Vol;
   auto *DstOp =
-      MF.getMachineMemOperand(DstPtrInfo, DstFlags, ConstSize, Alignment);
+      MF.getMachineMemOperand(DstPtrInfo, Flags, ConstSize, Alignment);
+  auto *SrcOp =
+      MF.getMachineMemOperand(SrcPtrInfo, Flags, ConstSize, Alignment);
 
   if (IsSet) {
-    // Extend value to i64, if required.
+    // Extend value to i64 if required
     if (SrcOrValue.getValueType() != MVT::i64)
       SrcOrValue = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i64, SrcOrValue);
     SDValue Ops[] = {Dst, Size, SrcOrValue, Chain};
@@ -67,10 +72,6 @@ SDValue AArch64SelectionDAGInfo::EmitMOPS(AArch64ISD::NodeType SDOpcode,
     SDValue Ops[] = {Dst, SrcOrValue, Size, Chain};
     const EVT ResultTys[] = {MVT::i64, MVT::i64, MVT::i64, MVT::Other};
     MachineSDNode *Node = DAG.getMachineNode(MachineOpcode, DL, ResultTys, Ops);
-
-    auto SrcFlags = MachineMemOperand::MOLoad | Vol;
-    auto *SrcOp =
-        MF.getMachineMemOperand(SrcPtrInfo, SrcFlags, ConstSize, Alignment);
     DAG.setNodeMemRefs(Node, {DstOp, SrcOp});
     return SDValue(Node, 3);
   }

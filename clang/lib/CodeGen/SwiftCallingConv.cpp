@@ -409,10 +409,9 @@ void SwiftAggLowering::splitVectorEntry(unsigned index) {
 
   CharUnits begin = Entries[index].Begin;
   for (unsigned i = 0; i != numElts; ++i) {
-    unsigned idx = index + i;
-    Entries[idx].Type = eltTy;
-    Entries[idx].Begin = begin;
-    Entries[idx].End = begin + eltSize;
+    Entries[index].Type = eltTy;
+    Entries[index].Begin = begin;
+    Entries[index].End = begin + eltSize;
     begin += eltSize;
   }
 }

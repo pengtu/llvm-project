@@ -4,7 +4,6 @@ set(LLVM_LINK_COMPONENTS
    MC
    Option
    OrcJit
-   OrcDebugging
    OrcShared
    OrcTargetProcess
    Support

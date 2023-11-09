@@ -96,34 +96,9 @@ class DwarfCompileUnit final : public DwarfUnit {
   const DIFile *LastFile = nullptr;
   unsigned LastFileID;
 
-  /// \anchor applyConcreteDbgVariableAttribute
-  /// \name applyConcreteDbgVariableAttribute
-  /// Overload set which applies attributes to \c VariableDie based on
-  /// the active variant of \c DV, which is passed as the first argument.
-  ///@{
-
-  /// See \ref applyConcreteDbgVariableAttribute
-  void applyConcreteDbgVariableAttributes(const Loc::Single &Single,
-                                          const DbgVariable &DV,
-                                          DIE &VariableDie);
-  /// See \ref applyConcreteDbgVariableAttribute
-  void applyConcreteDbgVariableAttributes(const Loc::Multi &Multi,
-                                          const DbgVariable &DV,
-                                          DIE &VariableDie);
-  /// See \ref applyConcreteDbgVariableAttribute
-  void applyConcreteDbgVariableAttributes(const Loc::MMI &MMI,
-                                          const DbgVariable &DV,
-                                          DIE &VariableDie);
-  /// See \ref applyConcreteDbgVariableAttribute
-  void applyConcreteDbgVariableAttributes(const Loc::EntryValue &EntryValue,
-                                          const DbgVariable &DV,
-                                          DIE &VariableDie);
-  /// See \ref applyConcreteDbgVariableAttribute
-  void applyConcreteDbgVariableAttributes(const std::monostate &,
-                                          const DbgVariable &DV,
-                                          DIE &VariableDie);
-
-  ///@}
+  /// Construct a DIE for the given DbgVariable without initializing the
+  /// DbgVariable's DIE reference.
+  DIE *constructVariableDIEImpl(const DbgVariable &DV, bool Abstract);
 
   bool isDwoUnit() const override;
 
@@ -234,15 +209,18 @@ public:
   /// DIE to represent this concrete inlined copy of the function.
   DIE *constructInlinedScopeDIE(LexicalScope *Scope, DIE &ParentScopeDIE);
 
-  /// Get if available or create a new DW_TAG_lexical_block for the given
-  /// LexicalScope and attach DW_AT_low_pc/DW_AT_high_pc labels.
-  DIE *getOrCreateLexicalBlockDIE(LexicalScope *Scope, DIE &ParentDIE);
+  /// Construct new DW_TAG_lexical_block for this scope and
+  /// attach DW_AT_low_pc/DW_AT_high_pc labels.
+  DIE *constructLexicalScopeDIE(LexicalScope *Scope);
 
-  /// Construct a DIE for the given DbgVariable.
+  /// Get a DIE for the given DILexicalBlock.
+  /// Note that this function assumes that the DIE has been already created
+  /// and it's an error, if it hasn't.
+  DIE *getLexicalBlockDIE(const DILexicalBlock *LB);
+
+  /// constructVariableDIE - Construct a DIE for the given DbgVariable.
   DIE *constructVariableDIE(DbgVariable &DV, bool Abstract = false);
 
-  /// Convenience overload which writes the DIE pointer into an out variable
-  /// ObjectPointer in addition to returning it.
   DIE *constructVariableDIE(DbgVariable &DV, const LexicalScope &Scope,
                             DIE *&ObjectPointer);
 
@@ -254,11 +232,6 @@ public:
   /// Construct a DIE for a given scope.
   /// This instance of 'getOrCreateContextDIE()' can handle DILocalScope.
   DIE *getOrCreateContextDIE(const DIScope *Ty) override;
-
-  /// Get DW_TAG_lexical_block for the given DILexicalBlock if available,
-  /// or the most close parent DIE, if no correspoding DW_TAG_lexical_block
-  /// exists.
-  DIE *getLocalContextDIE(const DILexicalBlock *LB);
 
   /// Construct a DIE for this subprogram scope.
   DIE &constructSubprogramScopeDIE(const DISubprogram *Sub,
@@ -368,17 +341,13 @@ public:
   /// DWARF information necessary to find the actual variable (navigating the
   /// extra location information encoded in the type) based on the starting
   /// location.  Add the DWARF information to the die.
-  void addComplexAddress(const DIExpression *DIExpr, DIE &Die,
+  void addComplexAddress(const DbgVariable &DV, DIE &Die,
                          dwarf::Attribute Attribute,
                          const MachineLocation &Location);
 
   /// Add a Dwarf loclistptr attribute data and value.
   void addLocationList(DIE &Die, dwarf::Attribute Attribute, unsigned Index);
-
-  /// Add attributes to \p Var which reflect the common attributes of \p
-  /// VariableDie, namely those which are not dependant on the active variant.
-  void applyCommonDbgVariableAttributes(const DbgVariable &Var,
-                                        DIE &VariableDie);
+  void applyVariableAttributes(const DbgVariable &Var, DIE &VariableDie);
 
   /// Add a Dwarf expression attribute data and value.
   void addExpr(DIELoc &Die, dwarf::Form Form, const MCExpr *Expr);

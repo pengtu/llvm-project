@@ -12,7 +12,7 @@
 
 #include <fenv.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace fputil {
 namespace testing {
 
@@ -48,4 +48,4 @@ ForceRoundingMode::~ForceRoundingMode() {
 
 } // namespace testing
 } // namespace fputil
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

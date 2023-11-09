@@ -583,14 +583,13 @@ static uint64_t readFdeAddr(uint8_t *buf, int size) {
 uint64_t EhFrameSection::getFdePc(uint8_t *buf, size_t fdeOff,
                                   uint8_t enc) const {
   // The starting address to which this FDE applies is
-  // stored at FDE + 8 byte. And this offset is within
-  // the .eh_frame section.
+  // stored at FDE + 8 byte.
   size_t off = fdeOff + 8;
   uint64_t addr = readFdeAddr(buf + off, enc & 0xf);
   if ((enc & 0x70) == DW_EH_PE_absptr)
     return addr;
   if ((enc & 0x70) == DW_EH_PE_pcrel)
-    return addr + getParent()->addr + off + outSecOff;
+    return addr + getParent()->addr + off;
   fatal("unknown FDE size relative encoding");
 }
 
@@ -2689,10 +2688,6 @@ size_t IBTPltSection::getSize() const {
 
 bool IBTPltSection::isNeeded() const { return in.plt->getNumEntries() > 0; }
 
-RelroPaddingSection::RelroPaddingSection()
-    : SyntheticSection(SHF_ALLOC | SHF_WRITE, SHT_NOBITS, 1, ".relro_padding") {
-}
-
 // The string hash function for .gdb_index.
 static uint32_t computeGdbHash(StringRef s) {
   uint32_t h = 0;
@@ -3844,7 +3839,6 @@ void InStruct::reset() {
   got.reset();
   gotPlt.reset();
   igotPlt.reset();
-  relroPadding.reset();
   armCmseSGSection.reset();
   ppc64LongBranchTarget.reset();
   mipsAbiFlags.reset();

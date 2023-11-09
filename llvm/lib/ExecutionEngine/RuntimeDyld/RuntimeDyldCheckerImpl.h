@@ -28,13 +28,11 @@ class RuntimeDyldCheckerImpl {
   using GetGOTInfoFunction = RuntimeDyldChecker::GetGOTInfoFunction;
 
 public:
-  RuntimeDyldCheckerImpl(IsSymbolValidFunction IsSymbolValid,
-                         GetSymbolInfoFunction GetSymbolInfo,
-                         GetSectionInfoFunction GetSectionInfo,
-                         GetStubInfoFunction GetStubInfo,
-                         GetGOTInfoFunction GetGOTInfo,
-                         llvm::endianness Endianness, Triple TT, StringRef CPU,
-                         SubtargetFeatures TF, llvm::raw_ostream &ErrStream);
+  RuntimeDyldCheckerImpl(
+      IsSymbolValidFunction IsSymbolValid, GetSymbolInfoFunction GetSymbolInfo,
+      GetSectionInfoFunction GetSectionInfo, GetStubInfoFunction GetStubInfo,
+      GetGOTInfoFunction GetGOTInfo, support::endianness Endianness, Triple TT,
+      StringRef CPU, SubtargetFeatures TF, llvm::raw_ostream &ErrStream);
 
   bool check(StringRef CheckExpr) const;
   bool checkAllRulesInBuffer(StringRef RulePrefix, MemoryBuffer *MemBuf) const;
@@ -73,7 +71,7 @@ private:
   GetSectionInfoFunction GetSectionInfo;
   GetStubInfoFunction GetStubInfo;
   GetGOTInfoFunction GetGOTInfo;
-  llvm::endianness Endianness;
+  support::endianness Endianness;
   Triple TT;
   std::string CPU;
   SubtargetFeatures TF;

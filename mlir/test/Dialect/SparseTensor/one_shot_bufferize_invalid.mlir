@@ -1,7 +1,7 @@
 // RUN: mlir-opt %s -one-shot-bufferize -verify-diagnostics
 
 #SparseVector = #sparse_tensor.encoding<{
-  map = (d0) -> (d0 : compressed)
+  lvlTypes = ["compressed"]
 }>
 
 func.func @sparse_tensor_op(%arg0: tensor<64xf32, #SparseVector>) -> tensor<64xf32, #SparseVector> {

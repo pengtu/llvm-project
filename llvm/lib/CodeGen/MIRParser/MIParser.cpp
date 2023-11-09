@@ -500,7 +500,7 @@ public:
   bool parseAlignment(uint64_t &Alignment);
   bool parseAddrspace(unsigned &Addrspace);
   bool parseSectionID(std::optional<MBBSectionID> &SID);
-  bool parseBBID(std::optional<UniqueBBID> &BBID);
+  bool parseBBID(std::optional<unsigned> &BBID);
   bool parseCallFrameSize(unsigned &CallFrameSize);
   bool parseOperandsOffset(MachineOperand &Op);
   bool parseIRValue(const Value *&V);
@@ -666,20 +666,14 @@ bool MIParser::parseSectionID(std::optional<MBBSectionID> &SID) {
 }
 
 // Parse Machine Basic Block ID.
-bool MIParser::parseBBID(std::optional<UniqueBBID> &BBID) {
+bool MIParser::parseBBID(std::optional<unsigned> &BBID) {
   assert(Token.is(MIToken::kw_bb_id));
   lex();
-  unsigned BaseID = 0;
-  unsigned CloneID = 0;
-  if (getUnsigned(BaseID))
+  unsigned Value = 0;
+  if (getUnsigned(Value))
     return error("Unknown BB ID");
+  BBID = Value;
   lex();
-  if (Token.is(MIToken::IntegerLiteral)) {
-    if (getUnsigned(CloneID))
-      return error("Unknown Clone ID");
-    lex();
-  }
-  BBID = {BaseID, CloneID};
   return false;
 }
 
@@ -711,7 +705,7 @@ bool MIParser::parseBasicBlockDefinition(
   bool IsEHFuncletEntry = false;
   std::optional<MBBSectionID> SectionID;
   uint64_t Alignment = 0;
-  std::optional<UniqueBBID> BBID;
+  std::optional<unsigned> BBID;
   unsigned CallFrameSize = 0;
   BasicBlock *BB = nullptr;
   if (consumeIfPresent(MIToken::lparen)) {
@@ -1946,28 +1940,12 @@ bool MIParser::parseLowLevelType(StringRef::iterator Loc, LLT &Ty) {
 
   // Now we're looking for a vector.
   if (Token.isNot(MIToken::less))
-    return error(Loc, "expected sN, pA, <M x sN>, <M x pA>, <vscale x M x sN>, "
-                      "or <vscale x M x pA> for GlobalISel type");
+    return error(Loc,
+                 "expected sN, pA, <M x sN>, or <M x pA> for GlobalISel type");
   lex();
 
-  bool HasVScale =
-      Token.is(MIToken::Identifier) && Token.stringValue() == "vscale";
-  if (HasVScale) {
-    lex();
-    if (Token.isNot(MIToken::Identifier) || Token.stringValue() != "x")
-      return error("expected <vscale x M x sN> or <vscale x M x pA>");
-    lex();
-  }
-
-  auto GetError = [this, &HasVScale, Loc]() {
-    if (HasVScale)
-      return error(
-          Loc, "expected <vscale x M x sN> or <vscale M x pA> for vector type");
-    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
-  };
-
   if (Token.isNot(MIToken::IntegerLiteral))
-    return GetError();
+    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
   uint64_t NumElements = Token.integerValue().getZExtValue();
   if (!verifyVectorElementCount(NumElements))
     return error("invalid number of vector elements");
@@ -1975,12 +1953,11 @@ bool MIParser::parseLowLevelType(StringRef::iterator Loc, LLT &Ty) {
   lex();
 
   if (Token.isNot(MIToken::Identifier) || Token.stringValue() != "x")
-    return GetError();
+    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
   lex();
 
   if (Token.range().front() != 's' && Token.range().front() != 'p')
-    return GetError();
-
+    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
   StringRef SizeStr = Token.range().drop_front();
   if (SizeStr.size() == 0 || !llvm::all_of(SizeStr, isdigit))
     return error("expected integers after 's'/'p' type character");
@@ -1998,15 +1975,14 @@ bool MIParser::parseLowLevelType(StringRef::iterator Loc, LLT &Ty) {
 
     Ty = LLT::pointer(AS, DL.getPointerSizeInBits(AS));
   } else
-    return GetError();
+    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
   lex();
 
   if (Token.isNot(MIToken::greater))
-    return GetError();
-
+    return error(Loc, "expected <M x sN> or <M x pA> for vector type");
   lex();
 
-  Ty = LLT::vector(ElementCount::get(NumElements, HasVScale), Ty);
+  Ty = LLT::fixed_vector(NumElements, Ty);
   return false;
 }
 

@@ -81,7 +81,7 @@ static void checkAndSetWeakAlias(COFFLinkerContext &ctx, InputFile *f,
       // of another symbol emitted near the weak symbol.
       // Just use the definition from the first object file that defined
       // this weak symbol.
-      if (ctx.config.allowDuplicateWeak)
+      if (ctx.config.mingw)
         return;
       ctx.symtab.reportDuplicate(source, f);
     }
@@ -661,8 +661,6 @@ std::optional<Symbol *> ObjFile::createDefined(
     if (prevailing) {
       SectionChunk *c = readSection(sectionNumber, def, getName());
       sparseChunks[sectionNumber] = c;
-      if (!c)
-        return nullptr;
       c->sym = cast<DefinedRegular>(leader);
       c->selection = selection;
       cast<DefinedRegular>(leader)->data = &c->repl;
@@ -709,7 +707,7 @@ void ObjFile::initializeFlags() {
 
   DebugSubsectionArray subsections;
 
-  BinaryStreamReader reader(data, llvm::endianness::little);
+  BinaryStreamReader reader(data, support::little);
   ExitOnError exitOnErr;
   exitOnErr(reader.readArray(subsections, data.size()));
 
@@ -775,7 +773,7 @@ void ObjFile::initializeDependencies() {
   // Get the first type record. It will indicate if this object uses a type
   // server (/Zi) or a PCH file (/Yu).
   CVTypeArray types;
-  BinaryStreamReader reader(data, llvm::endianness::little);
+  BinaryStreamReader reader(data, support::little);
   cantFail(reader.readArray(types, reader.getLength()));
   CVTypeArray::Iterator firstType = types.begin();
   if (firstType == types.end())
@@ -1040,8 +1038,6 @@ void BitcodeFile::parse() {
       fakeSC = &ctx.ltoDataSectionChunk.chunk;
     if (objSym.isUndefined()) {
       sym = ctx.symtab.addUndefined(symName, this, false);
-      if (objSym.isWeak())
-        sym->deferUndefined = true;
     } else if (objSym.isCommon()) {
       sym = ctx.symtab.addCommon(this, symName, objSym.getCommonSize());
     } else if (objSym.isWeak() && objSym.isIndirect()) {
@@ -1063,12 +1059,6 @@ void BitcodeFile::parse() {
     } else {
       sym = ctx.symtab.addRegular(this, symName, nullptr, fakeSC, 0,
                                   objSym.isWeak());
-      // Model all symbols with the __imp_ prefix as having external
-      // references. If one LTO object defines a __imp_<foo> symbol, and
-      // another LTO object refers to <foo> with dllimport, make sure the
-      // __imp_ symbol is kept.
-      if (symName.starts_with("__imp_"))
-        sym->isUsedInRegularObj = true;
     }
     symbols.push_back(sym);
     if (objSym.isUsed())

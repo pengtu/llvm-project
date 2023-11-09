@@ -135,7 +135,6 @@ using Constructs =
 
 using Directives =
     std::tuple<parser::CompilerDirective, parser::OpenACCConstruct,
-               parser::OpenACCRoutineConstruct,
                parser::OpenACCDeclarativeConstruct, parser::OpenMPConstruct,
                parser::OpenMPDeclarativeConstruct, parser::OmpEndLoopDirective>;
 
@@ -361,8 +360,7 @@ using ProgramVariant =
     ReferenceVariant<parser::MainProgram, parser::FunctionSubprogram,
                      parser::SubroutineSubprogram, parser::Module,
                      parser::Submodule, parser::SeparateModuleSubprogram,
-                     parser::BlockData, parser::CompilerDirective,
-                     parser::OpenACCRoutineConstruct>;
+                     parser::BlockData, parser::CompilerDirective>;
 /// A program is a list of program units.
 /// These units can be function like, module like, or block data.
 struct ProgramUnit : ProgramVariant {
@@ -765,20 +763,10 @@ struct CompilerDirectiveUnit : public ProgramUnit {
   CompilerDirectiveUnit(const CompilerDirectiveUnit &) = delete;
 };
 
-// Top level OpenACC routine directives
-struct OpenACCDirectiveUnit : public ProgramUnit {
-  OpenACCDirectiveUnit(const parser::OpenACCRoutineConstruct &directive,
-                       const PftNode &parent)
-      : ProgramUnit{directive, parent}, routine{directive} {};
-  OpenACCDirectiveUnit(OpenACCDirectiveUnit &&) = default;
-  OpenACCDirectiveUnit(const OpenACCDirectiveUnit &) = delete;
-  const parser::OpenACCRoutineConstruct &routine;
-};
-
 /// A Program is the top-level root of the PFT.
 struct Program {
   using Units = std::variant<FunctionLikeUnit, ModuleLikeUnit, BlockDataUnit,
-                             CompilerDirectiveUnit, OpenACCDirectiveUnit>;
+                             CompilerDirectiveUnit>;
 
   Program(semantics::CommonBlockList &&commonBlocks)
       : commonBlocks{std::move(commonBlocks)} {}

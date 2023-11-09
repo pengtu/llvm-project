@@ -74,7 +74,13 @@ protected:
     PP = CreatePP(Source, ModLoader);
 
     std::vector<Token> toks;
-    PP->LexTokensUntilEOF(&toks);
+    while (1) {
+      Token tok;
+      PP->Lex(tok);
+      if (tok.is(tok::eof))
+        break;
+      toks.push_back(tok);
+    }
 
     return toks;
   }
@@ -622,7 +628,12 @@ TEST_F(LexerTest, FindNextToken) {
 TEST_F(LexerTest, CreatedFIDCountForPredefinedBuffer) {
   TrivialModuleLoader ModLoader;
   auto PP = CreatePP("", ModLoader);
-  PP->LexTokensUntilEOF();
+  while (1) {
+    Token tok;
+    PP->Lex(tok);
+    if (tok.is(tok::eof))
+      break;
+  }
   EXPECT_EQ(SourceMgr.getNumCreatedFIDsForFileID(PP->getPredefinesFileID()),
             1U);
 }

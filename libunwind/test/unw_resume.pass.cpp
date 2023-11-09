@@ -10,6 +10,9 @@
 // Ensure that unw_resume() resumes execution at the stack frame identified by
 // cursor.
 
+// TODO: Investigate this failure on AIX system.
+// XFAIL: target={{.*}}-aix{{.*}}
+
 // TODO: Figure out why this fails with Memory Sanitizer.
 // XFAIL: msan
 

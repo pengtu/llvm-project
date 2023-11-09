@@ -11,11 +11,11 @@
 #include "src/math/atanhf.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-using FPBits = LIBC_NAMESPACE::fputil::FPBits<float>;
+using FPBits = __llvm_libc::fputil::FPBits<float>;
 
 using LlvmLibcAtanhfExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Atanh,
-                                      LIBC_NAMESPACE::atanhf>;
+                                      __llvm_libc::atanhf>;
 
 // Range: [0, 1.0];
 static const uint32_t POS_START = 0x0000'0000U;

@@ -19,7 +19,7 @@
 #include "SIMachineFunctionInfo.h"
 #include "SIRegisterInfo.h"
 #include "llvm/CodeGen/LiveIntervals.h"
-#include "llvm/CodeGen/LiveRegUnits.h"
+#include "llvm/CodeGen/LivePhysRegs.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
@@ -421,11 +421,6 @@ const uint32_t *SIRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
   case CallingConv::AMDGPU_Gfx:
     return ST.hasGFX90AInsts() ? CSR_AMDGPU_SI_Gfx_GFX90AInsts_RegMask
                                : CSR_AMDGPU_SI_Gfx_RegMask;
-  case CallingConv::AMDGPU_CS_Chain:
-  case CallingConv::AMDGPU_CS_ChainPreserve:
-    // Calls to these functions never return, so we can pretend everything is
-    // preserved.
-    return AMDGPU_AllVGPRs_RegMask;
   default:
     return nullptr;
   }
@@ -1314,8 +1309,8 @@ void SIRegisterInfo::buildSpillLoadStore(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, const DebugLoc &DL,
     unsigned LoadStoreOp, int Index, Register ValueReg, bool IsKill,
     MCRegister ScratchOffsetReg, int64_t InstOffset, MachineMemOperand *MMO,
-    RegScavenger *RS, LiveRegUnits *LiveUnits) const {
-  assert((!RS || !LiveUnits) && "Only RS or LiveUnits can be set but not both");
+    RegScavenger *RS, LivePhysRegs *LiveRegs) const {
+  assert((!RS || !LiveRegs) && "Only RS or LiveRegs can be set but not both");
 
   MachineFunction *MF = MBB.getParent();
   const SIInstrInfo *TII = ST.getInstrInfo();
@@ -1403,7 +1398,7 @@ void SIRegisterInfo::buildSpillLoadStore(
     SOffset = MCRegister();
 
     // We don't have access to the register scavenger if this function is called
-    // during  PEI::scavengeFrameVirtualRegs() so use LiveUnits in this case.
+    // during  PEI::scavengeFrameVirtualRegs() so use LiveRegs in this case.
     // TODO: Clobbering SCC is not necessary for scratch instructions in the
     // entry.
     if (RS) {
@@ -1411,10 +1406,10 @@ void SIRegisterInfo::buildSpillLoadStore(
 
       // Piggy back on the liveness scan we just did see if SCC is dead.
       CanClobberSCC = !RS->isRegUsed(AMDGPU::SCC);
-    } else if (LiveUnits) {
-      CanClobberSCC = LiveUnits->available(AMDGPU::SCC);
+    } else if (LiveRegs) {
+      CanClobberSCC = !LiveRegs->contains(AMDGPU::SCC);
       for (MCRegister Reg : AMDGPU::SGPR_32RegClass) {
-        if (LiveUnits->available(Reg) && !MF->getRegInfo().isReserved(Reg)) {
+        if (LiveRegs->available(MF->getRegInfo(), Reg)) {
           SOffset = Reg;
           break;
         }
@@ -1430,9 +1425,9 @@ void SIRegisterInfo::buildSpillLoadStore(
       if (RS) {
         TmpOffsetVGPR = RS->scavengeRegisterBackwards(AMDGPU::VGPR_32RegClass, MI, false, 0);
       } else {
-        assert(LiveUnits);
+        assert(LiveRegs);
         for (MCRegister Reg : AMDGPU::VGPR_32RegClass) {
-          if (LiveUnits->available(Reg) && !MF->getRegInfo().isReserved(Reg)) {
+          if (LiveRegs->available(MF->getRegInfo(), Reg)) {
             TmpOffsetVGPR = Reg;
             break;
           }
@@ -1774,7 +1769,7 @@ bool SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI, int Index,
       // Mark the "old value of vgpr" input undef only if this is the first sgpr
       // spill to this specific vgpr in the first basic block.
       auto MIB = BuildMI(*SB.MBB, MI, SB.DL,
-                         SB.TII.get(AMDGPU::SI_SPILL_S32_TO_VGPR), Spill.VGPR)
+                         SB.TII.get(AMDGPU::V_WRITELANE_B32), Spill.VGPR)
                      .addReg(SubReg, getKillRegState(UseKill))
                      .addImm(Spill.Lane)
                      .addReg(Spill.VGPR);
@@ -1820,8 +1815,8 @@ bool SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI, int Index,
                 : Register(getSubReg(SB.SuperReg, SB.SplitParts[i]));
 
         MachineInstrBuilder WriteLane =
-            BuildMI(*SB.MBB, MI, SB.DL,
-                    SB.TII.get(AMDGPU::SI_SPILL_S32_TO_VGPR), SB.TmpVGPR)
+            BuildMI(*SB.MBB, MI, SB.DL, SB.TII.get(AMDGPU::V_WRITELANE_B32),
+                    SB.TmpVGPR)
                 .addReg(SubReg, SubKillState)
                 .addImm(i % PVD.PerVGPR)
                 .addReg(SB.TmpVGPR, TmpVGPRFlags);
@@ -1882,8 +1877,8 @@ bool SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI, int Index,
               : Register(getSubReg(SB.SuperReg, SB.SplitParts[i]));
 
       SpilledReg Spill = VGPRSpills[i];
-      auto MIB = BuildMI(*SB.MBB, MI, SB.DL,
-                         SB.TII.get(AMDGPU::SI_RESTORE_S32_FROM_VGPR), SubReg)
+      auto MIB = BuildMI(*SB.MBB, MI, SB.DL, SB.TII.get(AMDGPU::V_READLANE_B32),
+                         SubReg)
                      .addReg(Spill.VGPR)
                      .addImm(Spill.Lane);
       if (SB.NumSubRegs > 1 && i == 0)
@@ -1916,7 +1911,7 @@ bool SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI, int Index,
 
         bool LastSubReg = (i + 1 == e);
         auto MIB = BuildMI(*SB.MBB, MI, SB.DL,
-                           SB.TII.get(AMDGPU::SI_RESTORE_S32_FROM_VGPR), SubReg)
+                           SB.TII.get(AMDGPU::V_READLANE_B32), SubReg)
                        .addReg(SB.TmpVGPR, getKillRegState(LastSubReg))
                        .addImm(i);
         if (SB.NumSubRegs > 1 && i == 0)
@@ -2437,13 +2432,10 @@ bool SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
         if (Offset == 0) {
           unsigned OpCode = IsSALU && !LiveSCC ? AMDGPU::S_LSHR_B32
                                                : AMDGPU::V_LSHRREV_B32_e64;
-          auto Shift = BuildMI(*MBB, MI, DL, TII->get(OpCode), ResultReg);
-          if (OpCode == AMDGPU::V_LSHRREV_B32_e64)
-            // For V_LSHRREV, the operands are reversed (the shift count goes
-            // first).
-            Shift.addImm(ST.getWavefrontSizeLog2()).addReg(FrameReg);
-          else
-            Shift.addReg(FrameReg).addImm(ST.getWavefrontSizeLog2());
+          // XXX - This never happens because of emergency scavenging slot at 0?
+          auto Shift = BuildMI(*MBB, MI, DL, TII->get(OpCode), ResultReg)
+                           .addImm(ST.getWavefrontSizeLog2())
+                           .addReg(FrameReg);
           if (IsSALU && !LiveSCC)
             Shift.getInstr()->getOperand(3).setIsDead(); // Mark SCC as dead.
           if (IsSALU && LiveSCC) {

@@ -20,6 +20,5 @@ add_mlir_library(MLIRTransformUtils
   MLIRFunctionInterfaces
   MLIRLoopLikeInterface
   MLIRSideEffectInterfaces
-  MLIRSubsetOpInterface
   MLIRRewrite
   )

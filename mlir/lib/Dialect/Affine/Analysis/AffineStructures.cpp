@@ -74,7 +74,7 @@ FlatAffineValueConstraints::addAffineForOpDomain(AffineForOp forOp) {
     return failure();
   }
 
-  int64_t step = forOp.getStepAsInt();
+  int64_t step = forOp.getStep();
   if (step != 1) {
     if (!forOp.hasConstantLowerBound())
       LLVM_DEBUG(forOp.emitWarning("domain conservatively approximated"));

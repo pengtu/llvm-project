@@ -239,18 +239,23 @@ bool PPCExpandAtomicPseudo::expandAtomicCmpSwap128(
   // loop:
   //   old = lqarx ptr
   //   <compare old, cmp>
-  //   bne 0, exit
+  //   bne 0, fail
   // succ:
   //   stqcx new ptr
   //   bne 0, loop
+  //   b exit
+  // fail:
+  //   stqcx old ptr
   // exit:
   //   ....
   MachineFunction::iterator MFI = ++MBB.getIterator();
   MachineBasicBlock *LoopCmpMBB = MF->CreateMachineBasicBlock(BB);
   MachineBasicBlock *CmpSuccMBB = MF->CreateMachineBasicBlock(BB);
+  MachineBasicBlock *CmpFailMBB = MF->CreateMachineBasicBlock(BB);
   MachineBasicBlock *ExitMBB = MF->CreateMachineBasicBlock(BB);
   MF->insert(MFI, LoopCmpMBB);
   MF->insert(MFI, CmpSuccMBB);
+  MF->insert(MFI, CmpFailMBB);
   MF->insert(MFI, ExitMBB);
   ExitMBB->splice(ExitMBB->begin(), &MBB, std::next(MI.getIterator()),
                   MBB.end());
@@ -271,9 +276,9 @@ bool PPCExpandAtomicPseudo::expandAtomicCmpSwap128(
   BuildMI(CurrentMBB, DL, TII->get(PPC::BCC))
       .addImm(PPC::PRED_NE)
       .addReg(PPC::CR0)
-      .addMBB(ExitMBB);
+      .addMBB(CmpFailMBB);
   CurrentMBB->addSuccessor(CmpSuccMBB);
-  CurrentMBB->addSuccessor(ExitMBB);
+  CurrentMBB->addSuccessor(CmpFailMBB);
   // Build succ.
   CurrentMBB = CmpSuccMBB;
   PairedCopy(TII, *CurrentMBB, CurrentMBB->end(), DL, ScratchHi, ScratchLo,
@@ -283,11 +288,16 @@ bool PPCExpandAtomicPseudo::expandAtomicCmpSwap128(
       .addImm(PPC::PRED_NE)
       .addReg(PPC::CR0)
       .addMBB(LoopCmpMBB);
+  BuildMI(CurrentMBB, DL, TII->get(PPC::B)).addMBB(ExitMBB);
   CurrentMBB->addSuccessor(LoopCmpMBB);
+  CurrentMBB->addSuccessor(ExitMBB);
+  CurrentMBB = CmpFailMBB;
+  BuildMI(CurrentMBB, DL, SC).addReg(Old).addReg(RA).addReg(RB);
   CurrentMBB->addSuccessor(ExitMBB);
 
   recomputeLiveIns(*LoopCmpMBB);
   recomputeLiveIns(*CmpSuccMBB);
+  recomputeLiveIns(*CmpFailMBB);
   recomputeLiveIns(*ExitMBB);
   NMBBI = MBB.end();
   MI.eraseFromParent();

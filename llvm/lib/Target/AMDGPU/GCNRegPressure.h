@@ -128,8 +128,6 @@ public:
 
   void clearMaxPressure() { MaxPressure.clear(); }
 
-  GCNRegPressure getPressure() const { return CurPressure; }
-
   // returns MaxPressure, resetting it
   decltype(MaxPressure) moveMaxPressure() {
     auto Res = MaxPressure;
@@ -142,9 +140,6 @@ public:
   }
 };
 
-GCNRPTracker::LiveRegSet getLiveRegs(SlotIndex SI, const LiveIntervals &LIS,
-                                     const MachineRegisterInfo &MRI);
-
 class GCNUpwardRPTracker : public GCNRPTracker {
 public:
   GCNUpwardRPTracker(const LiveIntervals &LIS_) : GCNRPTracker(LIS_) {}
@@ -152,14 +147,6 @@ public:
   // reset tracker to the point just below MI
   // filling live regs upon this point using LIS
   void reset(const MachineInstr &MI, const LiveRegSet *LiveRegs = nullptr);
-
-  // reset tracker and set live register set to the specified value.
-  void reset(const MachineRegisterInfo &MRI_, const LiveRegSet &LiveRegs_);
-
-  // reset tracker at the specified slot index.
-  void reset(const MachineRegisterInfo &MRI_, SlotIndex SI) {
-    reset(MRI_, llvm::getLiveRegs(SI, LIS, MRI_));
-  }
 
   // move to the state just above the MI
   void recede(const MachineInstr &MI);
@@ -208,6 +195,10 @@ LaneBitmask getLiveLaneMask(unsigned Reg,
                             SlotIndex SI,
                             const LiveIntervals &LIS,
                             const MachineRegisterInfo &MRI);
+
+GCNRPTracker::LiveRegSet getLiveRegs(SlotIndex SI,
+                                     const LiveIntervals &LIS,
+                                     const MachineRegisterInfo &MRI);
 
 /// creates a map MachineInstr -> LiveRegSet
 /// R - range of iterators on instructions
@@ -284,22 +275,7 @@ Printable print(const GCNRPTracker::LiveRegSet &LiveRegs,
 
 Printable reportMismatch(const GCNRPTracker::LiveRegSet &LISLR,
                          const GCNRPTracker::LiveRegSet &TrackedL,
-                         const TargetRegisterInfo *TRI, StringRef Pfx = "  ");
-
-struct GCNRegPressurePrinter : public MachineFunctionPass {
-  static char ID;
-
-public:
-  GCNRegPressurePrinter() : MachineFunctionPass(ID) {}
-
-  bool runOnMachineFunction(MachineFunction &MF) override;
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<LiveIntervals>();
-    AU.setPreservesAll();
-    MachineFunctionPass::getAnalysisUsage(AU);
-  }
-};
+                         const TargetRegisterInfo *TRI);
 
 } // end namespace llvm
 

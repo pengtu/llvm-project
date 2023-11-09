@@ -176,7 +176,7 @@ public:
               uint64_t offsetInArchive);
   static bool classof(const InputFile *f) { return f->kind() == BitcodeKind; }
 
-  void parse(StringRef symName);
+  void parse();
   std::unique_ptr<llvm::lto::InputFile> obj;
 
   // Set to true once LTO is complete in order prevent further bitcode objects

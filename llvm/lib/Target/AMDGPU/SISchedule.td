@@ -65,9 +65,6 @@ def Write16PassMAI : SchedWrite;
 def Write4PassDGEMM : SchedWrite;
 def Write8PassDGEMM : SchedWrite;
 
-// Scalar float instructions
-def WriteSFPU : SchedWrite;
-
 // FIXME: Should there be a class for instructions which are VALU
 // instructions and have VALU rates, but write to the SALU (i.e. VOPC
 // instructions)
@@ -131,10 +128,6 @@ class HWWriteRes<SchedWrite write, list<ProcResourceKind> resources,
 class HWVALUWriteRes<SchedWrite write, int latency> :
   HWWriteRes<write, [HWVALU], latency>;
 
-class UnsupportedWriteRes<SchedWrite write> : WriteRes<write, []> {
-  let Unsupported = 1;
-}
-
 def PredMIReadVGPR : SchedPredicate<[{TII->hasVGPRUses(*MI)}]>;
 
 def MIReadVGPR : SchedReadVariant<[
@@ -172,8 +165,6 @@ multiclass SICommonWriteRes {
   def : HWWriteRes<Write8PassMAI,  [HWXDL], 8>;
   let ReleaseAtCycles = [16] in
   def : HWWriteRes<Write16PassMAI, [HWXDL], 16>;
-
-  def : UnsupportedWriteRes<WriteSFPU>;
   } // End RetireOOO = 1
 
   def : ReadAdvance<MIVGPRRead, -2>;
@@ -316,8 +307,6 @@ def : HWWriteRes<WriteSALU,          [HWSALU,   HWRC], 2>;
 def : HWWriteRes<WriteSMEM,          [HWLGKM,   HWRC], 20>;
 def : HWWriteRes<WriteVMEM,          [HWVMEM,   HWRC], 320>;
 def : HWWriteRes<WriteBarrier,       [HWBranch],       2000>;
-
-def : UnsupportedWriteRes<WriteSFPU>;
 } // End RetireOOO = 1
 
 def : InstRW<[WriteCopy], (instrs COPY)>;
@@ -345,7 +334,6 @@ def : HWWriteRes<WriteBranch,        [HWBranch],       32>;
 def : HWWriteRes<WriteExport,        [HWExport, HWRC], 16>;
 def : HWWriteRes<WriteLDS,           [HWLGKM,   HWRC], 20>;
 def : HWWriteRes<WriteSALU,          [HWSALU,   HWRC], 2>;
-def : HWWriteRes<WriteSFPU,          [HWSALU,   HWRC], 4>;
 def : HWWriteRes<WriteSMEM,          [HWLGKM,   HWRC], 20>;
 def : HWWriteRes<WriteVMEM,          [HWVMEM,   HWRC], 320>;
 def : HWWriteRes<WriteBarrier,       [HWBranch],       2000>;

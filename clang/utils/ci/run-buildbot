@@ -70,11 +70,7 @@ ninja --version
 
 case "${BUILDER}" in
 check-format)
-    echo "*** Checking for trailing whitespace left in Clang source files ***"
-    if grep -rnI '[[:blank:]]$' clang/lib clang/include clang/docs; then
-        echo "*** Trailing whitespace has been found in Clang source files as described above ***"
-        exit 1
-    fi
+    ! grep -rnI '[[:blank:]]$' clang/lib clang/include clang/docs
 ;;
 build-clang)
     mkdir install

@@ -39,14 +39,26 @@ TEST_CONSTEXPR_CXX20 void test_nonconst(S& s) {
     assert(T::eq(str[0], typename S::value_type()));
 }
 
-template <class S>
-TEST_CONSTEXPR_CXX20 void test_string() {
-  test_const(S(""));
-  test_const(S("abcde"));
-  test_const(S("abcdefghij"));
-  test_const(S("abcdefghijklmnopqrst"));
+TEST_CONSTEXPR_CXX20 bool test() {
+  {
+    typedef std::string S;
+    test_const(S(""));
+    test_const(S("abcde"));
+    test_const(S("abcdefghij"));
+    test_const(S("abcdefghijklmnopqrst"));
+  }
+#if TEST_STD_VER >= 11
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    test_const(S(""));
+    test_const(S("abcde"));
+    test_const(S("abcdefghij"));
+    test_const(S("abcdefghijklmnopqrst"));
+  }
+#endif
 #if TEST_STD_VER > 14
   {
+    typedef std::string S;
     S s1("");
     test_nonconst(s1);
     S s2("abcde");
@@ -56,13 +68,6 @@ TEST_CONSTEXPR_CXX20 void test_string() {
     S s4("abcdefghijklmnopqrst");
     test_nonconst(s4);
   }
-#endif
-}
-
-TEST_CONSTEXPR_CXX20 bool test() {
-  test_string<std::string>();
-#if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 #endif
 
   return true;

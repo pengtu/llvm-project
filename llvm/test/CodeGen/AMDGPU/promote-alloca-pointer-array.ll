@@ -6,7 +6,8 @@ define i64 @test_pointer_array(i64 %v) {
 ; OPT-NEXT:  entry:
 ; OPT-NEXT:    [[TMP0:%.*]] = inttoptr i64 [[V:%.*]] to ptr
 ; OPT-NEXT:    [[TMP1:%.*]] = insertelement <3 x ptr> undef, ptr [[TMP0]], i32 0
-; OPT-NEXT:    ret i64 [[V]]
+; OPT-NEXT:    [[TMP2:%.*]] = ptrtoint ptr [[TMP0]] to i64
+; OPT-NEXT:    ret i64 [[TMP2]]
 ;
 entry:
   %a = alloca [3 x ptr], align 16, addrspace(5)

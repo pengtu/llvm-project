@@ -88,7 +88,8 @@ namespace llvm {
     ConstraintWeight
     getSingleConstraintMatchWeight(AsmOperandInfo &info,
                                    const char *constraint) const override;
-    void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+    void LowerAsmOperandForConstraint(SDValue Op,
+                                      std::string &Constraint,
                                       std::vector<SDValue> &Ops,
                                       SelectionDAG &DAG) const override;
 
@@ -222,10 +223,7 @@ namespace llvm {
 
     MachineBasicBlock *expandSelectCC(MachineInstr &MI, MachineBasicBlock *BB,
                                       unsigned BROpcode) const;
-
-    void AdjustInstrPostInstrSelection(MachineInstr &MI,
-                                       SDNode *Node) const override;
   };
 } // end namespace llvm
 
-#endif // LLVM_LIB_TARGET_SPARC_SPARCISELLOWERING_H
+#endif    // SPARC_ISELLOWERING_H

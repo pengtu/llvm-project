@@ -80,8 +80,8 @@ wide variety of classes are implemented:
 - Source manager
 - Value objects
 
-Data Formatters
----------------
+Dataformatters
+--------------
 
 A collection of classes that implement the data formatters subsystem.
 
@@ -92,9 +92,9 @@ layers to the implementation: DataVisualization at the highest end of the
 spectrum, backed by classes implementing individual formatters, matching rules,
 etc.
 
-For a general user-level introduction to data formatters, see :doc:`/use/variable`.
+For a general user-level introduction to data formatters, you can look here.
 
-More details on their architecture can be found in :doc:`/resources/dataformatters`.
+More details on the architecture are to be found here.
 
 Expression
 ----------

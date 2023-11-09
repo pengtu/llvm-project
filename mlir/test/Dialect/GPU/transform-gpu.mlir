@@ -1,4 +1,4 @@
-// RUN: mlir-opt --transform-interpreter --split-input-file  -canonicalize -cse %s | FileCheck %s
+// RUN: mlir-opt --test-transform-dialect-interpreter --split-input-file  -canonicalize -cse %s | FileCheck %s
 
 !type = memref<2 x 32 x f32>
 !type1d = memref<32 x f32>
@@ -30,12 +30,10 @@ func.func @blocks_3d(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %stream : 
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_forall_to_blocks %funcop grid_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_forall_to_blocks %funcop grid_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -43,7 +41,7 @@ module attributes {transform.with_named_sequence} {
 !type = memref<2 x 32 x f32>
 !type1d = memref<32 x f32>
 
-// CHECK-DAG: #[[$MAP:.*]] = affine_map<(d0) -> (d0 floordiv 128)>
+// CHECK-DAG: #[[$MAP:.*]] = affine_map<(d0) -> (d0 floordiv 128)> 
 
 // CHECK-LABEL: func.func @warpgroup_3d(
 // CHECK-SAME:    %[[ARGX:[0-9a-z]+]]: memref<2x32xf32>
@@ -82,12 +80,10 @@ func.func @warpgroup_3d(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %stream
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [512, 2, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [512, 2, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -95,7 +91,7 @@ module attributes {transform.with_named_sequence} {
 !type = memref<2 x 32 x f32>
 !type1d = memref<32 x f32>
 
-// CHECK-DAG: #[[$MAP:.*]] = affine_map<(d0) -> (d0 floordiv 16)>
+// CHECK-DAG: #[[$MAP:.*]] = affine_map<(d0) -> (d0 floordiv 16)> 
 
 // CHECK-LABEL: func.func @warp_3d(
 // CHECK-SAME:    %[[ARGX:[0-9a-z]+]]: memref<2x32xf32>
@@ -135,12 +131,10 @@ func.func @warp_3d(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %stream : !g
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [64, 4, 3] warp_size = 16: (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [64, 4, 3] warp_size = 16: (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -191,12 +185,10 @@ func.func @threads_3d(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %stream :
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -232,13 +224,11 @@ func.func @saxpy4d(%x: !type4d, %y: !type4d, %alpha : f32) -> !type4d {
   return %y : !type4d
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["func.func"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    %gpuLaunch = transform.gpu.map_forall_to_blocks %funcop { generate_gpu_launch } : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %gpuLaunch block_dims = [32, 4, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["func.func"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  %gpuLaunch = transform.gpu.map_forall_to_blocks %funcop { generate_gpu_launch } : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %gpuLaunch block_dims = [32, 4, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -268,12 +258,10 @@ func.func @saxpy2d_no_barrier(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] sync_after_distribute = false : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] sync_after_distribute = false : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -302,12 +290,10 @@ func.func @saxpy2d_singleloop(%x: !type, %y: !type, %stream : !gpu.async.token) 
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 1, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 1, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -340,12 +326,10 @@ func.func @saxpy3d_fold_id_z(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %s
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] sync_after_distribute = false : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [12, 9, 1] sync_after_distribute = false : (!transform.any_op) -> !transform.any_op
 }
 
 
@@ -397,12 +381,10 @@ func.func @warpgroup_linear(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %st
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 8, 4] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 8, 4] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -453,12 +435,10 @@ func.func @warp_linear(%x: !type, %y: !type, %t: !type1d, %alpha : f32, %stream 
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 8, 4] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop block_dims = [32, 8, 4] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -531,13 +511,11 @@ func.func @map_multi_level_linear(%x: !type, %y: !type, %t: !type1d, %alpha : f3
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %funcop
-      block_dims = [18, 11, 1] : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %funcop
+    block_dims = [18, 11, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -587,12 +565,10 @@ func.func @block_linear_existing_launch(
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_forall_to_blocks %funcop grid_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["gpu.launch"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_forall_to_blocks %funcop grid_dims = [12, 9, 1] : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -634,18 +610,16 @@ func.func @block_linear_generate_launch(
   return %y : !type
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg0: !transform.any_op {transform.readonly}) {
-    %funcop = transform.structured.match ops{["func.func"]} in %arg0 : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_forall_to_blocks %funcop generate_gpu_launch : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg0: !transform.any_op):
+  %funcop = transform.structured.match ops{["func.func"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_forall_to_blocks %funcop generate_gpu_launch : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
 
-#map = affine_map<(d0) -> (d0 *  128)>
-#map1 = affine_map<(d0) -> (d0 * 32)>
+#map = affine_map<(d0) -> (d0 *  128)>                             
+#map1 = affine_map<(d0) -> (d0 * 32)> 
 
 // CHECK-DAG: #[[$MAPB:.*]] = affine_map<(d0) -> (d0 * 128)>
 // CHECK-DAG: #[[$MAPW:.*]] = affine_map<(d0, d1, d2) -> (d2 * 32 + ((d0 + d1 * 4) floordiv 32) * 32)>
@@ -655,9 +629,9 @@ func.func @simple_fill(%arg0: memref<128xf32>) -> memref<128xf32> {
   %c0 = arith.constant 0 : index
   %cst = arith.constant dense<0.000000e+00> : vector<32xf32>
 //       CHECK:   %[[C1:.*]] = arith.constant 1 : index
-//       CHECK:   %[[C4:.*]] = arith.constant 4 : index
-//       CHECK:   %[[C8:.*]] = arith.constant 8 : index
-//       CHECK:   gpu.launch
+//       CHECK:   %[[C4:.*]] = arith.constant 4 : index       
+//       CHECK:   %[[C8:.*]] = arith.constant 8 : index        
+//       CHECK:   gpu.launch 
   scf.forall (%arg1) in (1) {
 //       CHECK:     %[[BIDX:.*]] = gpu.block_id  x
 //       CHECK:     %[[BLX:.*]] = affine.apply #[[$MAPB]](%[[BIDX]])
@@ -680,14 +654,12 @@ func.func @simple_fill(%arg0: memref<128xf32>) -> memref<128xf32> {
   return %arg0 : memref<128xf32>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%module_op: !transform.any_op {transform.readonly}) {
-    %func = transform.structured.match ops{["func.func"]} in %module_op
-      : (!transform.any_op) -> !transform.any_op
-    %gpu_launch = transform.gpu.map_forall_to_blocks %func generate_gpu_launch
-      : (!transform.any_op) -> !transform.any_op
-    transform.gpu.map_nested_forall_to_threads %gpu_launch block_dims = [4, 8, 4]
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%module_op: !transform.any_op):
+  %func = transform.structured.match ops{["func.func"]} in %module_op 
+    : (!transform.any_op) -> !transform.any_op
+  %gpu_launch = transform.gpu.map_forall_to_blocks %func generate_gpu_launch 
+    : (!transform.any_op) -> !transform.any_op
+  transform.gpu.map_nested_forall_to_threads %gpu_launch block_dims = [4, 8, 4] 
+    : (!transform.any_op) -> !transform.any_op
 }

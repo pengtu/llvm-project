@@ -95,8 +95,9 @@ public:
                     const Target &Targ);
   size_t size() const { return Symbols.size(); }
 
-  template <typename RangeT, typename ElT = std::remove_reference_t<
-                                 decltype(*std::begin(std::declval<RangeT>()))>>
+  template <typename RangeT,
+            typename ElT = typename std::remove_reference<
+                decltype(*std::begin(std::declval<RangeT>()))>::type>
   Symbol *addGlobal(SymbolKind Kind, StringRef Name, SymbolFlags Flags,
                     RangeT &&Targets) {
     auto *Global = addGlobalImpl(Kind, Name, Flags);

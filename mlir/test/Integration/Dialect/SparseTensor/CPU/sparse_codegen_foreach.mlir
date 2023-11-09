@@ -31,27 +31,30 @@
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | %{run_sve} | FileCheck %s %}
 
 #Row = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed, d1 : dense)
+  lvlTypes = [ "compressed", "dense" ]
 }>
 
 #CSR = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ]
 }>
 
 #DCSC = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d1 : compressed, d0 : compressed)
+  lvlTypes = [ "compressed", "compressed" ],
+  dimToLvl = affine_map<(i,j) -> (j,i)>
 }>
 
 #SortedCOO = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ]
 }>
 
 #SortedCOOPerm = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d1 : compressed(nonunique), d0 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ],
+  dimToLvl = affine_map<(i,j) -> (j,i)>
 }>
 
 #CCCPerm = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d1 : compressed, d2 : compressed, d0 : compressed)
+  lvlTypes = [ "compressed", "compressed", "compressed"],
+  dimToLvl = affine_map<(d0, d1, d2) -> (d1, d2, d0)>
 }>
 
 module {

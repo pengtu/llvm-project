@@ -174,9 +174,9 @@ public:
       if (!Entry.isValid())
         continue;
       Str->append("StartBlockAddress: 0x%zx, EndBlockAddress: 0x%zx, "
-                  "BlockSize: %zu %s\n",
+                  "BlockSize: %zu\n",
                   Entry.CommitBase, Entry.CommitBase + Entry.CommitSize,
-                  Entry.CommitSize, Entry.Time == 0 ? "[R]" : "");
+                  Entry.CommitSize);
     }
   }
 
@@ -223,7 +223,7 @@ public:
                                          MAP_NOACCESS);
       }
     } else if (Interval == 0) {
-      Entry.MemMap.releaseAndZeroPagesToOS(Entry.CommitBase, Entry.CommitSize);
+      Entry.MemMap.releasePagesToOS(Entry.CommitBase, Entry.CommitSize);
       Entry.Time = 0;
     }
     do {
@@ -441,7 +441,7 @@ private:
         OldestTime = Entry.Time;
       return;
     }
-    Entry.MemMap.releaseAndZeroPagesToOS(Entry.CommitBase, Entry.CommitSize);
+    Entry.MemMap.releasePagesToOS(Entry.CommitBase, Entry.CommitSize);
     Entry.Time = 0;
   }
 
@@ -594,7 +594,7 @@ void *MapAllocator<Config>::allocate(const Options &Options, uptr Size,
         ScopedLock L(Mutex);
         InUseBlocks.push_back(H);
         AllocatedBytes += H->CommitSize;
-        FragmentedBytes += H->MemMap.getCapacity() - H->CommitSize;
+        FragmentedBytes += reinterpret_cast<uptr>(H) - H->CommitBase;
         NumberOfAllocs++;
         Stats.add(StatAllocated, H->CommitSize);
         Stats.add(StatMapped, H->MemMap.getCapacity());
@@ -668,7 +668,7 @@ void *MapAllocator<Config>::allocate(const Options &Options, uptr Size,
     ScopedLock L(Mutex);
     InUseBlocks.push_back(H);
     AllocatedBytes += CommitSize;
-    FragmentedBytes += H->MemMap.getCapacity() - CommitSize;
+    FragmentedBytes += reinterpret_cast<uptr>(H) - H->CommitBase;
     if (LargestSize < CommitSize)
       LargestSize = CommitSize;
     NumberOfAllocs++;
@@ -687,7 +687,7 @@ void MapAllocator<Config>::deallocate(const Options &Options, void *Ptr)
     ScopedLock L(Mutex);
     InUseBlocks.remove(H);
     FreedBytes += CommitSize;
-    FragmentedBytes -= H->MemMap.getCapacity() - CommitSize;
+    FragmentedBytes -= reinterpret_cast<uptr>(H) - H->CommitBase;
     NumberOfFrees++;
     Stats.sub(StatAllocated, CommitSize);
     Stats.sub(StatMapped, H->MemMap.getCapacity());

@@ -14,14 +14,14 @@
 
 #include <pthread.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
-static_assert(sizeof(pthread_t) == sizeof(LIBC_NAMESPACE::Thread),
+static_assert(sizeof(pthread_t) == sizeof(__llvm_libc::Thread),
               "Mismatch between pthread_t and internal Thread.");
 
 LLVM_LIBC_FUNCTION(int, pthread_setname_np, (pthread_t th, const char *name)) {
-  auto *thread = reinterpret_cast<LIBC_NAMESPACE::Thread *>(&th);
+  auto *thread = reinterpret_cast<__llvm_libc::Thread *>(&th);
   return thread->set_name(cpp::string_view(name));
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

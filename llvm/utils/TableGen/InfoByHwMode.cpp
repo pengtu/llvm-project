@@ -35,8 +35,6 @@ ValueTypeByHwMode::ValueTypeByHwMode(Record *R, const CodeGenHwModes &CGH) {
     assert(I.second && "Duplicate entry?");
     (void)I;
   }
-  if (R->isSubClassOf("PtrValueType"))
-    PtrAddrSpace = R->getValueAsInt("AddrSpace");
 }
 
 ValueTypeByHwMode::ValueTypeByHwMode(Record *R, MVT T) : ValueTypeByHwMode(T) {

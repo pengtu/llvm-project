@@ -505,8 +505,7 @@ RegInterval WaitcntBrackets::getRegInterval(const MachineInstr *MI,
 
   RegInterval Result;
 
-  unsigned Reg = TRI->getEncodingValue(AMDGPU::getMCReg(Op.getReg(), *ST)) &
-                 AMDGPU::HWEncoding::REG_IDX_MASK;
+  unsigned Reg = TRI->getEncodingValue(AMDGPU::getMCReg(Op.getReg(), *ST));
 
   if (TRI->isVectorRegister(*MRI, Op.getReg())) {
     assert(Reg >= Encoding.VGPR0 && Reg <= Encoding.VGPRL);
@@ -1721,25 +1720,26 @@ bool SIInsertWaitcnts::insertWaitcntInBlock(MachineFunction &MF,
 // which we want to flush the vmcnt counter, and false otherwise.
 bool SIInsertWaitcnts::isPreheaderToFlush(MachineBasicBlock &MBB,
                                           WaitcntBrackets &ScoreBrackets) {
-  auto [Iterator, IsInserted] = PreheadersToFlush.try_emplace(&MBB, false);
-  if (!IsInserted)
-    return Iterator->second;
+  if (PreheadersToFlush.count(&MBB))
+    return PreheadersToFlush[&MBB];
+
+  auto UpdateCache = [&](bool val) {
+    PreheadersToFlush[&MBB] = val;
+    return val;
+  };
 
   MachineBasicBlock *Succ = MBB.getSingleSuccessor();
   if (!Succ)
-    return false;
+    return UpdateCache(false);
 
   MachineLoop *Loop = MLI->getLoopFor(Succ);
   if (!Loop)
-    return false;
+    return UpdateCache(false);
 
-  if (Loop->getLoopPreheader() == &MBB &&
-      shouldFlushVmCnt(Loop, ScoreBrackets)) {
-    Iterator->second = true;
-    return true;
-  }
+  if (Loop->getLoopPreheader() == &MBB && shouldFlushVmCnt(Loop, ScoreBrackets))
+    return UpdateCache(true);
 
-  return false;
+  return UpdateCache(false);
 }
 
 bool SIInsertWaitcnts::isVMEMOrFlatVMEM(const MachineInstr &MI) const {
@@ -1824,7 +1824,7 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
     ForceEmitWaitcnt[T] = false;
 
   OptNone = MF.getFunction().hasOptNone() ||
-            MF.getTarget().getOptLevel() == CodeGenOptLevel::None;
+            MF.getTarget().getOptLevel() == CodeGenOpt::None;
 
   HardwareLimits Limits = {};
   Limits.VmcntMax = AMDGPU::getVmcntBitMask(IV);
@@ -1838,11 +1838,9 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
   assert(NumSGPRsMax <= SQ_MAX_PGM_SGPRS);
 
   RegisterEncoding Encoding = {};
-  Encoding.VGPR0 =
-      TRI->getEncodingValue(AMDGPU::VGPR0) & AMDGPU::HWEncoding::REG_IDX_MASK;
+  Encoding.VGPR0 = TRI->getEncodingValue(AMDGPU::VGPR0);
   Encoding.VGPRL = Encoding.VGPR0 + NumVGPRsMax - 1;
-  Encoding.SGPR0 =
-      TRI->getEncodingValue(AMDGPU::SGPR0) & AMDGPU::HWEncoding::REG_IDX_MASK;
+  Encoding.SGPR0 = TRI->getEncodingValue(AMDGPU::SGPR0);
   Encoding.SGPRL = Encoding.SGPR0 + NumSGPRsMax - 1;
 
   TrackedWaitcntSet.clear();

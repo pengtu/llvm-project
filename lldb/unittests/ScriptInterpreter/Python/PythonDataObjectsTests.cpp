@@ -23,6 +23,7 @@
 
 using namespace lldb_private;
 using namespace lldb_private::python;
+using llvm::Error;
 using llvm::Expected;
 
 class PythonDataObjectsTest : public PythonTestSuite {

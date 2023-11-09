@@ -12,7 +12,6 @@
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
@@ -44,14 +43,6 @@ StringLiteral const TargetLibraryInfoImpl::StandardNames[LibFunc::NumLibFuncs] =
 #define TLI_DEFINE_STRING
 #include "llvm/Analysis/TargetLibraryInfo.def"
 };
-
-std::string VecDesc::getVectorFunctionABIVariantString() const {
-  assert(!VectorFnName.empty() && "Vector function name must not be empty.");
-  SmallString<256> Buffer;
-  llvm::raw_svector_ostream Out(Buffer);
-  Out << VABIPrefix << "_" << ScalarFnName << "(" << VectorFnName << ")";
-  return std::string(Out.str());
-}
 
 // Recognized types of library function arguments and return types.
 enum FuncArgTypeID : char {
@@ -1147,15 +1138,15 @@ void TargetLibraryInfoImpl::disableAllFunctions() {
 }
 
 static bool compareByScalarFnName(const VecDesc &LHS, const VecDesc &RHS) {
-  return LHS.getScalarFnName() < RHS.getScalarFnName();
+  return LHS.ScalarFnName < RHS.ScalarFnName;
 }
 
 static bool compareByVectorFnName(const VecDesc &LHS, const VecDesc &RHS) {
-  return LHS.getVectorFnName() < RHS.getVectorFnName();
+  return LHS.VectorFnName < RHS.VectorFnName;
 }
 
 static bool compareWithScalarFnName(const VecDesc &LHS, StringRef S) {
-  return LHS.getScalarFnName() < S;
+  return LHS.ScalarFnName < S;
 }
 
 void TargetLibraryInfoImpl::addVectorizableFunctions(ArrayRef<VecDesc> Fns) {
@@ -1212,20 +1203,17 @@ void TargetLibraryInfoImpl::addVectorizableFunctionsFromVecLib(
   case SLEEFGNUABI: {
     const VecDesc VecFuncs_VF2[] = {
 #define TLI_DEFINE_SLEEFGNUABI_VF2_VECFUNCS
-#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, VABI_PREFIX)                         \
-  {SCAL, VEC, VF, /* MASK = */ false, VABI_PREFIX},
+#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF) {SCAL, VEC, VF, /* MASK = */ false},
 #include "llvm/Analysis/VecFuncs.def"
     };
     const VecDesc VecFuncs_VF4[] = {
 #define TLI_DEFINE_SLEEFGNUABI_VF4_VECFUNCS
-#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, VABI_PREFIX)                         \
-  {SCAL, VEC, VF, /* MASK = */ false, VABI_PREFIX},
+#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF) {SCAL, VEC, VF, /* MASK = */ false},
 #include "llvm/Analysis/VecFuncs.def"
     };
     const VecDesc VecFuncs_VFScalable[] = {
 #define TLI_DEFINE_SLEEFGNUABI_SCALABLE_VECFUNCS
-#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, MASK, VABI_PREFIX)                   \
-  {SCAL, VEC, VF, MASK, VABI_PREFIX},
+#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, MASK) {SCAL, VEC, VF, MASK},
 #include "llvm/Analysis/VecFuncs.def"
     };
 
@@ -1244,8 +1232,7 @@ void TargetLibraryInfoImpl::addVectorizableFunctionsFromVecLib(
   case ArmPL: {
     const VecDesc VecFuncs[] = {
 #define TLI_DEFINE_ARMPL_VECFUNCS
-#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, MASK, VABI_PREFIX)                   \
-  {SCAL, VEC, VF, MASK, VABI_PREFIX},
+#define TLI_DEFINE_VECFUNC(SCAL, VEC, VF, MASK) {SCAL, VEC, VF, MASK},
 #include "llvm/Analysis/VecFuncs.def"
     };
 
@@ -1271,32 +1258,23 @@ bool TargetLibraryInfoImpl::isFunctionVectorizable(StringRef funcName) const {
 
   std::vector<VecDesc>::const_iterator I =
       llvm::lower_bound(VectorDescs, funcName, compareWithScalarFnName);
-  return I != VectorDescs.end() && StringRef(I->getScalarFnName()) == funcName;
+  return I != VectorDescs.end() && StringRef(I->ScalarFnName) == funcName;
 }
 
 StringRef TargetLibraryInfoImpl::getVectorizedFunction(StringRef F,
                                                        const ElementCount &VF,
                                                        bool Masked) const {
-  const VecDesc *VD = getVectorMappingInfo(F, VF, Masked);
-  if (VD)
-    return VD->getVectorFnName();
-  return StringRef();
-}
-
-const VecDesc *
-TargetLibraryInfoImpl::getVectorMappingInfo(StringRef F, const ElementCount &VF,
-                                            bool Masked) const {
   F = sanitizeFunctionName(F);
   if (F.empty())
-    return nullptr;
+    return F;
   std::vector<VecDesc>::const_iterator I =
       llvm::lower_bound(VectorDescs, F, compareWithScalarFnName);
-  while (I != VectorDescs.end() && StringRef(I->getScalarFnName()) == F) {
-    if ((I->getVectorizationFactor() == VF) && (I->isMasked() == Masked))
-      return &(*I);
+  while (I != VectorDescs.end() && StringRef(I->ScalarFnName) == F) {
+    if ((I->VectorizationFactor == VF) && (I->Masked == Masked))
+      return I->VectorFnName;
     ++I;
   }
-  return nullptr;
+  return StringRef();
 }
 
 TargetLibraryInfo TargetLibraryAnalysis::run(const Function &F,
@@ -1368,11 +1346,11 @@ void TargetLibraryInfoImpl::getWidestVF(StringRef ScalarF,
 
   std::vector<VecDesc>::const_iterator I =
       llvm::lower_bound(VectorDescs, ScalarF, compareWithScalarFnName);
-  while (I != VectorDescs.end() && StringRef(I->getScalarFnName()) == ScalarF) {
+  while (I != VectorDescs.end() && StringRef(I->ScalarFnName) == ScalarF) {
     ElementCount *VF =
-        I->getVectorizationFactor().isScalable() ? &ScalableVF : &FixedVF;
-    if (ElementCount::isKnownGT(I->getVectorizationFactor(), *VF))
-      *VF = I->getVectorizationFactor();
+        I->VectorizationFactor.isScalable() ? &ScalableVF : &FixedVF;
+    if (ElementCount::isKnownGT(I->VectorizationFactor, *VF))
+      *VF = I->VectorizationFactor;
     ++I;
   }
 }

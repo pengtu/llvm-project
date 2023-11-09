@@ -12,10 +12,10 @@
 #include "clang/Basic/FileEntry.h"
 #include "clang/Basic/LLVM.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/PointerUnion.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include <memory>
-#include <variant>
 
 namespace llvm {
   class MemoryBuffer;
@@ -33,7 +33,7 @@ class FileRemapper {
   // FIXME: Reuse the same FileManager for multiple ASTContexts.
   std::unique_ptr<FileManager> FileMgr;
 
-  using Target = std::variant<FileEntryRef, llvm::MemoryBuffer *>;
+  typedef llvm::PointerUnion<FileEntryRef, llvm::MemoryBuffer *> Target;
   using MappingsTy = llvm::DenseMap<FileEntryRef, Target>;
   MappingsTy FromToMappings;
 

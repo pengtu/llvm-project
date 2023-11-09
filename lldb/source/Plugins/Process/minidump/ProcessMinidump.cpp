@@ -795,12 +795,12 @@ public:
 
   Options *GetOptions() override { return &m_option_group; }
 
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     const size_t argc = command.GetArgumentCount();
     if (argc > 0) {
       result.AppendErrorWithFormat("'%s' take no arguments, only options",
                                    m_cmd_name.c_str());
-      return;
+      return false;
     }
     SetDefaultOptionsIfNoneAreSet();
 
@@ -904,7 +904,9 @@ public:
       DumpTextStream(StreamType::FacebookThreadName,
                      "Facebook Thread Name");
     if (DumpFacebookLogcat())
-      DumpTextStream(StreamType::FacebookLogcat, "Facebook Logcat");
+      DumpTextStream(StreamType::FacebookLogcat,
+                     "Facebook Logcat");
+    return true;
   }
 };
 

@@ -514,13 +514,15 @@ void macho::resolveLCLinkerOptions() {
     for (unsigned i = 0; i < LCLinkerOptions.size(); ++i) {
       StringRef arg = LCLinkerOptions[i];
       if (arg.consume_front("-l")) {
-        assert(!config->ignoreAutoLinkOptions.contains(arg));
+        if (config->ignoreAutoLinkOptions.contains(arg))
+          continue;
         addLibrary(arg, /*isNeeded=*/false, /*isWeak=*/false,
                    /*isReexport=*/false, /*isHidden=*/false,
                    /*isExplicit=*/false, LoadType::LCLinkerOption);
       } else if (arg == "-framework") {
         StringRef name = LCLinkerOptions[++i];
-        assert(!config->ignoreAutoLinkOptions.contains(name));
+        if (config->ignoreAutoLinkOptions.contains(name))
+          continue;
         addFramework(name, /*isNeeded=*/false, /*isWeak=*/false,
                      /*isReexport=*/false, /*isExplicit=*/false,
                      LoadType::LCLinkerOption);
@@ -1668,8 +1670,6 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
   config->ltoDebugPassManager = args.hasArg(OPT_lto_debug_pass_manager);
   config->csProfileGenerate = args.hasArg(OPT_cs_profile_generate);
   config->csProfilePath = args.getLastArgValue(OPT_cs_profile_path);
-  config->pgoWarnMismatch =
-      args.hasFlag(OPT_pgo_warn_mismatch, OPT_no_pgo_warn_mismatch, true);
   config->generateUuid = !args.hasArg(OPT_no_uuid);
 
   for (const Arg *arg : args.filtered(OPT_alias)) {

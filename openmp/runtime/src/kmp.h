@@ -1153,14 +1153,7 @@ extern void __kmp_init_target_task();
 #if defined(PTHREAD_THREADS_MAX) && PTHREAD_THREADS_MAX < INT_MAX
 #define KMP_MAX_NTH PTHREAD_THREADS_MAX
 #else
-#ifdef __ve__
-// VE's pthread supports only up to 64 threads per a VE process.
-// Please check p. 14 of following documentation for more details.
-// https://sxauroratsubasa.sakura.ne.jp/documents/veos/en/VEOS_high_level_design.pdf
-#define KMP_MAX_NTH 64
-#else
 #define KMP_MAX_NTH INT_MAX
-#endif
 #endif
 #endif /* KMP_MAX_NTH */
 
@@ -1327,16 +1320,12 @@ extern kmp_uint64 __kmp_now_nsec();
 /* TODO: tune for KMP_OS_NETBSD */
 #define KMP_INIT_WAIT 1024U /* initial number of spin-tests   */
 #define KMP_NEXT_WAIT 512U /* susequent number of spin-tests */
-#elif KMP_OS_OPENBSD
-/* TODO: tune for KMP_OS_OPENBSD */
-#define KMP_INIT_WAIT 1024U /* initial number of spin-tests   */
-#define KMP_NEXT_WAIT 512U /* susequent number of spin-tests */
 #elif KMP_OS_HURD
 /* TODO: tune for KMP_OS_HURD */
 #define KMP_INIT_WAIT 1024U /* initial number of spin-tests   */
 #define KMP_NEXT_WAIT 512U /* susequent number of spin-tests */
-#elif KMP_OS_SOLARIS
-/* TODO: tune for KMP_OS_SOLARIS */
+#elif KMP_OS_OPENBSD
+/* TODO: tune for KMP_OS_OPENBSD */
 #define KMP_INIT_WAIT 1024U /* initial number of spin-tests   */
 #define KMP_NEXT_WAIT 512U /* susequent number of spin-tests */
 #endif
@@ -2460,22 +2449,12 @@ typedef struct kmp_depend_info {
   union {
     kmp_uint8 flag; // flag as an unsigned char
     struct { // flag as a set of 8 bits
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-      /* Same fields as in the #else branch, but in reverse order */
-      unsigned all : 1;
-      unsigned unused : 3;
-      unsigned set : 1;
-      unsigned mtx : 1;
-      unsigned out : 1;
-      unsigned in : 1;
-#else
       unsigned in : 1;
       unsigned out : 1;
       unsigned mtx : 1;
       unsigned set : 1;
       unsigned unused : 3;
       unsigned all : 1;
-#endif
     } flags;
   };
 } kmp_depend_info_t;
@@ -2625,33 +2604,6 @@ typedef struct kmp_task_stack {
 #endif // BUILD_TIED_TASK_STACK
 
 typedef struct kmp_tasking_flags { /* Total struct must be exactly 32 bits */
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-  /* Same fields as in the #else branch, but in reverse order */
-#if OMPX_TASKGRAPH
-  unsigned reserved31 : 6;
-  unsigned onced : 1;
-#else
-  unsigned reserved31 : 7;
-#endif
-  unsigned native : 1;
-  unsigned freed : 1;
-  unsigned complete : 1;
-  unsigned executing : 1;
-  unsigned started : 1;
-  unsigned team_serial : 1;
-  unsigned tasking_ser : 1;
-  unsigned task_serial : 1;
-  unsigned tasktype : 1;
-  unsigned reserved : 8;
-  unsigned hidden_helper : 1;
-  unsigned detachable : 1;
-  unsigned priority_specified : 1;
-  unsigned proxy : 1;
-  unsigned destructors_thunk : 1;
-  unsigned merged_if0 : 1;
-  unsigned final : 1;
-  unsigned tiedness : 1;
-#else
   /* Compiler flags */ /* Total compiler flags must be 16 bits */
   unsigned tiedness : 1; /* task is either tied (1) or untied (0) */
   unsigned final : 1; /* task is final(1) so execute immediately */
@@ -2687,7 +2639,7 @@ typedef struct kmp_tasking_flags { /* Total struct must be exactly 32 bits */
 #else
   unsigned reserved31 : 7; /* reserved for library use */
 #endif
-#endif
+
 } kmp_tasking_flags_t;
 
 typedef struct kmp_target_data {
@@ -3667,9 +3619,6 @@ KMP_NORETURN extern void __kmp_abort_process(void);
 extern void __kmp_warn(char const *format, ...);
 
 extern void __kmp_set_num_threads(int new_nth, int gtid);
-
-extern bool __kmp_detect_shm();
-extern bool __kmp_detect_tmp();
 
 // Returns current thread (pointer to kmp_info_t). Current thread *must* be
 // registered.

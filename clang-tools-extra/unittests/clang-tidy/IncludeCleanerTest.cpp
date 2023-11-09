@@ -59,20 +59,18 @@ TEST(IncludeCleanerCheckTest, SuppressUnusedIncludes) {
 #include "foo/qux.h"
 #include "baz/qux/qux.h"
 #include <vector>
-#include <list>
 )";
 
   const char *PostCode = R"(
 #include "bar.h"
 #include "foo/qux.h"
 #include <vector>
-#include <list>
 )";
 
   std::vector<ClangTidyError> Errors;
   ClangTidyOptions Opts;
   Opts.CheckOptions["IgnoreHeaders"] = llvm::StringRef{llvm::formatv(
-      "bar.h;{0};{1};vector;<list>;",
+      "bar.h;{0};{1};vector",
       llvm::Regex::escape(appendPathFileSystemIndependent({"foo", "qux.h"})),
       llvm::Regex::escape(appendPathFileSystemIndependent({"baz", "qux"})))};
   EXPECT_EQ(
@@ -81,7 +79,6 @@ TEST(IncludeCleanerCheckTest, SuppressUnusedIncludes) {
           PreCode, &Errors, "file.cpp", std::nullopt, Opts,
           {{"bar.h", "#pragma once"},
            {"vector", "#pragma once"},
-           {"list", "#pragma once"},
            {appendPathFileSystemIndependent({"foo", "qux.h"}), "#pragma once"},
            {appendPathFileSystemIndependent({"baz", "qux", "qux.h"}),
             "#pragma once"}}));
@@ -166,13 +163,11 @@ TEST(IncludeCleanerCheckTest, SuppressMissingIncludes) {
 int BarResult = bar();
 int BazResult = baz();
 int QuxResult = qux();
-int PrivResult = test();
-std::vector x;
 )";
 
   ClangTidyOptions Opts;
   Opts.CheckOptions["IgnoreHeaders"] = llvm::StringRef{
-      "public.h;<vector>;baz.h;" +
+      "baz.h;" +
       llvm::Regex::escape(appendPathFileSystemIndependent({"foo", "qux.h"}))};
   std::vector<ClangTidyError> Errors;
   EXPECT_EQ(PreCode, runCheckOnCode<IncludeCleanerCheck>(
@@ -180,22 +175,17 @@ std::vector x;
                          {{"bar.h", R"(#pragma once
                               #include "baz.h"
                               #include "foo/qux.h"
-                              #include "private.h"
                               int bar();
-                              namespace std { struct vector {}; }
                            )"},
                           {"baz.h", R"(#pragma once
                               int baz();
-                           )"},
-                          {"private.h", R"(#pragma once
-                              // IWYU pragma: private, include "public.h"
-                              int test();
                            )"},
                           {appendPathFileSystemIndependent({"foo", "qux.h"}),
                            R"(#pragma once
                               int qux();
                            )"}}));
 }
+
 
 TEST(IncludeCleanerCheckTest, MultipleTimeMissingInclude) {
   const char *PreCode = R"(

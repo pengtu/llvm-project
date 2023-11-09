@@ -49,8 +49,7 @@ static SymbolRef::Type getType(const Symbol *Sym) {
 
 TapiFile::TapiFile(MemoryBufferRef Source, const InterfaceFile &Interface,
                    Architecture Arch)
-    : SymbolicFile(ID_TapiFile, Source), Arch(Arch),
-      FileKind(Interface.getFileType()) {
+    : SymbolicFile(ID_TapiFile, Source), Arch(Arch) {
   for (const auto *Symbol : Interface.symbols()) {
     if (!Symbol->getArchitectures().has(Arch))
       continue;

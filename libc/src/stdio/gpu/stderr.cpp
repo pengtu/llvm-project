@@ -8,9 +8,9 @@
 
 #include <stdio.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 static struct {
 } stub;
 FILE *stderr = reinterpret_cast<FILE *>(&stub);
-} // namespace LIBC_NAMESPACE
-extern "C" FILE *stderr = reinterpret_cast<FILE *>(&LIBC_NAMESPACE::stub);
+} // namespace __llvm_libc
+extern "C" FILE *stderr = reinterpret_cast<FILE *>(&__llvm_libc::stub);

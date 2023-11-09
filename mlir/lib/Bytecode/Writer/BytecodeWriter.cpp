@@ -39,9 +39,6 @@ struct BytecodeWriterConfig::Impl {
   /// Note: This only differs from kVersion if a specific version is set.
   int64_t bytecodeVersion = bytecode::kVersion;
 
-  /// A map containing dialect version information for each dialect to emit.
-  llvm::StringMap<std::unique_ptr<DialectVersion>> dialectVersionMap;
-
   /// The producer of the bytecode.
   StringRef producer;
 
@@ -95,19 +92,6 @@ void BytecodeWriterConfig::setDesiredBytecodeVersion(int64_t bytecodeVersion) {
 
 int64_t BytecodeWriterConfig::getDesiredBytecodeVersion() const {
   return impl->bytecodeVersion;
-}
-
-llvm::StringMap<std::unique_ptr<DialectVersion>> &
-BytecodeWriterConfig::getDialectVersionMap() const {
-  return impl->dialectVersionMap;
-}
-
-void BytecodeWriterConfig::setDialectVersion(
-    llvm::StringRef dialectName,
-    std::unique_ptr<DialectVersion> dialectVersion) const {
-  assert(!impl->dialectVersionMap.contains(dialectName) &&
-         "cannot override a previously set dialect version");
-  impl->dialectVersionMap.insert({dialectName, std::move(dialectVersion)});
 }
 
 //===----------------------------------------------------------------------===//
@@ -356,16 +340,12 @@ private:
 } // namespace
 
 class DialectWriter : public DialectBytecodeWriter {
-  using DialectVersionMapT = llvm::StringMap<std::unique_ptr<DialectVersion>>;
-
 public:
   DialectWriter(int64_t bytecodeVersion, EncodingEmitter &emitter,
                 IRNumberingState &numberingState,
-                StringSectionBuilder &stringSection,
-                const DialectVersionMapT &dialectVersionMap)
+                StringSectionBuilder &stringSection)
       : bytecodeVersion(bytecodeVersion), emitter(emitter),
-        numberingState(numberingState), stringSection(stringSection),
-        dialectVersionMap(dialectVersionMap) {}
+        numberingState(numberingState), stringSection(stringSection) {}
 
   //===--------------------------------------------------------------------===//
   // IR
@@ -441,20 +421,11 @@ public:
 
   int64_t getBytecodeVersion() const override { return bytecodeVersion; }
 
-  FailureOr<const DialectVersion *>
-  getDialectVersion(StringRef dialectName) const override {
-    auto dialectEntry = dialectVersionMap.find(dialectName);
-    if (dialectEntry == dialectVersionMap.end())
-      return failure();
-    return dialectEntry->getValue().get();
-  }
-
 private:
   int64_t bytecodeVersion;
   EncodingEmitter &emitter;
   IRNumberingState &numberingState;
   StringSectionBuilder &stringSection;
-  const DialectVersionMapT &dialectVersionMap;
 };
 
 namespace {
@@ -487,8 +458,7 @@ public:
 
     EncodingEmitter emitter;
     DialectWriter propertiesWriter(config.bytecodeVersion, emitter,
-                                   numberingState, stringSection,
-                                   config.dialectVersionMap);
+                                   numberingState, stringSection);
     auto iface = cast<BytecodeOpInterface>(op);
     iface.writeProperties(propertiesWriter);
     scratch.clear();
@@ -781,8 +751,7 @@ void BytecodeWriter::writeDialectSection(EncodingEmitter &emitter) {
     if (dialect.interface) {
       // The writer used when emitting using a custom bytecode encoding.
       DialectWriter versionWriter(config.bytecodeVersion, versionEmitter,
-                                  numberingState, stringSection,
-                                  config.dialectVersionMap);
+                                  numberingState, stringSection);
       dialect.interface->writeVersion(versionWriter);
     }
 
@@ -840,8 +809,7 @@ void BytecodeWriter::writeAttrTypeSection(EncodingEmitter &emitter) {
       }
 
       DialectWriter dialectWriter(config.bytecodeVersion, attrTypeEmitter,
-                                  numberingState, stringSection,
-                                  config.dialectVersionMap);
+                                  numberingState, stringSection);
       if constexpr (std::is_same_v<std::decay_t<decltype(entryValue)>, Type>) {
         for (const auto &callback : config.typeWriterCallbacks) {
           if (succeeded(callback->write(entryValue, dialectWriter)))

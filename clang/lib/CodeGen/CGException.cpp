@@ -263,7 +263,12 @@ static llvm::FunctionCallee getPersonalityFn(CodeGenModule &CGM,
 static llvm::Constant *getOpaquePersonalityFn(CodeGenModule &CGM,
                                         const EHPersonality &Personality) {
   llvm::FunctionCallee Fn = getPersonalityFn(CGM, Personality);
-  return cast<llvm::Constant>(Fn.getCallee());
+  llvm::PointerType* Int8PtrTy = llvm::PointerType::get(
+      llvm::Type::getInt8Ty(CGM.getLLVMContext()),
+      CGM.getDataLayout().getProgramAddressSpace());
+
+  return llvm::ConstantExpr::getBitCast(cast<llvm::Constant>(Fn.getCallee()),
+                                        Int8PtrTy);
 }
 
 /// Check whether a landingpad instruction only uses C++ features.
@@ -1131,8 +1136,6 @@ static void emitCatchDispatchBlock(CodeGenFunction &CGF,
   // Select the right handler.
   llvm::Function *llvm_eh_typeid_for =
     CGF.CGM.getIntrinsic(llvm::Intrinsic::eh_typeid_for);
-  llvm::Type *argTy = llvm_eh_typeid_for->getArg(0)->getType();
-  LangAS globAS = CGF.CGM.GetGlobalVarAddressSpace(nullptr);
 
   // Load the selector value.
   llvm::Value *selector = CGF.getSelectorFromSlot();
@@ -1146,11 +1149,7 @@ static void emitCatchDispatchBlock(CodeGenFunction &CGF,
     assert(handler.Type.Flags == 0 &&
            "landingpads do not support catch handler flags");
     assert(typeValue && "fell into catch-all case!");
-    // With opaque ptrs, only the address space can be a mismatch.
-    if (typeValue->getType() != argTy)
-      typeValue =
-        CGF.getTargetHooks().performAddrSpaceCast(CGF, typeValue, globAS,
-                                                  LangAS::Default, argTy);
+    typeValue = CGF.Builder.CreateBitCast(typeValue, CGF.Int8PtrTy);
 
     // Figure out the next block.
     bool nextIsEnd;
@@ -1833,11 +1832,13 @@ Address CodeGenFunction::recoverAddrOfEscapedLocal(CodeGenFunction &ParentCGF,
     auto InsertPair = ParentCGF.EscapedLocals.insert(
         std::make_pair(ParentAlloca, ParentCGF.EscapedLocals.size()));
     int FrameEscapeIdx = InsertPair.first->second;
-    // call ptr @llvm.localrecover(ptr @parentFn, ptr %fp, i32 N)
+    // call i8* @llvm.localrecover(i8* bitcast(@parentFn), i8* %fp, i32 N)
     llvm::Function *FrameRecoverFn = llvm::Intrinsic::getDeclaration(
         &CGM.getModule(), llvm::Intrinsic::localrecover);
+    llvm::Constant *ParentI8Fn =
+        llvm::ConstantExpr::getBitCast(ParentCGF.CurFn, Int8PtrTy);
     RecoverCall = Builder.CreateCall(
-        FrameRecoverFn, {ParentCGF.CurFn, ParentFP,
+        FrameRecoverFn, {ParentI8Fn, ParentFP,
                          llvm::ConstantInt::get(Int32Ty, FrameEscapeIdx)});
 
   } else {
@@ -1900,7 +1901,9 @@ void CodeGenFunction::EmitCapturedLocals(CodeGenFunction &ParentCGF,
     // since finally funclets recover the parent FP for us.
     llvm::Function *RecoverFPIntrin =
         CGM.getIntrinsic(llvm::Intrinsic::eh_recoverfp);
-    ParentFP = Builder.CreateCall(RecoverFPIntrin, {ParentCGF.CurFn, EntryFP});
+    llvm::Constant *ParentI8Fn =
+        llvm::ConstantExpr::getBitCast(ParentCGF.CurFn, Int8PtrTy);
+    ParentFP = Builder.CreateCall(RecoverFPIntrin, {ParentI8Fn, EntryFP});
 
     // if the parent is a _finally, the passed-in ParentFP is the FP
     // of parent _finally, not Establisher's FP (FP of outermost function).
@@ -1928,15 +1931,19 @@ void CodeGenFunction::EmitCapturedLocals(CodeGenFunction &ParentCGF,
       int FrameEscapeIdx = InsertPair.first->second;
 
       // an example of a filter's prolog::
-      // %0 = call ptr @llvm.eh.recoverfp(@"?fin$0@0@main@@",..)
-      // %1 = call ptr @llvm.localrecover(@"?fin$0@0@main@@",..)
-      // %2 = load ptr, ptr %1, align 8
-      //   ==> %2 is the frame-pointer of outermost host function
+      // %0 = call i8* @llvm.eh.recoverfp(bitcast(@"?fin$0@0@main@@"),..)
+      // %1 = call i8* @llvm.localrecover(bitcast(@"?fin$0@0@main@@"),..)
+      // %2 = bitcast i8* %1 to i8**
+      // %3 = load i8*, i8* *%2, align 8
+      //   ==> %3 is the frame-pointer of outermost host function
       llvm::Function *FrameRecoverFn = llvm::Intrinsic::getDeclaration(
           &CGM.getModule(), llvm::Intrinsic::localrecover);
+      llvm::Constant *ParentI8Fn =
+          llvm::ConstantExpr::getBitCast(ParentCGF.CurFn, Int8PtrTy);
       ParentFP = Builder.CreateCall(
-          FrameRecoverFn, {ParentCGF.CurFn, ParentFP,
+          FrameRecoverFn, {ParentI8Fn, ParentFP,
                            llvm::ConstantInt::get(Int32Ty, FrameEscapeIdx)});
+      ParentFP = Builder.CreateBitCast(ParentFP, CGM.VoidPtrPtrTy);
       ParentFP = Builder.CreateLoad(
           Address(ParentFP, CGM.VoidPtrTy, getPointerAlign()));
     }
@@ -2028,17 +2035,17 @@ void CodeGenFunction::startOutlinedSEHHelper(CodeGenFunction &ParentCGF,
       Args.push_back(ImplicitParamDecl::Create(
           getContext(), /*DC=*/nullptr, StartLoc,
           &getContext().Idents.get("exception_pointers"),
-          getContext().VoidPtrTy, ImplicitParamKind::Other));
+          getContext().VoidPtrTy, ImplicitParamDecl::Other));
     } else {
       Args.push_back(ImplicitParamDecl::Create(
           getContext(), /*DC=*/nullptr, StartLoc,
           &getContext().Idents.get("abnormal_termination"),
-          getContext().UnsignedCharTy, ImplicitParamKind::Other));
+          getContext().UnsignedCharTy, ImplicitParamDecl::Other));
     }
     Args.push_back(ImplicitParamDecl::Create(
         getContext(), /*DC=*/nullptr, StartLoc,
         &getContext().Idents.get("frame_pointer"), getContext().VoidPtrTy,
-        ImplicitParamKind::Other));
+        ImplicitParamDecl::Other));
   }
 
   QualType RetTy = IsFilter ? getContext().LongTy : getContext().VoidTy;
@@ -2193,7 +2200,9 @@ void CodeGenFunction::EnterSEHTryStmt(const SEHTryStmt &S) {
   // in place of the RTTI typeinfo global that C++ EH uses.
   llvm::Function *FilterFunc =
       HelperCGF.GenerateSEHFilterFunction(*this, *Except);
-  CatchScope->setHandler(0, FilterFunc, createBasicBlock("__except.ret"));
+  llvm::Constant *OpaqueFunc =
+      llvm::ConstantExpr::getBitCast(FilterFunc, Int8PtrTy);
+  CatchScope->setHandler(0, OpaqueFunc, createBasicBlock("__except.ret"));
 }
 
 void CodeGenFunction::ExitSEHTryStmt(const SEHTryStmt &S) {

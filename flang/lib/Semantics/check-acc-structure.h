@@ -18,7 +18,7 @@
 #include "flang/Common/enum-set.h"
 #include "flang/Parser/parse-tree.h"
 #include "flang/Semantics/semantics.h"
-#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/Frontend/OpenACC/ACC.h.inc"
 
 using AccDirectiveSet = Fortran::common::EnumSet<llvm::acc::Directive,
@@ -62,8 +62,6 @@ public:
   void Leave(const parser::OpenACCAtomicConstruct &);
   void Enter(const parser::OpenACCCacheConstruct &);
   void Leave(const parser::OpenACCCacheConstruct &);
-  void Enter(const parser::AccAtomicUpdate &);
-  void Enter(const parser::OpenACCEndConstruct &);
 
   // Clauses
   void Leave(const parser::AccClauseList &);
@@ -91,7 +89,7 @@ private:
   llvm::StringRef getClauseName(llvm::acc::Clause clause) override;
   llvm::StringRef getDirectiveName(llvm::acc::Directive directive) override;
 
-  llvm::SmallDenseMap<Symbol *, llvm::acc::Clause> declareSymbols;
+  llvm::SmallDenseSet<Symbol *> declareSymbols;
   unsigned loopNestLevel = 0;
 };
 

@@ -122,10 +122,10 @@ public:
     CapturedCtx.emplace(CI);
 
     const SourceManager &SM = CI.getSourceManager();
-    OptionalFileEntryRef MainFE = SM.getFileEntryRefForID(SM.getMainFileID());
+    const FileEntry *MainFE = SM.getFileEntryForID(SM.getMainFileID());
     IsMainFileIncludeGuarded =
         CI.getPreprocessor().getHeaderSearchInfo().isFileMultipleIncludeGuarded(
-            *MainFE);
+            MainFE);
 
     if (Stats) {
       const ASTContext &AST = CI.getASTContext();
@@ -953,10 +953,12 @@ const MainFileMacros &PreamblePatch::mainFileMacros() const {
   return PatchedMacros;
 }
 
-OptionalFileEntryRef PreamblePatch::getPatchEntry(llvm::StringRef MainFilePath,
-                                                  const SourceManager &SM) {
+const FileEntry *PreamblePatch::getPatchEntry(llvm::StringRef MainFilePath,
+                                              const SourceManager &SM) {
   auto PatchFilePath = getPatchName(MainFilePath);
-  return SM.getFileManager().getOptionalFileRef(PatchFilePath);
+  if (auto File = SM.getFileManager().getFile(PatchFilePath))
+    return *File;
+  return nullptr;
 }
 } // namespace clangd
 } // namespace clang

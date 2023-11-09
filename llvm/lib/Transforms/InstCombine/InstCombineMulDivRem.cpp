@@ -258,14 +258,9 @@ Instruction *InstCombinerImpl::visitMul(BinaryOperator &I) {
   if (Op0->hasOneUse() && match(Op1, m_NegatedPower2())) {
     // Interpret  X * (-1<<C)  as  (-X) * (1<<C)  and try to sink the negation.
     // The "* (1<<C)" thus becomes a potential shifting opportunity.
-    if (Value *NegOp0 =
-            Negator::Negate(/*IsNegation*/ true, HasNSW, Op0, *this)) {
-      auto *Op1C = cast<Constant>(Op1);
-      return replaceInstUsesWith(
-          I, Builder.CreateMul(NegOp0, ConstantExpr::getNeg(Op1C), "",
-                               /* HasNUW */ false,
-                               HasNSW && Op1C->isNotMinSignedValue()));
-    }
+    if (Value *NegOp0 = Negator::Negate(/*IsNegation*/ true, Op0, *this))
+      return BinaryOperator::CreateMul(
+          NegOp0, ConstantExpr::getNeg(cast<Constant>(Op1)), I.getName());
 
     // Try to convert multiply of extended operand to narrow negate and shift
     // for better analysis.
@@ -302,7 +297,7 @@ Instruction *InstCombinerImpl::visitMul(BinaryOperator &I) {
     Constant *C1;
     if ((match(Op0, m_OneUse(m_Add(m_Value(X), m_ImmConstant(C1))))) ||
         (match(Op0, m_OneUse(m_Or(m_Value(X), m_ImmConstant(C1)))) &&
-         haveNoCommonBitsSet(X, C1, SQ.getWithInstruction(&I)))) {
+         haveNoCommonBitsSet(X, C1, DL, &AC, &I, &DT))) {
       // C1*MulC simplifies to a tidier constant.
       Value *NewC = Builder.CreateMul(C1, MulC);
       auto *BOp0 = cast<BinaryOperator>(Op0);
@@ -923,7 +918,8 @@ static bool isMultiple(const APInt &C1, const APInt &C2, APInt &Quotient,
   return Remainder.isMinValue();
 }
 
-static Value *foldIDivShl(BinaryOperator &I, InstCombiner::BuilderTy &Builder) {
+static Instruction *foldIDivShl(BinaryOperator &I,
+                                InstCombiner::BuilderTy &Builder) {
   assert((I.getOpcode() == Instruction::SDiv ||
           I.getOpcode() == Instruction::UDiv) &&
          "Expected integer divide");
@@ -932,6 +928,7 @@ static Value *foldIDivShl(BinaryOperator &I, InstCombiner::BuilderTy &Builder) {
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1);
   Type *Ty = I.getType();
 
+  Instruction *Ret = nullptr;
   Value *X, *Y, *Z;
 
   // With appropriate no-wrap constraints, remove a common factor in the
@@ -946,12 +943,12 @@ static Value *foldIDivShl(BinaryOperator &I, InstCombiner::BuilderTy &Builder) {
 
     // (X * Y) u/ (X << Z) --> Y u>> Z
     if (!IsSigned && HasNUW)
-      return Builder.CreateLShr(Y, Z, "", I.isExact());
+      Ret = BinaryOperator::CreateLShr(Y, Z);
 
     // (X * Y) s/ (X << Z) --> Y s/ (1 << Z)
     if (IsSigned && HasNSW && (Op0->hasOneUse() || Op1->hasOneUse())) {
       Value *Shl = Builder.CreateShl(ConstantInt::get(Ty, 1), Z);
-      return Builder.CreateSDiv(Y, Shl, "", I.isExact());
+      Ret = BinaryOperator::CreateSDiv(Y, Shl);
     }
   }
 
@@ -969,38 +966,20 @@ static Value *foldIDivShl(BinaryOperator &I, InstCombiner::BuilderTy &Builder) {
         ((Shl0->hasNoUnsignedWrap() && Shl1->hasNoUnsignedWrap()) ||
          (Shl0->hasNoUnsignedWrap() && Shl0->hasNoSignedWrap() &&
           Shl1->hasNoSignedWrap())))
-      return Builder.CreateUDiv(X, Y, "", I.isExact());
+      Ret = BinaryOperator::CreateUDiv(X, Y);
 
     // For signed div, we need 'nsw' on both shifts + 'nuw' on the divisor.
     // (X << Z) / (Y << Z) --> X / Y
     if (IsSigned && Shl0->hasNoSignedWrap() && Shl1->hasNoSignedWrap() &&
         Shl1->hasNoUnsignedWrap())
-      return Builder.CreateSDiv(X, Y, "", I.isExact());
+      Ret = BinaryOperator::CreateSDiv(X, Y);
   }
 
-  // If X << Y and X << Z does not overflow, then:
-  // (X << Y) / (X << Z) -> (1 << Y) / (1 << Z) -> 1 << Y >> Z
-  if (match(Op0, m_Shl(m_Value(X), m_Value(Y))) &&
-      match(Op1, m_Shl(m_Specific(X), m_Value(Z)))) {
-    auto *Shl0 = cast<OverflowingBinaryOperator>(Op0);
-    auto *Shl1 = cast<OverflowingBinaryOperator>(Op1);
+  if (!Ret)
+    return nullptr;
 
-    if (IsSigned ? (Shl0->hasNoSignedWrap() && Shl1->hasNoSignedWrap())
-                 : (Shl0->hasNoUnsignedWrap() && Shl1->hasNoUnsignedWrap())) {
-      Constant *One = ConstantInt::get(X->getType(), 1);
-      // Only preserve the nsw flag if dividend has nsw
-      // or divisor has nsw and operator is sdiv.
-      Value *Dividend = Builder.CreateShl(
-          One, Y, "shl.dividend",
-          /*HasNUW*/ true,
-          /*HasNSW*/
-          IsSigned ? (Shl0->hasNoUnsignedWrap() || Shl1->hasNoUnsignedWrap())
-                   : Shl0->hasNoSignedWrap());
-      return Builder.CreateLShr(Dividend, Z, "", I.isExact());
-    }
-  }
-
-  return nullptr;
+  Ret->setIsExact(I.isExact());
+  return Ret;
 }
 
 /// This function implements the transforms common to both integer division
@@ -1177,8 +1156,8 @@ Instruction *InstCombinerImpl::commonIDivTransforms(BinaryOperator &I) {
       return NewDiv;
     }
 
-  if (Value *R = foldIDivShl(I, Builder))
-    return replaceInstUsesWith(I, R);
+  if (Instruction *R = foldIDivShl(I, Builder))
+    return R;
 
   // With the appropriate no-wrap constraint, remove a multiply by the divisor
   // after peeking through another divide:
@@ -1284,7 +1263,7 @@ static Value *takeLog2(IRBuilderBase &Builder, Value *Op, unsigned Depth,
 /// If we have zero-extended operands of an unsigned div or rem, we may be able
 /// to narrow the operation (sink the zext below the math).
 static Instruction *narrowUDivURem(BinaryOperator &I,
-                                   InstCombinerImpl &IC) {
+                                   InstCombiner::BuilderTy &Builder) {
   Instruction::BinaryOps Opcode = I.getOpcode();
   Value *N = I.getOperand(0);
   Value *D = I.getOperand(1);
@@ -1294,7 +1273,7 @@ static Instruction *narrowUDivURem(BinaryOperator &I,
       X->getType() == Y->getType() && (N->hasOneUse() || D->hasOneUse())) {
     // udiv (zext X), (zext Y) --> zext (udiv X, Y)
     // urem (zext X), (zext Y) --> zext (urem X, Y)
-    Value *NarrowOp = IC.Builder.CreateBinOp(Opcode, X, Y);
+    Value *NarrowOp = Builder.CreateBinOp(Opcode, X, Y);
     return new ZExtInst(NarrowOp, Ty);
   }
 
@@ -1302,24 +1281,24 @@ static Instruction *narrowUDivURem(BinaryOperator &I,
   if (isa<Instruction>(N) && match(N, m_OneUse(m_ZExt(m_Value(X)))) &&
       match(D, m_Constant(C))) {
     // If the constant is the same in the smaller type, use the narrow version.
-    Constant *TruncC = IC.getLosslessUnsignedTrunc(C, X->getType());
-    if (!TruncC)
+    Constant *TruncC = ConstantExpr::getTrunc(C, X->getType());
+    if (ConstantExpr::getZExt(TruncC, Ty) != C)
       return nullptr;
 
     // udiv (zext X), C --> zext (udiv X, C')
     // urem (zext X), C --> zext (urem X, C')
-    return new ZExtInst(IC.Builder.CreateBinOp(Opcode, X, TruncC), Ty);
+    return new ZExtInst(Builder.CreateBinOp(Opcode, X, TruncC), Ty);
   }
   if (isa<Instruction>(D) && match(D, m_OneUse(m_ZExt(m_Value(X)))) &&
       match(N, m_Constant(C))) {
     // If the constant is the same in the smaller type, use the narrow version.
-    Constant *TruncC = IC.getLosslessUnsignedTrunc(C, X->getType());
-    if (!TruncC)
+    Constant *TruncC = ConstantExpr::getTrunc(C, X->getType());
+    if (ConstantExpr::getZExt(TruncC, Ty) != C)
       return nullptr;
 
     // udiv C, (zext X) --> zext (udiv C', X)
     // urem C, (zext X) --> zext (urem C', X)
-    return new ZExtInst(IC.Builder.CreateBinOp(Opcode, TruncC, X), Ty);
+    return new ZExtInst(Builder.CreateBinOp(Opcode, TruncC, X), Ty);
   }
 
   return nullptr;
@@ -1367,7 +1346,7 @@ Instruction *InstCombinerImpl::visitUDiv(BinaryOperator &I) {
     return CastInst::CreateZExtOrBitCast(Cmp, Ty);
   }
 
-  if (Instruction *NarrowDiv = narrowUDivURem(I, *this))
+  if (Instruction *NarrowDiv = narrowUDivURem(I, Builder))
     return NarrowDiv;
 
   // If the udiv operands are non-overflowing multiplies with a common operand,
@@ -1780,21 +1759,6 @@ Instruction *InstCombinerImpl::visitFDiv(BinaryOperator &I) {
     return replaceInstUsesWith(I, Pow);
   }
 
-  // powi(X, Y) / X --> powi(X, Y-1)
-  // This is legal when (Y - 1) can't wraparound, in which case reassoc and nnan
-  // are required.
-  // TODO: Multi-use may be also better off creating Powi(x,y-1)
-  if (I.hasAllowReassoc() && I.hasNoNaNs() &&
-      match(Op0, m_OneUse(m_Intrinsic<Intrinsic::powi>(m_Specific(Op1),
-                                                       m_Value(Y)))) &&
-      willNotOverflowSignedSub(Y, ConstantInt::get(Y->getType(), 1), I)) {
-    Constant *NegOne = ConstantInt::getAllOnesValue(Y->getType());
-    Value *Y1 = Builder.CreateAdd(Y, NegOne);
-    Type *Types[] = {Op1->getType(), Y1->getType()};
-    Value *Pow = Builder.CreateIntrinsic(Intrinsic::powi, Types, {Op1, Y1}, &I);
-    return replaceInstUsesWith(I, Pow);
-  }
-
   return nullptr;
 }
 
@@ -1972,7 +1936,7 @@ Instruction *InstCombinerImpl::visitURem(BinaryOperator &I) {
   if (Instruction *common = commonIRemTransforms(I))
     return common;
 
-  if (Instruction *NarrowRem = narrowUDivURem(I, *this))
+  if (Instruction *NarrowRem = narrowUDivURem(I, Builder))
     return NarrowRem;
 
   // X urem Y -> X and Y-1, where Y is a power of 2,

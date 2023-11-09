@@ -19,12 +19,6 @@
 ; OBJ: Subsection [
 ; OBJ:   SubSectionType: Symbols (0xF1)
 ; OBJ:   {{.*}}Proc{{.*}}Sym {
-; OBJ:   InlineesSym {
-; OBJ-NEXT:  Kind: S_INLINEES (0x1168)
-; OBJ-NEXT:  Inlinees [
-; OBJ-NEXT:    FuncID: h (0x1002)
-; OBJ-NEXT:  ]
-; OBJ-NEXT:}
 ; OBJ:   InlineSiteSym {
 ; OBJ:     Inlinee: h (0x1002)
 ; OBJ:   }

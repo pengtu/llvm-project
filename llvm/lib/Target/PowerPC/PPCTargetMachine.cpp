@@ -197,7 +197,7 @@ static std::string getDataLayoutString(const Triple &T) {
   return Ret;
 }
 
-static std::string computeFSAdditions(StringRef FS, CodeGenOptLevel OL,
+static std::string computeFSAdditions(StringRef FS, CodeGenOpt::Level OL,
                                       const Triple &TT) {
   std::string FullFS = std::string(FS);
 
@@ -209,14 +209,14 @@ static std::string computeFSAdditions(StringRef FS, CodeGenOptLevel OL,
       FullFS = "+64bit";
   }
 
-  if (OL >= CodeGenOptLevel::Default) {
+  if (OL >= CodeGenOpt::Default) {
     if (!FullFS.empty())
       FullFS = "+crbits," + FullFS;
     else
       FullFS = "+crbits";
   }
 
-  if (OL != CodeGenOptLevel::None) {
+  if (OL != CodeGenOpt::None) {
     if (!FullFS.empty())
       FullFS = "+invariant-function-descriptors," + FullFS;
     else
@@ -265,9 +265,8 @@ static PPCTargetMachine::PPCABI computeTargetABI(const Triple &TT,
 
 static Reloc::Model getEffectiveRelocModel(const Triple &TT,
                                            std::optional<Reloc::Model> RM) {
-  if (TT.isOSAIX() && RM && *RM != Reloc::PIC_)
-    report_fatal_error("invalid relocation model, AIX only supports PIC",
-                       false);
+  assert((!TT.isOSAIX() || !RM || *RM == Reloc::PIC_) &&
+         "Invalid relocation model for AIX.");
 
   if (RM)
     return *RM;
@@ -346,7 +345,7 @@ PPCTargetMachine::PPCTargetMachine(const Target &T, const Triple &TT,
                                    const TargetOptions &Options,
                                    std::optional<Reloc::Model> RM,
                                    std::optional<CodeModel::Model> CM,
-                                   CodeGenOptLevel OL, bool JIT)
+                                   CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(T, getDataLayoutString(TT), TT, CPU,
                         computeFSAdditions(FS, OL, TT), Options,
                         getEffectiveRelocModel(TT, RM),
@@ -415,7 +414,7 @@ public:
     : TargetPassConfig(TM, PM) {
     // At any optimization level above -O0 we use the Machine Scheduler and not
     // the default Post RA List Scheduler.
-    if (TM.getOptLevel() != CodeGenOptLevel::None)
+    if (TM.getOptLevel() != CodeGenOpt::None)
       substitutePass(&PostRASchedulerID, &PostMachineSchedulerID);
   }
 
@@ -455,7 +454,7 @@ TargetPassConfig *PPCTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 void PPCPassConfig::addIRPasses() {
-  if (TM->getOptLevel() != CodeGenOptLevel::None)
+  if (TM->getOptLevel() != CodeGenOpt::None)
     addPass(createPPCBoolRetToIntPass());
   addPass(createAtomicExpandPass());
 
@@ -464,7 +463,7 @@ void PPCPassConfig::addIRPasses() {
 
   // Generate PowerPC target-specific entries for scalar math functions
   // that are available in IBM MASS (scalar) library.
-  if (TM->getOptLevel() == CodeGenOptLevel::Aggressive &&
+  if (TM->getOptLevel() == CodeGenOpt::Aggressive &&
       EnablePPCGenScalarMASSEntries) {
     TM->Options.PPCGenScalarMASSEntries = EnablePPCGenScalarMASSEntries;
     addPass(createPPCGenScalarMASSEntriesPass());
@@ -474,7 +473,7 @@ void PPCPassConfig::addIRPasses() {
   if (EnablePrefetch.getNumOccurrences() > 0)
     addPass(createLoopDataPrefetchPass());
 
-  if (TM->getOptLevel() >= CodeGenOptLevel::Default && EnableGEPOpt) {
+  if (TM->getOptLevel() >= CodeGenOpt::Default && EnableGEPOpt) {
     // Call SeparateConstOffsetFromGEP pass to extract constants within indices
     // and lower a GEP with multiple indices to either arithmetic operations or
     // multiple GEPs with single index.
@@ -491,13 +490,13 @@ void PPCPassConfig::addIRPasses() {
 }
 
 bool PPCPassConfig::addPreISel() {
-  if (MergeStringPool && getOptLevel() != CodeGenOptLevel::None)
+  if (MergeStringPool && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCMergeStringPoolPass());
 
-  if (!DisableInstrFormPrep && getOptLevel() != CodeGenOptLevel::None)
+  if (!DisableInstrFormPrep && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCLoopInstrFormPrepPass(getPPCTargetMachine()));
 
-  if (!DisableCTRLoops && getOptLevel() != CodeGenOptLevel::None)
+  if (!DisableCTRLoops && getOptLevel() != CodeGenOpt::None)
     addPass(createHardwareLoopsLegacyPass());
 
   return false;
@@ -517,7 +516,7 @@ bool PPCPassConfig::addInstSelector() {
   addPass(createPPCISelDag(getPPCTargetMachine(), getOptLevel()));
 
 #ifndef NDEBUG
-  if (!DisableCTRLoops && getOptLevel() != CodeGenOptLevel::None)
+  if (!DisableCTRLoops && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCCTRLoopsVerify());
 #endif
 
@@ -528,12 +527,12 @@ bool PPCPassConfig::addInstSelector() {
 void PPCPassConfig::addMachineSSAOptimization() {
   // Run CTR loops pass before any cfg modification pass to prevent the
   // canonical form of hardware loop from being destroied.
-  if (!DisableCTRLoops && getOptLevel() != CodeGenOptLevel::None)
+  if (!DisableCTRLoops && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCCTRLoopsPass());
 
   // PPCBranchCoalescingPass need to be done before machine sinking
   // since it merges empty blocks.
-  if (EnableBranchCoalescing && getOptLevel() != CodeGenOptLevel::None)
+  if (EnableBranchCoalescing && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCBranchCoalescingPass());
   TargetPassConfig::addMachineSSAOptimization();
   // For little endian, remove where possible the vector swap instructions
@@ -542,7 +541,7 @@ void PPCPassConfig::addMachineSSAOptimization() {
       !DisableVSXSwapRemoval)
     addPass(createPPCVSXSwapRemovalPass());
   // Reduce the number of cr-logical ops.
-  if (ReduceCRLogical && getOptLevel() != CodeGenOptLevel::None)
+  if (ReduceCRLogical && getOptLevel() != CodeGenOpt::None)
     addPass(createPPCReduceCRLogicalsPass());
   // Target-specific peephole cleanups performed after instruction
   // selection.
@@ -553,7 +552,7 @@ void PPCPassConfig::addMachineSSAOptimization() {
 }
 
 void PPCPassConfig::addPreRegAlloc() {
-  if (getOptLevel() != CodeGenOptLevel::None) {
+  if (getOptLevel() != CodeGenOpt::None) {
     initializePPCVSXFMAMutatePass(*PassRegistry::getPassRegistry());
     insertPass(VSXFMAMutateEarly ? &RegisterCoalescerID : &MachineSchedulerID,
                &PPCVSXFMAMutateID);
@@ -571,12 +570,12 @@ void PPCPassConfig::addPreRegAlloc() {
   if (EnableExtraTOCRegDeps)
     addPass(createPPCTOCRegDepsPass());
 
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(&MachinePipelinerID);
 }
 
 void PPCPassConfig::addPreSched2() {
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(&IfConverterID);
 }
 
@@ -584,7 +583,7 @@ void PPCPassConfig::addPreEmitPass() {
   addPass(createPPCPreEmitPeepholePass());
   addPass(createPPCExpandISELPass());
 
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(createPPCEarlyReturnPass());
 }
 

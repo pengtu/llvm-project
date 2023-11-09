@@ -213,9 +213,7 @@ enum class TemplateSubstitutionKind : char {
              "substituted args outside retained args?");
       assert(getKind() == TemplateSubstitutionKind::Specialization);
       TemplateArgumentLists.push_back(
-          {{AssociatedDecl ? AssociatedDecl->getCanonicalDecl() : nullptr,
-            Final},
-           Args});
+          {{AssociatedDecl->getCanonicalDecl(), Final}, Args});
     }
 
     void addOuterTemplateArguments(ArgList Args) {
@@ -632,6 +630,8 @@ enum class TemplateSubstitutionKind : char {
     // A few supplemental visitor functions.
     Decl *VisitCXXMethodDecl(CXXMethodDecl *D,
                              TemplateParameterList *TemplateParams,
+                             std::optional<const ASTTemplateArgumentListInfo *>
+                                 ClassScopeSpecializationArgs = std::nullopt,
                              RewriteKind RK = RewriteKind::None);
     Decl *VisitFunctionDecl(FunctionDecl *D,
                             TemplateParameterList *TemplateParams,

@@ -130,7 +130,6 @@ class ObjectContainer;
 class ObjectFile;
 class ObjectFileJITDelegate;
 class OperatingSystem;
-class OperatingSystemInterface;
 class OptionGroup;
 class OptionGroupOptions;
 class OptionGroupPlatform;
@@ -217,7 +216,6 @@ class SymbolContextScope;
 class SymbolContextSpecifier;
 class SymbolFile;
 class SymbolFileType;
-class SymbolLocator;
 class SymbolVendor;
 class Symtab;
 class SyntheticChildren;
@@ -286,7 +284,6 @@ class VariableList;
 class Watchpoint;
 class WatchpointList;
 class WatchpointOptions;
-class WatchpointSetOptions;
 struct CompilerContext;
 struct LineEntry;
 struct PropertyDefinition;
@@ -362,8 +359,6 @@ typedef std::shared_ptr<lldb_private::ObjectFileJITDelegate>
 typedef std::weak_ptr<lldb_private::ObjectFileJITDelegate>
     ObjectFileJITDelegateWP;
 typedef std::unique_ptr<lldb_private::OperatingSystem> OperatingSystemUP;
-typedef std::shared_ptr<lldb_private::OperatingSystemInterface>
-    OperatingSystemInterfaceSP;
 typedef std::shared_ptr<lldb_private::OptionValue> OptionValueSP;
 typedef std::weak_ptr<lldb_private::OptionValue> OptionValueWP;
 typedef std::shared_ptr<lldb_private::OptionValueProperties>

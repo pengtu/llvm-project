@@ -23,7 +23,6 @@ using namespace clang;
 using namespace clang::targets;
 
 ArrayRef<const char *> RISCVTargetInfo::getGCCRegNames() const {
-  // clang-format off
   static const char *const GCCRegNames[] = {
       // Integer registers
       "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",
@@ -41,12 +40,7 @@ ArrayRef<const char *> RISCVTargetInfo::getGCCRegNames() const {
       "v0",  "v1",  "v2",  "v3",  "v4",  "v5",  "v6",  "v7",
       "v8",  "v9",  "v10", "v11", "v12", "v13", "v14", "v15",
       "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
-      "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
-
-      // CSRs
-      "fflags", "frm", "vtype", "vl", "vxsat", "vxrm"
-    };
-  // clang-format on
+      "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"};
   return llvm::ArrayRef(GCCRegNames);
 }
 
@@ -210,11 +204,6 @@ void RISCVTargetInfo::getTargetDefines(const LangOptions &Opts,
   if (VScale && VScale->first && VScale->first == VScale->second)
     Builder.defineMacro("__riscv_v_fixed_vlen",
                         Twine(VScale->first * llvm::RISCV::RVVBitsPerBlock));
-
-  if (FastUnalignedAccess)
-    Builder.defineMacro("__riscv_misaligned_fast");
-  else
-    Builder.defineMacro("__riscv_misaligned_avoid");
 }
 
 static constexpr Builtin::Info BuiltinInfo[] = {
@@ -332,8 +321,6 @@ bool RISCVTargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
 
   if (ISAInfo->hasExtension("zfh") || ISAInfo->hasExtension("zhinx"))
     HasLegalHalfType = true;
-
-  FastUnalignedAccess = llvm::is_contained(Features, "+unaligned-scalar-mem");
 
   return true;
 }

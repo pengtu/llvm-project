@@ -84,9 +84,6 @@ class CodeGenTypes {
   /// a recursive struct conversion, set this to true.
   bool SkippedLayout;
 
-  /// True if any instance of long double types are used.
-  bool LongDoubleReferenced;
-
   /// This map keeps cache of llvm::Types and maps clang::Type to
   /// corresponding llvm::Type.
   llvm::DenseMap<const Type *, llvm::Type *> TypeCache;
@@ -292,7 +289,6 @@ public:  // These are internal details of CGT that shouldn't be used externally.
   /// zero-initialized (in the C++ sense) with an LLVM zeroinitializer.
   bool isZeroInitializable(const RecordDecl *RD);
 
-  bool isLongDoubleReferenced() const { return LongDoubleReferenced; }
   bool isRecordLayoutComplete(const Type *Ty) const;
   unsigned getTargetAddressSpace(QualType T) const;
 };

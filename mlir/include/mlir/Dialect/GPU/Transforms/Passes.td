@@ -68,6 +68,7 @@ def GpuModuleToBinaryPass
     2. `assembly`, `isa`: produces assembly code.
     3. `binary`, `bin`: produces binaries.
     4. `fatbinary`, `fatbin`: produces fatbinaries.
+    5. `binOrFatbin`: produces bins or fatbins, the target decides which.
   }];
   let options = [
     Option<"offloadingHandler", "handler", "Attribute", "nullptr",
@@ -78,7 +79,7 @@ def GpuModuleToBinaryPass
            "Extra files to link to.">,
     Option<"cmdOptions", "opts", "std::string", [{""}],
            "Command line options to pass to the tools.">,
-    Option<"compilationTarget", "format", "std::string", [{"fatbin"}],
+    Option<"compilationTarget", "format", "std::string", [{"binOrFatbin"}],
            "The target representation of the compilation process.">
   ];
 }
@@ -185,50 +186,6 @@ def GpuROCDLAttachTarget: Pass<"rocdl-attach-target", ""> {
            "Enable correct rounded sqrt.">,
     ListOption<"linkLibs", "l", "std::string",
            "Extra bitcode libraries paths to link to.">,
-  ];
-}
-
-def GpuSPIRVAttachTarget: Pass<"spirv-attach-target", ""> {
-  let summary = "Attaches an SPIR-V target attribute to a GPU Module.";
-  let description = [{
-    This pass searches for all GPU Modules in the immediate regions and attaches
-    an SPIR-V target if the module matches the name specified by the `module` argument.
-
-    Example:
-    ```
-    // Given the following file: in1.mlir:
-    gpu.module @nvvm_module_1 {...}
-    gpu.module @spirv_module_1 {...}
-    // With
-    // mlir-opt --spirv-attach-target="module=spirv.* ver=v1.0 caps=Kernel" in1.mlir
-    // it will generate,
-    gpu.module @nvvm_module_1 {...}
-    gpu.module @spirv_module_1 [#spirv.target<#spirv.vce<v1.0, [Kernel], []>, #spirv.resource_limits<>>] {...}
-    ```
-  }];
-  let options = [
-    Option<"moduleMatcher", "module", "std::string",
-           /*default=*/ [{""}],
-           "Regex used to identify the modules to attach the target to.">,
-    Option<"spirvVersion", "ver", "std::string",
-           /*default=*/ "\"v1.0\"",
-           "SPIR-V Version.">,
-    ListOption<"spirvCapabilities", "caps", "std::string",
-           "List of supported SPIR-V Capabilities">,
-    ListOption<"spirvExtensions", "exts", "std::string",
-           "List of supported SPIR-V Extensions">,
-    Option<"clientApi", "client_api", "std::string",
-           /*default=*/ "\"Unknown\"",
-           "Client API">,
-    Option<"deviceVendor", "vendor", "std::string",
-           /*default=*/ "\"Unknown\"",
-           "Device Vendor">,
-    Option<"deviceType", "device_type", "std::string",
-           /*default=*/ "\"Unknown\"",
-           "Device Type">,
-    Option<"deviceId", "device_id", "uint32_t",
-           /*default=*/ "",
-           "Device ID">,
   ];
 }
 

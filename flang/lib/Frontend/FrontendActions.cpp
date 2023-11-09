@@ -70,8 +70,6 @@
 #include <memory>
 #include <system_error>
 
-#include "flang/Tools/CLOptions.inc"
-
 using namespace Fortran::frontend;
 
 // Declare plugin extension function declarations.
@@ -315,10 +313,12 @@ bool CodeGenAction::beginSourceFileAction() {
     if (auto offloadMod = llvm::dyn_cast<mlir::omp::OffloadModuleInterface>(
             mlirModule->getOperation()))
       isDevice = offloadMod.getIsTargetDevice();
-    // WARNING: This pipeline must be run immediately after the lowering to
-    // ensure that the FIR is correct with respect to OpenMP operations/
-    // attributes.
-    fir::createOpenMPFIRPassPipeline(pm, isDevice);
+
+    pm.addPass(fir::createOMPMarkDeclareTargetPass());
+    if (isDevice) {
+      pm.addPass(fir::createOMPEarlyOutliningPass());
+      pm.addPass(fir::createOMPFunctionFilteringPass());
+    }
   }
 
   pm.enableVerifier(/*verifyPasses=*/true);
@@ -651,6 +651,8 @@ void GetSymbolsSourcesAction::executeAction() {
 
 CodeGenAction::~CodeGenAction() = default;
 
+#include "flang/Tools/CLOptions.inc"
+
 static llvm::OptimizationLevel
 mapToLevel(const Fortran::frontend::CodeGenOptions &opts) {
   switch (opts.OptimizationLevel) {
@@ -695,22 +697,6 @@ void CodeGenAction::lowerHLFIRToFIR() {
   }
 }
 
-// TODO: We should get this from TargetInfo. However, that depends on
-// too much of clang, so for now, replicate the functionality.
-static std::optional<std::pair<unsigned, unsigned>>
-getVScaleRange(CompilerInstance &ci,
-               const Fortran::frontend::LangOptions &langOpts) {
-  if (langOpts.VScaleMin || langOpts.VScaleMax)
-    return std::pair<unsigned, unsigned>(
-        langOpts.VScaleMin ? langOpts.VScaleMin : 1, langOpts.VScaleMax);
-
-  std::string featuresStr = getTargetFeatures(ci);
-  if (featuresStr.find("+sve") != std::string::npos)
-    return std::pair<unsigned, unsigned>(1, 16);
-
-  return std::nullopt;
-}
-
 // Lower the previously generated MLIR module into an LLVM IR module
 void CodeGenAction::generateLLVMIR() {
   assert(mlirModule && "The MLIR module has not been generated yet.");
@@ -729,22 +715,10 @@ void CodeGenAction::generateLLVMIR() {
   pm.addPass(std::make_unique<Fortran::lower::VerifierPass>());
   pm.enableVerifier(/*verifyPasses=*/true);
 
-  MLIRToLLVMPassPipelineConfig config(level, opts);
-
-  const auto targetOpts = ci.getInvocation().getTargetOpts();
-  const llvm::Triple triple(targetOpts.triple);
-
-  // Only get the vscale range if AArch64.
-  if (triple.isAArch64()) {
-    auto langOpts = ci.getInvocation().getLangOpts();
-    if (auto vsr = getVScaleRange(ci, langOpts)) {
-      config.VScaleMin = vsr->first;
-      config.VScaleMax = vsr->second;
-    }
-  }
-
   // Create the pass pipeline
-  fir::createMLIRToLLVMPassPipeline(pm, config);
+  fir::createMLIRToLLVMPassPipeline(pm, level, opts.StackArrays,
+                                    opts.Underscoring, opts.LoopVersioning,
+                                    opts.getDebugInfo());
   (void)mlir::applyPassManagerCLOptions(pm);
 
   // run the pass manager
@@ -803,10 +777,10 @@ bool CodeGenAction::setUpTargetMachine() {
 
   // Create `TargetMachine`
   const auto &CGOpts = ci.getInvocation().getCodeGenOpts();
-  std::optional<llvm::CodeGenOptLevel> OptLevelOrNone =
+  std::optional<llvm::CodeGenOpt::Level> OptLevelOrNone =
       llvm::CodeGenOpt::getLevel(CGOpts.OptimizationLevel);
   assert(OptLevelOrNone && "Invalid optimization level!");
-  llvm::CodeGenOptLevel OptLevel = *OptLevelOrNone;
+  llvm::CodeGenOpt::Level OptLevel = *OptLevelOrNone;
   std::string featuresStr = getTargetFeatures(ci);
   tm.reset(theTarget->createTargetMachine(
       theTriple, /*CPU=*/targetOpts.cpu,
@@ -874,8 +848,8 @@ static void generateMachineCodeOrAssemblyImpl(clang::DiagnosticsEngine &diags,
   codeGenPasses.add(new llvm::TargetLibraryInfoWrapperPass(*tlii));
 
   llvm::CodeGenFileType cgft = (act == BackendActionTy::Backend_EmitAssembly)
-                                   ? llvm::CodeGenFileType::AssemblyFile
-                                   : llvm::CodeGenFileType::ObjectFile;
+                                   ? llvm::CodeGenFileType::CGFT_AssemblyFile
+                                   : llvm::CodeGenFileType::CGFT_ObjectFile;
   if (tm.addPassesToEmitFile(codeGenPasses, os, nullptr, cgft)) {
     unsigned diagID =
         diags.getCustomDiagID(clang::DiagnosticsEngine::Error,

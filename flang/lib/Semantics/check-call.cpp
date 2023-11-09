@@ -329,11 +329,10 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
       typesCompatible = true;
     }
   }
-  bool dummyIsAssumedRank{dummy.type.attrs().test(
-      characteristics::TypeAndShape::Attr::AssumedRank)};
   if (typesCompatible) {
     if (isElemental) {
-    } else if (dummyIsAssumedRank) {
+    } else if (dummy.type.attrs().test(
+                   characteristics::TypeAndShape::Attr::AssumedRank)) {
     } else if (dummy.ignoreTKR.test(common::IgnoreTKR::Rank)) {
     } else if (dummyRank > 0 && !dummyIsAllocatableOrPointer &&
         !dummy.type.attrs().test(
@@ -462,7 +461,9 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
           ? actualLastSymbol->detailsIf<ObjectEntityDetails>()
           : nullptr};
   int actualRank{actualType.Rank()};
-  bool actualIsPointer{evaluate::IsObjectPointer(actual)};
+  bool actualIsPointer{evaluate::IsObjectPointer(actual, foldingContext)};
+  bool dummyIsAssumedRank{dummy.type.attrs().test(
+      characteristics::TypeAndShape::Attr::AssumedRank)};
   if (dummy.type.attrs().test(
           characteristics::TypeAndShape::Attr::AssumedShape)) {
     // 15.5.2.4(16)
@@ -657,36 +658,16 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
 
   // 15.5.2.6 -- dummy is ALLOCATABLE
   bool actualIsAllocatable{evaluate::IsAllocatableDesignator(actual)};
-  bool dummyIsOptional{
-      dummy.attrs.test(characteristics::DummyDataObject::Attr::Optional)};
-  bool actualIsNull{evaluate::IsNullPointer(actual)};
   if (dummyIsAllocatable) {
-    if (actualIsAllocatable) {
-      if (actualIsCoindexed && dummy.intent != common::Intent::In) {
-        messages.Say(
-            "ALLOCATABLE %s must have INTENT(IN) to be associated with a coindexed actual argument"_err_en_US,
-            dummyName);
-      }
-    } else if (actualIsNull) {
-      if (dummyIsOptional) {
-      } else if (dummy.intent == common::Intent::In) {
-        // Extension (Intel, NAG, XLF): a NULL() pointer is an acceptable
-        // actual argument for an INTENT(IN) allocatable dummy, and it
-        // is treated as an unassociated allocatable.
-        if (context.languageFeatures().ShouldWarn(
-                common::LanguageFeature::NullActualForAllocatable)) {
-          messages.Say(
-              "Allocatable %s is associated with a null pointer"_port_en_US,
-              dummyName);
-        }
-      } else {
-        messages.Say(
-            "A null pointer may not be associated with allocatable %s without INTENT(IN)"_err_en_US,
-            dummyName);
-      }
-    } else {
+    if (!actualIsAllocatable) {
       messages.Say(
           "ALLOCATABLE %s must be associated with an ALLOCATABLE actual argument"_err_en_US,
+          dummyName);
+    }
+    if (actualIsAllocatable && actualIsCoindexed &&
+        dummy.intent != common::Intent::In) {
+      messages.Say(
+          "ALLOCATABLE %s must have INTENT(IN) to be associated with a coindexed actual argument"_err_en_US,
           dummyName);
     }
     if (!actualIsCoindexed && actualLastSymbol &&
@@ -701,9 +682,8 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
   if (dummyIsPointer) {
     if (actualIsPointer || dummy.intent == common::Intent::In) {
       if (scope) {
-        semantics::CheckPointerAssignment(context, messages.at(), dummyName,
-            dummy, actual, *scope,
-            /*isAssumedRank=*/dummyIsAssumedRank);
+        semantics::CheckPointerAssignment(
+            context, messages.at(), dummyName, dummy, actual, *scope);
       }
     } else if (!actualIsPointer) {
       messages.Say(
@@ -808,8 +788,10 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
   }
 
   // NULL(MOLD=) checking for non-intrinsic procedures
-  if (!intrinsic && !dummyIsAllocatableOrPointer && !dummyIsOptional &&
-      actualIsNull) {
+  bool dummyIsOptional{
+      dummy.attrs.test(characteristics::DummyDataObject::Attr::Optional)};
+  bool actualIsNull{evaluate::IsNullPointer(actual)};
+  if (!intrinsic && !dummyIsPointer && !dummyIsOptional && actualIsNull) {
     messages.Say(
         "Actual argument associated with %s may not be null pointer %s"_err_en_US,
         dummyName, actual.AsFortran());
@@ -1010,7 +992,7 @@ static void CheckProcedureArg(evaluate::ActualArgument &arg,
         // 15.5.2.9(5) -- dummy procedure POINTER
         // Interface compatibility has already been checked above
         messages.Say(
-            "Actual argument associated with procedure pointer %s must be a pointer unless INTENT(IN)"_err_en_US,
+            "Actual argument associated with procedure pointer %s must be a POINTER unless INTENT(IN)"_err_en_US,
             dummyName);
       }
     }
@@ -1101,19 +1083,12 @@ static void CheckExplicitInterfaceArg(evaluate::ActualArgument &arg,
                 } else if (object.attrs.test(characteristics::DummyDataObject::
                                    Attr::Allocatable) &&
                     evaluate::IsNullPointer(*expr)) {
-                  if (object.intent == common::Intent::In) {
-                    // Extension (Intel, NAG, XLF); see CheckExplicitDataArg.
-                    if (context.languageFeatures().ShouldWarn(common::
-                                LanguageFeature::NullActualForAllocatable)) {
-                      messages.Say(
-                          "Allocatable %s is associated with NULL()"_port_en_US,
-                          dummyName);
-                    }
-                  } else {
-                    messages.Say(
-                        "NULL() actual argument '%s' may not be associated with allocatable %s without INTENT(IN)"_err_en_US,
-                        expr->AsFortran(), dummyName);
-                  }
+                  // Unsupported extension that more or less naturally falls
+                  // out of other Fortran implementations that pass separate
+                  // base address and descriptor address physical arguments
+                  messages.Say(
+                      "Null actual argument '%s' may not be associated with allocatable %s"_err_en_US,
+                      expr->AsFortran(), dummyName);
                 } else {
                   messages.Say(
                       "Actual argument '%s' associated with %s is not a variable or typed expression"_err_en_US,
@@ -1268,9 +1243,12 @@ static void CheckAssociated(evaluate::ActualArguments &arguments,
   }
   if (const auto &pointerArg{arguments[0]}) {
     if (const auto *pointerExpr{pointerArg->UnwrapExpr()}) {
-      if (!IsPointer(*pointerExpr)) {
-        context.messages().Say(pointerArg->sourceLocation(),
-            "POINTER= argument of ASSOCIATED() must be a pointer"_err_en_US);
+      const Symbol *pointerSymbol{GetLastSymbol(*pointerExpr)};
+      if (pointerSymbol && !IsPointer(pointerSymbol->GetUltimate())) {
+        evaluate::AttachDeclaration(
+            context.messages().Say(pointerArg->sourceLocation(),
+                "POINTER= argument of ASSOCIATED() must be a POINTER"_err_en_US),
+            *pointerSymbol);
         return;
       }
       if (const auto &targetArg{arguments[1]}) {
@@ -1283,7 +1261,7 @@ static void CheckAssociated(evaluate::ActualArguments &arguments,
             !evaluate::IsProcedurePointer(*pointerExpr)) {
           context.messages().Say(pointerArg->sourceLocation(),
               "POINTER= argument of ASSOCIATED() should be a pointer"_port_en_US);
-        } else if (scope && !evaluate::UnwrapProcedureRef(*pointerExpr)) {
+        } else if (scope) {
           if (auto whyNot{WhyNotDefinable(pointerArg->sourceLocation().value_or(
                                               context.messages().at()),
                   *scope,
@@ -1295,37 +1273,59 @@ static void CheckAssociated(evaluate::ActualArguments &arguments,
             }
           }
         }
-        if (const auto *targetExpr{targetArg->UnwrapExpr()}) {
-          if (IsProcedurePointer(*pointerExpr) &&
-              !IsBareNullPointer(pointerExpr)) { // POINTER= is a procedure
+        if (const auto *targetExpr{targetArg->UnwrapExpr()};
+            targetExpr && pointerSymbol) {
+          if (IsProcedure(*pointerSymbol)) {
             if (auto pointerProc{characteristics::Procedure::Characterize(
-                    *pointerExpr, context)}) {
-              if (IsBareNullPointer(targetExpr)) {
-              } else if (IsProcedurePointerTarget(*targetExpr)) {
-                if (auto targetProc{characteristics::Procedure::Characterize(
-                        *targetExpr, context)}) {
-                  bool isCall{!!UnwrapProcedureRef(*targetExpr)};
-                  std::string whyNot;
-                  const auto *targetProcDesignator{
-                      evaluate::UnwrapExpr<evaluate::ProcedureDesignator>(
-                          *targetExpr)};
-                  const evaluate::SpecificIntrinsic *specificIntrinsic{
-                      targetProcDesignator
-                          ? targetProcDesignator->GetSpecificIntrinsic()
-                          : nullptr};
-                  if (std::optional<parser::MessageFixedText> msg{
-                          CheckProcCompatibility(isCall, pointerProc,
-                              &*targetProc, specificIntrinsic, whyNot)}) {
-                    msg->set_severity(parser::Severity::Warning);
-                    context.messages().Say(std::move(*msg),
-                        "pointer '" + pointerExpr->AsFortran() + "'",
-                        targetExpr->AsFortran(), whyNot);
-                  }
+                    *pointerSymbol, context)}) {
+              // Characterize the target procedure
+              std::optional<characteristics::Procedure> targetProc;
+              const auto *targetProcDesignator{
+                  evaluate::UnwrapExpr<evaluate::ProcedureDesignator>(
+                      *targetExpr)};
+              bool isCall{false};
+              std::string targetName;
+              if (IsProcedure(*targetExpr) ||
+                  IsNullProcedurePointer(*targetExpr)) {
+                if (const auto *targetProcRef{
+                        std::get_if<evaluate::ProcedureRef>(&targetExpr->u)}) {
+                  // target is a function call returning a procedure pointer
+                  targetProc = characteristics::Procedure::Characterize(
+                      *targetProcRef, context);
+                  isCall = true;
+                  targetName = targetProcRef->proc().GetName() + "()";
+                } else if (targetProcDesignator) {
+                  targetProc = characteristics::Procedure::Characterize(
+                      *targetProcDesignator, context);
+                  targetName = targetProcDesignator->GetName();
+                } else if (const Symbol * targSym{GetLastSymbol(*targetExpr)}) {
+                  targetProc = characteristics::Procedure::Characterize(
+                      *targSym, context);
+                  targetName = targSym->name().ToString();
+                }
+              }
+              if (targetProc) {
+                std::string whyNot;
+                const evaluate::SpecificIntrinsic *specificIntrinsic{
+                    targetProcDesignator
+                        ? targetProcDesignator->GetSpecificIntrinsic()
+                        : nullptr};
+                if (std::optional<parser::MessageFixedText> msg{
+                        CheckProcCompatibility(isCall, pointerProc,
+                            &*targetProc, specificIntrinsic, whyNot)}) {
+                  msg->set_severity(parser::Severity::Warning);
+                  evaluate::AttachDeclaration(
+                      context.messages().Say(std::move(*msg),
+                          "pointer '" + pointerSymbol->name().ToString() + "'",
+                          targetName, whyNot),
+                      *pointerSymbol);
                 }
               } else if (!IsNullProcedurePointer(*targetExpr)) {
-                context.messages().Say(
-                    "POINTER= argument '%s' is a procedure pointer but the TARGET= argument '%s' is not a procedure or procedure pointer"_err_en_US,
-                    pointerExpr->AsFortran(), targetExpr->AsFortran());
+                evaluate::AttachDeclaration(
+                    context.messages().Say(
+                        "POINTER= argument '%s' is a procedure pointer but the TARGET= argument '%s' is not a procedure or procedure pointer"_err_en_US,
+                        pointerSymbol->name(), targetExpr->AsFortran()),
+                    *pointerSymbol);
               }
             }
           } else if (IsVariable(*targetExpr) || IsNullPointer(*targetExpr)) {
@@ -1353,9 +1353,11 @@ static void CheckAssociated(evaluate::ActualArguments &arguments,
               }
             }
           } else {
-            context.messages().Say(
-                "POINTER= argument '%s' is an object pointer but the TARGET= argument '%s' is not a variable"_err_en_US,
-                pointerExpr->AsFortran(), targetExpr->AsFortran());
+            evaluate::AttachDeclaration(
+                context.messages().Say(
+                    "POINTER= argument '%s' is an object pointer but the TARGET= argument '%s' is not a variable"_err_en_US,
+                    pointerSymbol->name(), targetExpr->AsFortran()),
+                *pointerSymbol);
           }
         }
       }
@@ -1366,7 +1368,7 @@ static void CheckAssociated(evaluate::ActualArguments &arguments,
   }
   if (!ok) {
     context.messages().Say(
-        "Arguments of ASSOCIATED() must be a pointer and an optional valid target"_err_en_US);
+        "Arguments of ASSOCIATED() must be a POINTER and an optional valid target"_err_en_US);
   }
 }
 

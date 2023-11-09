@@ -665,14 +665,9 @@ void LinkingSection::writeBody() {
       } else if (isa<DataSymbol>(sym)) {
         writeStr(sub.os, sym->getName(), "sym name");
         if (auto *dataSym = dyn_cast<DefinedData>(sym)) {
-          if (dataSym->segment) {
-            writeUleb128(sub.os, dataSym->getOutputSegmentIndex(), "index");
-            writeUleb128(sub.os, dataSym->getOutputSegmentOffset(),
-                         "data offset");
-          } else {
-            writeUleb128(sub.os, 0, "index");
-            writeUleb128(sub.os, dataSym->getVA(), "data offset");
-          }
+          writeUleb128(sub.os, dataSym->getOutputSegmentIndex(), "index");
+          writeUleb128(sub.os, dataSym->getOutputSegmentOffset(),
+                       "data offset");
           writeUleb128(sub.os, dataSym->getSize(), "data size");
         }
       } else {

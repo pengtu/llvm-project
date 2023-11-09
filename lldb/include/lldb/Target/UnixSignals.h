@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "lldb/Utility/ConstString.h"
 #include "lldb/lldb-private.h"
 #include "llvm/Support/JSON.h"
 
@@ -100,10 +101,9 @@ public:
   // your subclass of UnixSignals or in your Process Plugin's GetUnixSignals
   // method before you return the UnixSignal object.
 
-  void AddSignal(int signo, llvm::StringRef name, bool default_suppress,
+  void AddSignal(int signo, const char *name, bool default_suppress,
                  bool default_stop, bool default_notify,
-                 llvm::StringRef description,
-                 llvm::StringRef alias = llvm::StringRef());
+                 const char *description, const char *alias = nullptr);
 
   enum SignalCodePrintOption { None, Address, Bounds };
 
@@ -147,20 +147,17 @@ protected:
     const SignalCodePrintOption m_print_option;
   };
 
-  // The StringRefs in Signal are either backed by string literals or reside in
-  // persistent storage (e.g. a StringSet).
   struct Signal {
-    llvm::StringRef m_name;
-    llvm::StringRef m_alias;
-    llvm::StringRef m_description;
+    ConstString m_name;
+    ConstString m_alias;
+    std::string m_description;
     std::map<int32_t, SignalCode> m_codes;
     uint32_t m_hit_count = 0;
     bool m_suppress : 1, m_stop : 1, m_notify : 1;
     bool m_default_suppress : 1, m_default_stop : 1, m_default_notify : 1;
 
-    Signal(llvm::StringRef name, bool default_suppress, bool default_stop,
-           bool default_notify, llvm::StringRef description,
-           llvm::StringRef alias);
+    Signal(const char *name, bool default_suppress, bool default_stop,
+           bool default_notify, const char *description, const char *alias);
 
     ~Signal() = default;
     void Reset(bool reset_stop, bool reset_notify, bool reset_suppress);

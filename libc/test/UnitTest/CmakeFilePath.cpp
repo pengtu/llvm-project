@@ -11,10 +11,10 @@
 #include "src/__support/CPP/string.h"
 #include "src/__support/c_string.h"
 
-namespace LIBC_NAMESPACE::testing {
+namespace __llvm_libc::testing {
 
 CString libc_make_test_file_path_func(const char *file_name) {
   return cpp::string(file_name);
 }
 
-} // namespace LIBC_NAMESPACE::testing
+} // namespace __llvm_libc::testing

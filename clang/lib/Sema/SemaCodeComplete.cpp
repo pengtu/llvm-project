@@ -310,23 +310,6 @@ public:
   bool isInterestingDecl(const NamedDecl *ND,
                          bool &AsNestedNameSpecifier) const;
 
-  /// Decide whether or not a use of function Decl can be a call.
-  ///
-  /// \param ND the function declaration.
-  ///
-  /// \param BaseExprType the object type in a member access expression,
-  /// if any.
-  bool canFunctionBeCalled(const NamedDecl *ND, QualType BaseExprType) const;
-
-  /// Decide whether or not a use of member function Decl can be a call.
-  ///
-  /// \param Method the function declaration.
-  ///
-  /// \param BaseExprType the object type in a member access expression,
-  /// if any.
-  bool canCxxMethodBeCalled(const CXXMethodDecl *Method,
-                            QualType BaseExprType) const;
-
   /// Check whether the result is hidden by the Hiding declaration.
   ///
   /// \returns true if the result is hidden and cannot be found, false if
@@ -356,11 +339,8 @@ public:
   ///
   /// \param InBaseClass whether the result was found in a base
   /// class of the searched context.
-  ///
-  /// \param BaseExprType the type of expression that precedes the "." or "->"
-  /// in a member access expression.
   void AddResult(Result R, DeclContext *CurContext, NamedDecl *Hiding,
-                 bool InBaseClass, QualType BaseExprType);
+                 bool InBaseClass);
 
   /// Add a new non-declaration result to this result set.
   void AddResult(Result R);
@@ -1282,69 +1262,8 @@ static OverloadCompare compareOverloads(const CXXMethodDecl &Candidate,
                            : OverloadCompare::Dominated;
 }
 
-bool ResultBuilder::canCxxMethodBeCalled(const CXXMethodDecl *Method,
-                                         QualType BaseExprType) const {
-  // Find the class scope that we're currently in.
-  // We could e.g. be inside a lambda, so walk up the DeclContext until we
-  // find a CXXMethodDecl.
-  DeclContext *CurContext = SemaRef.CurContext;
-  const auto *CurrentClassScope = [&]() -> const CXXRecordDecl * {
-    for (DeclContext *Ctx = CurContext; Ctx; Ctx = Ctx->getParent()) {
-      const auto *CtxMethod = llvm::dyn_cast<CXXMethodDecl>(Ctx);
-      if (CtxMethod && !CtxMethod->getParent()->isLambda()) {
-        return CtxMethod->getParent();
-      }
-    }
-    return nullptr;
-  }();
-
-  // If we're not inside the scope of the method's class, it can't be a call.
-  bool FunctionCanBeCall =
-      CurrentClassScope &&
-      (CurrentClassScope == Method->getParent() ||
-       CurrentClassScope->isDerivedFrom(Method->getParent()));
-
-  // We skip the following calculation for exceptions if it's already true.
-  if (FunctionCanBeCall)
-    return true;
-
-  // Exception: foo->FooBase::bar() or foo->Foo::bar() *is* a call.
-  if (const CXXRecordDecl *MaybeDerived =
-          BaseExprType.isNull() ? nullptr
-                                : BaseExprType->getAsCXXRecordDecl()) {
-    auto *MaybeBase = Method->getParent();
-    FunctionCanBeCall =
-        MaybeDerived == MaybeBase || MaybeDerived->isDerivedFrom(MaybeBase);
-  }
-
-  return FunctionCanBeCall;
-}
-
-bool ResultBuilder::canFunctionBeCalled(const NamedDecl *ND,
-                                        QualType BaseExprType) const {
-  // We apply heuristics only to CCC_Symbol:
-  // * CCC_{Arrow,Dot}MemberAccess reflect member access expressions:
-  //   f.method() and f->method(). These are always calls.
-  // * A qualified name to a member function may *not* be a call. We have to
-  //   subdivide the cases: For example, f.Base::method(), which is regarded as
-  //   CCC_Symbol, should be a call.
-  // * Non-member functions and static member functions are always considered
-  //   calls.
-  if (CompletionContext.getKind() == clang::CodeCompletionContext::CCC_Symbol) {
-    if (const auto *FuncTmpl = dyn_cast<FunctionTemplateDecl>(ND)) {
-      ND = FuncTmpl->getTemplatedDecl();
-    }
-    const auto *Method = dyn_cast<CXXMethodDecl>(ND);
-    if (Method && !Method->isStatic()) {
-      return canCxxMethodBeCalled(Method, BaseExprType);
-    }
-  }
-  return true;
-}
-
 void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
-                              NamedDecl *Hiding, bool InBaseClass = false,
-                              QualType BaseExprType = QualType()) {
+                              NamedDecl *Hiding, bool InBaseClass = false) {
   if (R.Kind != Result::RK_Declaration) {
     // For non-declaration results, just add the result.
     Results.push_back(R);
@@ -1360,8 +1279,7 @@ void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
                                  R.Availability == CXAvailability_Deprecated),
                                 std::move(R.FixIts));
     Result.ShadowDecl = Using;
-    AddResult(Result, CurContext, Hiding, /*InBaseClass=*/false,
-              /*BaseExprType=*/BaseExprType);
+    AddResult(Result, CurContext, Hiding);
     return;
   }
 
@@ -1463,7 +1381,32 @@ void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
         OverloadSet.Add(Method, Results.size());
       }
 
-  R.FunctionCanBeCall = canFunctionBeCalled(R.getDeclaration(), BaseExprType);
+  // When completing a non-static member function (and not via
+  // dot/arrow member access) and we're not inside that class' scope,
+  // it can't be a call.
+  if (CompletionContext.getKind() == clang::CodeCompletionContext::CCC_Symbol) {
+    const auto *Method = dyn_cast<CXXMethodDecl>(R.getDeclaration());
+    if (Method && !Method->isStatic()) {
+      // Find the class scope that we're currently in.
+      // We could e.g. be inside a lambda, so walk up the DeclContext until we
+      // find a CXXMethodDecl.
+      const auto *CurrentClassScope = [&]() -> const CXXRecordDecl * {
+        for (DeclContext *Ctx = SemaRef.CurContext; Ctx;
+             Ctx = Ctx->getParent()) {
+          const auto *CtxMethod = llvm::dyn_cast<CXXMethodDecl>(Ctx);
+          if (CtxMethod && !CtxMethod->getParent()->isLambda()) {
+            return CtxMethod->getParent();
+          }
+        }
+        return nullptr;
+      }();
+
+      R.FunctionCanBeCall =
+          CurrentClassScope &&
+          (CurrentClassScope == Method->getParent() ||
+           CurrentClassScope->isDerivedFrom(Method->getParent()));
+    }
+  }
 
   // Insert this result into the set of results.
   Results.push_back(R);
@@ -1576,9 +1519,8 @@ bool ResultBuilder::IsClassOrStruct(const NamedDecl *ND) const {
 
   // For purposes of this check, interfaces match too.
   if (const auto *RD = dyn_cast<RecordDecl>(ND))
-    return RD->getTagKind() == TagTypeKind::Class ||
-           RD->getTagKind() == TagTypeKind::Struct ||
-           RD->getTagKind() == TagTypeKind::Interface;
+    return RD->getTagKind() == TTK_Class || RD->getTagKind() == TTK_Struct ||
+           RD->getTagKind() == TTK_Interface;
 
   return false;
 }
@@ -1590,7 +1532,7 @@ bool ResultBuilder::IsUnion(const NamedDecl *ND) const {
     ND = ClassTemplate->getTemplatedDecl();
 
   if (const auto *RD = dyn_cast<RecordDecl>(ND))
-    return RD->getTagKind() == TagTypeKind::Union;
+    return RD->getTagKind() == TTK_Union;
 
   return false;
 }
@@ -1738,7 +1680,7 @@ public:
                  bool InBaseClass) override {
     ResultBuilder::Result Result(ND, Results.getBasePriority(ND), nullptr,
                                  false, IsAccessible(ND, Ctx), FixIts);
-    Results.AddResult(Result, InitialLookupCtx, Hiding, InBaseClass, BaseType);
+    Results.AddResult(Result, InitialLookupCtx, Hiding, InBaseClass);
   }
 
   void EnteredContext(DeclContext *Ctx) override {
@@ -2019,15 +1961,15 @@ static const char *GetCompletionTypeString(QualType T, ASTContext &Context,
       if (TagDecl *Tag = TagT->getDecl())
         if (!Tag->hasNameForLinkage()) {
           switch (Tag->getTagKind()) {
-          case TagTypeKind::Struct:
+          case TTK_Struct:
             return "struct <anonymous>";
-          case TagTypeKind::Interface:
+          case TTK_Interface:
             return "__interface <anonymous>";
-          case TagTypeKind::Class:
+          case TTK_Class:
             return "class <anonymous>";
-          case TagTypeKind::Union:
+          case TTK_Union:
             return "union <anonymous>";
-          case TagTypeKind::Enum:
+          case TTK_Enum:
             return "enum <anonymous>";
           }
         }
@@ -3584,14 +3526,8 @@ CodeCompletionString *CodeCompletionResult::createCodeCompletionStringForDecl(
 
     // Figure out which template parameters are deduced (or have default
     // arguments).
-    // Note that we're creating a non-empty bit vector so that we can go
-    // through the loop below to omit default template parameters for non-call
-    // cases.
-    llvm::SmallBitVector Deduced(FunTmpl->getTemplateParameters()->size());
-    // Avoid running it if this is not a call: We should emit *all* template
-    // parameters.
-    if (FunctionCanBeCall)
-      Sema::MarkDeducedTemplateParameters(Ctx, FunTmpl, Deduced);
+    llvm::SmallBitVector Deduced;
+    Sema::MarkDeducedTemplateParameters(Ctx, FunTmpl, Deduced);
     unsigned LastDeducibleArgument;
     for (LastDeducibleArgument = Deduced.size(); LastDeducibleArgument > 0;
          --LastDeducibleArgument) {
@@ -3618,19 +3554,10 @@ CodeCompletionString *CodeCompletionResult::createCodeCompletionStringForDecl(
       }
     }
 
-    if (LastDeducibleArgument || !FunctionCanBeCall) {
+    if (LastDeducibleArgument) {
       // Some of the function template arguments cannot be deduced from a
       // function call, so we introduce an explicit template argument list
       // containing all of the arguments up to the first deducible argument.
-      //
-      // Or, if this isn't a call, emit all the template arguments
-      // to disambiguate the (potential) overloads.
-      //
-      // FIXME: Detect cases where the function parameters can be deduced from
-      // the surrounding context, as per [temp.deduct.funcaddr].
-      // e.g.,
-      // template <class T> void foo(T);
-      // void (*f)(int) = foo;
       Result.AddChunk(CodeCompletionString::CK_LeftAngle);
       AddTemplateParameterChunks(Ctx, Policy, FunTmpl, Result,
                                  LastDeducibleArgument);
@@ -4168,14 +4095,14 @@ CXCursorKind clang::getCursorKindForDecl(const Decl *D) {
   default:
     if (const auto *TD = dyn_cast<TagDecl>(D)) {
       switch (TD->getTagKind()) {
-      case TagTypeKind::Interface: // fall through
-      case TagTypeKind::Struct:
+      case TTK_Interface: // fall through
+      case TTK_Struct:
         return CXCursor_StructDecl;
-      case TagTypeKind::Class:
+      case TTK_Class:
         return CXCursor_ClassDecl;
-      case TagTypeKind::Union:
+      case TTK_Union:
         return CXCursor_UnionDecl;
-      case TagTypeKind::Enum:
+      case TTK_Enum:
         return CXCursor_EnumDecl;
       }
     }

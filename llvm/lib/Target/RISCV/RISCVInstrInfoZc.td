@@ -8,6 +8,8 @@
 ///
 /// This file describes the RISC-V instructions from the 'Zc*' compressed
 /// instruction extensions, version 1.0.3.
+/// This version is still experimental as the 'Zc*' extensions haven't been
+/// ratified yet.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -15,12 +17,13 @@
 // Operand and SDNode transformation definitions.
 //===----------------------------------------------------------------------===//
 
-def uimm2_lsb0 : RISCVOp,
+def uimm2_lsb0 : Operand<XLenVT>,
                  ImmLeaf<XLenVT, [{return isShiftedUInt<1, 1>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<2, "Lsb0">;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeUImmOperand<2>";
   let OperandType = "OPERAND_UIMM2_LSB0";
+  let OperandNamespace = "RISCVOp";
   let MCOperandPredicate = [{
     int64_t Imm;
     if (!MCOp.evaluateAsConstantImm(Imm))
@@ -29,10 +32,11 @@ def uimm2_lsb0 : RISCVOp,
   }];
 }
 
-def uimm8ge32 : RISCVOp {
+def uimm8ge32 : Operand<XLenVT> {
   let ParserMatchClass = UImmAsmOperand<8, "GE32">;
   let DecoderMethod = "decodeUImmOperand<8>";
   let OperandType = "OPERAND_UIMM8_GE32";
+  let OperandNamespace = "RISCVOp";
 }
 
 def RlistAsmOperand : AsmOperandClass {

@@ -12,145 +12,125 @@
 
 #include <fenv.h>
 
-using LIBC_NAMESPACE::testing::mpfr::ForceRoundingMode;
-using LIBC_NAMESPACE::testing::mpfr::RoundingMode;
+using __llvm_libc::testing::mpfr::ForceRoundingMode;
+using __llvm_libc::testing::mpfr::RoundingMode;
 
 TEST(LlvmLibcFEnvImplTest, QuickRoundingUpTest) {
-  using LIBC_NAMESPACE::fputil::fenv_is_round_up;
+  using __llvm_libc::fputil::fenv_is_round_up;
   {
     ForceRoundingMode __r(RoundingMode::Upward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_TRUE(fenv_is_round_up());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Downward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_up());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Nearest);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_up());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::TowardZero);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_up());
-    }
   }
 }
 
 TEST(LlvmLibcFEnvImplTest, QuickRoundingDownTest) {
-  using LIBC_NAMESPACE::fputil::fenv_is_round_down;
+  using __llvm_libc::fputil::fenv_is_round_down;
   {
     ForceRoundingMode __r(RoundingMode::Upward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_down());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Downward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_TRUE(fenv_is_round_down());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Nearest);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_down());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::TowardZero);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_down());
-    }
   }
 }
 
 TEST(LlvmLibcFEnvImplTest, QuickRoundingNearestTest) {
-  using LIBC_NAMESPACE::fputil::fenv_is_round_to_nearest;
+  using __llvm_libc::fputil::fenv_is_round_to_nearest;
   {
     ForceRoundingMode __r(RoundingMode::Upward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_nearest());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Downward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_nearest());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Nearest);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_TRUE(fenv_is_round_to_nearest());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::TowardZero);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_nearest());
-    }
   }
 }
 
 TEST(LlvmLibcFEnvImplTest, QuickRoundingTowardZeroTest) {
-  using LIBC_NAMESPACE::fputil::fenv_is_round_to_zero;
+  using __llvm_libc::fputil::fenv_is_round_to_zero;
   {
     ForceRoundingMode __r(RoundingMode::Upward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_zero());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Downward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_zero());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Nearest);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_FALSE(fenv_is_round_to_zero());
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::TowardZero);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_TRUE(fenv_is_round_to_zero());
-    }
   }
 }
 
 TEST(LlvmLibcFEnvImplTest, QuickGetRoundTest) {
-  using LIBC_NAMESPACE::fputil::quick_get_round;
+  using __llvm_libc::fputil::quick_get_round;
   {
     ForceRoundingMode __r(RoundingMode::Upward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_EQ(quick_get_round(), FE_UPWARD);
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Downward);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_EQ(quick_get_round(), FE_DOWNWARD);
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::Nearest);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_EQ(quick_get_round(), FE_TONEAREST);
-    }
   }
   {
     ForceRoundingMode __r(RoundingMode::TowardZero);
-    if (__r.success) {
+    if (__r.success)
       ASSERT_EQ(quick_get_round(), FE_TOWARDZERO);
-    }
   }
 }

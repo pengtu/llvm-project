@@ -54,13 +54,13 @@ public:
 
   void materialize(std::unique_ptr<MaterializationResponsibility> R) override {
     unsigned PointerSize;
-    llvm::endianness Endianness;
+    support::endianness Endianness;
     const auto &TT = CP.getExecutionSession().getTargetTriple();
 
     switch (TT.getArch()) {
     case Triple::x86_64:
       PointerSize = 8;
-      Endianness = llvm::endianness::little;
+      Endianness = support::endianness::little;
       break;
     default:
       llvm_unreachable("Unrecognized architecture");

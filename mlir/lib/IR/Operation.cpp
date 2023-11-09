@@ -351,15 +351,16 @@ Attribute Operation::getPropertiesAsAttribute() {
     return *getPropertiesStorage().as<Attribute *>();
   return info->getOpPropertiesAsAttribute(this);
 }
-LogicalResult Operation::setPropertiesFromAttribute(
-    Attribute attr, function_ref<InFlightDiagnostic()> emitError) {
+LogicalResult
+Operation::setPropertiesFromAttribute(Attribute attr,
+                                      InFlightDiagnostic *diagnostic) {
   std::optional<RegisteredOperationName> info = getRegisteredInfo();
   if (LLVM_UNLIKELY(!info)) {
     *getPropertiesStorage().as<Attribute *>() = attr;
     return success();
   }
   return info->setOpPropertiesFromAttribute(
-      this->getName(), this->getPropertiesStorage(), attr, emitError);
+      this->getName(), this->getPropertiesStorage(), attr, diagnostic);
 }
 
 void Operation::copyProperties(OpaqueProperties rhs) {

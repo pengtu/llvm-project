@@ -9,10 +9,10 @@
 #include "src/math/modf.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(double, modf, (double x, double *iptr)) {
   return __builtin_modf(x, iptr);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -10,10 +10,10 @@
 #define LLVM_LIBC_SRC_STRING_STRXFRM_H
 
 #include <stddef.h> // For size_t
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 size_t strxfrm(char *__restrict dest, const char *__restrict src, size_t n);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STRING_STRXFRM_H

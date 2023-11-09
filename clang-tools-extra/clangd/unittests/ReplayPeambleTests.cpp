@@ -15,13 +15,11 @@
 #include "../../clang-tidy/ClangTidyModule.h"
 #include "../../clang-tidy/ClangTidyModuleRegistry.h"
 #include "AST.h"
-#include "Config.h"
 #include "Diagnostics.h"
 #include "ParsedAST.h"
 #include "SourceCode.h"
 #include "TestTU.h"
 #include "TidyProvider.h"
-#include "support/Context.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/Basic/FileEntry.h"
 #include "clang/Basic/LLVM.h"
@@ -122,11 +120,6 @@ TEST(ReplayPreambleTest, IncludesAndSkippedFiles) {
   // sense in c++ (also they actually break on windows), just set language to
   // obj-c.
   TU.ExtraArgs = {"-isystem.", "-xobjective-c"};
-
-  // Allow the check to run even though not marked as fast.
-  Config Cfg;
-  Cfg.Diagnostics.ClangTidy.FastCheckFilter = Config::FastCheckPolicy::Loose;
-  WithContextValue WithCfg(Config::Key, std::move(Cfg));
 
   const auto &AST = TU.build();
   const auto &SM = AST.getSourceManager();

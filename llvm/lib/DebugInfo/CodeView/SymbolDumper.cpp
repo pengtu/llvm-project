@@ -589,22 +589,7 @@ Error CVSymbolDumperImpl::visitKnownRecord(CVSymbol &CVR,
 }
 
 Error CVSymbolDumperImpl::visitKnownRecord(CVSymbol &CVR, CallerSym &Caller) {
-  llvm::StringRef ScopeName;
-  switch (CVR.kind()) {
-  case S_CALLEES:
-    ScopeName = "Callees";
-    break;
-  case S_CALLERS:
-    ScopeName = "Callers";
-    break;
-  case S_INLINEES:
-    ScopeName = "Inlinees";
-    break;
-  default:
-    return llvm::make_error<CodeViewError>(
-        "Unknown CV Record type for a CallerSym object!");
-  }
-  ListScope S(W, ScopeName);
+  ListScope S(W, CVR.kind() == S_CALLEES ? "Callees" : "Callers");
   for (auto FuncID : Caller.Indices)
     printTypeIndex("FuncID", FuncID);
   return Error::success();

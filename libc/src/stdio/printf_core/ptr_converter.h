@@ -17,7 +17,7 @@
 #include "src/stdio/printf_core/string_converter.h"
 #include "src/stdio/printf_core/writer.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace printf_core {
 
 LIBC_INLINE int convert_pointer(Writer *writer, const FormatSection &to_conv) {
@@ -38,6 +38,6 @@ LIBC_INLINE int convert_pointer(Writer *writer, const FormatSection &to_conv) {
 }
 
 } // namespace printf_core
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_PRINTF_CORE_PTR_CONVERTER_H

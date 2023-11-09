@@ -784,7 +784,7 @@ TEST_F(UsingDeclarationsSorterTest,
             "using std::chrono::duration_cast;\n"
             "using std::chrono::microseconds;\n"
             "using std::chrono::seconds;\n"
-            "using std::chrono::steady_clock;",
+            "using std::chrono::steady_clock;\n",
             sortUsingDeclarations("using boost::regex;\n"
                                   "using boost::regex_constants::icase;\n"
                                   "using std::chrono::duration_cast;\n"
@@ -792,7 +792,7 @@ TEST_F(UsingDeclarationsSorterTest,
                                   "using std::chrono::seconds;\n"
                                   "using std::chrono::steady_clock;\n"
                                   "using std::move;\n"
-                                  "using std::string;",
+                                  "using std::string;\n",
                                   Style));
 
   Style.SortUsingDeclarations = FormatStyle::SUD_Lexicographic;
@@ -803,7 +803,7 @@ TEST_F(UsingDeclarationsSorterTest,
             "using std::chrono::seconds;\n"
             "using std::chrono::steady_clock;\n"
             "using std::move;\n"
-            "using std::string;",
+            "using std::string;\n",
             sortUsingDeclarations("using boost::regex;\n"
                                   "using boost::regex_constants::icase;\n"
                                   "using std::move;\n"
@@ -811,7 +811,7 @@ TEST_F(UsingDeclarationsSorterTest,
                                   "using std::chrono::duration_cast;\n"
                                   "using std::chrono::microseconds;\n"
                                   "using std::chrono::seconds;\n"
-                                  "using std::chrono::steady_clock;",
+                                  "using std::chrono::steady_clock;\n",
                                   Style));
 }
 

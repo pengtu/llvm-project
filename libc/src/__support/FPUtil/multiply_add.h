@@ -6,15 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_FPUTIL_MULTIPLY_ADD_H
-#define LLVM_LIBC_SRC___SUPPORT_FPUTIL_MULTIPLY_ADD_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_FPUTIL_MULTIPLY_ADD_H
+#define LLVM_LIBC_SRC_SUPPORT_FPUTIL_MULTIPLY_ADD_H
 
 #include "src/__support/CPP/type_traits.h"
 #include "src/__support/common.h"
 #include "src/__support/macros/properties/architectures.h"
 #include "src/__support/macros/properties/cpu_features.h" // LIBC_TARGET_CPU_HAS_FMA
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace fputil {
 
 // Implement a simple wrapper for multiply-add operation:
@@ -34,14 +34,14 @@ multiply_add(T x, T y, T z) {
 }
 
 } // namespace fputil
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #if defined(LIBC_TARGET_CPU_HAS_FMA)
 
 // FMA instructions are available.
 #include "FMA.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace fputil {
 
 LIBC_INLINE float multiply_add(float x, float y, float z) {
@@ -53,8 +53,8 @@ LIBC_INLINE double multiply_add(double x, double y, double z) {
 }
 
 } // namespace fputil
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LIBC_TARGET_CPU_HAS_FMA
 
-#endif // LLVM_LIBC_SRC___SUPPORT_FPUTIL_MULTIPLY_ADD_H
+#endif // LLVM_LIBC_SRC_SUPPORT_FPUTIL_MULTIPLY_ADD_H

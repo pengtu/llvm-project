@@ -791,7 +791,6 @@ void RecognizableInstr::emitDecodePath(DisassemblerTables &tables) const {
   case X86Local::ThreeDNow: opcodeType = THREEDNOW_MAP; break;
   case X86Local::T_MAP5:    opcodeType = MAP5;          break;
   case X86Local::T_MAP6:    opcodeType = MAP6;          break;
-  case X86Local::T_MAP7:    opcodeType = MAP7;          break;
   }
 
   std::unique_ptr<ModRMFilter> filter;

@@ -33,17 +33,17 @@ example. The ``round`` function will be declared in an internal header file
     #ifndef LLVM_LIBC_SRC_MATH_ROUND_ROUND_H
     #define LLVM_LIBC_SRC_MATH_ROUND_ROUND_H
 
-    namespace LIBC_NAMESPACE {
+    namespace __llvm_libc {
 
     double round(double);
 
-    } // namespace LIBC_NAMESPACE
+    } // namespace __llvm_libc
 
     #endif LLVM_LIBC_SRC_MATH_ROUND_ROUND_H
 
 Notice that the ``round`` function declaration is nested inside the namespace
-``LIBC_NAMESPACE``. All implementation constructs in LLVM-libc are declared within
-the namespace ``LIBC_NAMESPACE``.
+``__llvm_libc``. All implementation constructs in LLVM-libc are declared within
+the namespace ``__llvm_libc``.
 
 ``.cpp`` File Structure
 -----------------------
@@ -55,13 +55,13 @@ the entrypoint function should make use of a special macro. For example, the
 
     // --- round.cpp --- //
 
-    namespace LIBC_NAMESPACE {
+    namespace __llvm_libc {
 
     double LLVM_LIBC_ENTRYPOINT(round)(double d) {
       // ... implementation goes here.
     }
 
-    } // namespace LIBC_NAMESPACE
+    } // namespace __llvm_libc
 
 Notice the use of the macro ``LLVM_LIBC_ENTRYPOINT``. This macro helps us define
 an C alias symbol for the C++ implementation. The C alias need not be added by

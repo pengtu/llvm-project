@@ -300,15 +300,7 @@ bool DummyDataObject::IsCompatibleWith(
     }
     return false;
   }
-  // Treat deduced dummy character type as if it were assumed-length character
-  // to avoid useless "implicit interfaces have distinct type" warnings from
-  // CALL FOO('abc'); CALL FOO('abcd').
-  bool deducedAssumedLength{type.type().category() == TypeCategory::Character &&
-      attrs.test(Attr::DeducedFromActual)};
-  bool compatibleTypes{deducedAssumedLength
-          ? type.type().IsTkCompatibleWith(actual.type.type())
-          : type.type().IsTkLenCompatibleWith(actual.type.type())};
-  if (!compatibleTypes) {
+  if (!type.type().IsTkLenCompatibleWith(actual.type.type())) {
     if (whyNot) {
       *whyNot = "incompatible dummy data object types: "s +
           type.type().AsFortran() + " vs " + actual.type.type().AsFortran();
@@ -322,8 +314,7 @@ bool DummyDataObject::IsCompatibleWith(
     }
     return false;
   }
-  if (type.type().category() == TypeCategory::Character &&
-      !deducedAssumedLength) {
+  if (type.type().category() == TypeCategory::Character) {
     if (actual.type.type().IsAssumedLengthCharacter() !=
         type.type().IsAssumedLengthCharacter()) {
       if (whyNot) {
@@ -690,12 +681,9 @@ static std::optional<Procedure> CharacterizeProcedure(
       },
       symbol.details())};
   if (result && !symbol.has<semantics::ProcBindingDetails>()) {
-    CopyAttrs<Procedure, Procedure::Attr>(symbol, *result,
-        {
-            {semantics::Attr::BIND_C, Procedure::Attr::BindC},
-        });
     CopyAttrs<Procedure, Procedure::Attr>(DEREF(GetMainEntry(&symbol)), *result,
         {
+            {semantics::Attr::BIND_C, Procedure::Attr::BindC},
             {semantics::Attr::ELEMENTAL, Procedure::Attr::Elemental},
         });
     if (IsPureProcedure(symbol) || // works for ENTRY too
@@ -1069,32 +1057,13 @@ bool FunctionResult::IsCompatibleWith(
                 actual.IsAssumedLengthCharacter()) {
               return true;
             } else {
-              auto len{ToInt64(ifaceTypeShape->LEN())};
-              auto actualLen{ToInt64(actualTypeShape->LEN())};
-              if (len.has_value() != actualLen.has_value()) {
-                if (whyNot) {
-                  *whyNot = "constant-length vs non-constant-length character "
-                            "results";
-                }
-              } else if (len && *len != *actualLen) {
-                if (whyNot) {
-                  *whyNot = "character results with distinct lengths";
-                }
-              } else {
-                const auto *ifaceLenParam{
-                    ifaceTypeShape->type().charLengthParamValue()};
-                const auto *actualLenParam{
-                    actualTypeShape->type().charLengthParamValue()};
-                if (ifaceLenParam && actualLenParam &&
-                    ifaceLenParam->isExplicit() !=
-                        actualLenParam->isExplicit()) {
-                  if (whyNot) {
-                    *whyNot =
-                        "explicit-length vs deferred-length character results";
-                  }
-                } else {
-                  return true;
-                }
+              const auto *ifaceLenParam{
+                  ifaceTypeShape->type().charLengthParamValue()};
+              const auto *actualLenParam{
+                  actualTypeShape->type().charLengthParamValue()};
+              if (ifaceLenParam && actualLenParam &&
+                  *ifaceLenParam == *actualLenParam) {
+                return true;
               }
             }
           }
@@ -1297,22 +1266,6 @@ std::optional<Procedure> Procedure::Characterize(
     }
   }
   return std::nullopt;
-}
-
-std::optional<Procedure> Procedure::Characterize(
-    const Expr<SomeType> &expr, FoldingContext &context) {
-  if (const auto *procRef{UnwrapProcedureRef(expr)}) {
-    return Characterize(*procRef, context);
-  } else if (const auto *procDesignator{
-                 std::get_if<ProcedureDesignator>(&expr.u)}) {
-    return Characterize(*procDesignator, context);
-  } else if (const Symbol * symbol{UnwrapWholeSymbolOrComponentDataRef(expr)}) {
-    return Characterize(*symbol, context);
-  } else {
-    context.messages().Say(
-        "Expression '%s' is not a procedure"_err_en_US, expr.AsFortran());
-    return std::nullopt;
-  }
 }
 
 std::optional<Procedure> Procedure::FromActuals(const ProcedureDesignator &proc,

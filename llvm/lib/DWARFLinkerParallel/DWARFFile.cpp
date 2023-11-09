@@ -12,6 +12,7 @@
 llvm::dwarflinker_parallel::DWARFFile::DWARFFile(
     StringRef Name, std::unique_ptr<DWARFContext> Dwarf,
     std::unique_ptr<AddressesMap> Addresses,
+    const std::vector<std::string> &Warnings,
     DWARFFile::UnloadCallbackTy UnloadFunc)
     : FileName(Name), Dwarf(std::move(Dwarf)), Addresses(std::move(Addresses)),
-      UnloadFunc(UnloadFunc) {}
+      Warnings(Warnings), UnloadFunc(UnloadFunc) {}

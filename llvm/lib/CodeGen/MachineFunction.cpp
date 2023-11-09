@@ -178,12 +178,6 @@ void MachineFunction::handleRemoval(MachineInstr &MI) {
     TheDelegate->MF_HandleRemoval(MI);
 }
 
-void MachineFunction::handleChangeDesc(MachineInstr &MI,
-                                       const MCInstrDesc &TID) {
-  if (TheDelegate)
-    TheDelegate->MF_HandleChangeDesc(MI, TID);
-}
-
 void MachineFunction::init() {
   // Assume the function starts in SSA form with correct liveness.
   Properties.set(MachineFunctionProperties::Property::IsSSA);
@@ -457,17 +451,16 @@ void MachineFunction::deleteMachineInstr(MachineInstr *MI) {
 /// Allocate a new MachineBasicBlock. Use this instead of
 /// `new MachineBasicBlock'.
 MachineBasicBlock *
-MachineFunction::CreateMachineBasicBlock(const BasicBlock *BB,
-                                         std::optional<UniqueBBID> BBID) {
+MachineFunction::CreateMachineBasicBlock(const BasicBlock *bb) {
   MachineBasicBlock *MBB =
       new (BasicBlockRecycler.Allocate<MachineBasicBlock>(Allocator))
-          MachineBasicBlock(*this, BB);
+          MachineBasicBlock(*this, bb);
   // Set BBID for `-basic-block=sections=labels` and
   // `-basic-block-sections=list` to allow robust mapping of profiles to basic
   // blocks.
   if (Target.getBBSectionsType() == BasicBlockSection::Labels ||
       Target.getBBSectionsType() == BasicBlockSection::List)
-    MBB->setBBID(BBID.has_value() ? *BBID : UniqueBBID{NextBBID++, 0});
+    MBB->setBBID(NextBBID++);
   return MBB;
 }
 
@@ -1213,7 +1206,7 @@ bool MachineFunction::shouldUseDebugInstrRef() const {
   // have optimized code inlined into this unoptimized code, however with
   // fewer and less aggressive optimizations happening, coverage and accuracy
   // should not suffer.
-  if (getTarget().getOptLevel() == CodeGenOptLevel::None)
+  if (getTarget().getOptLevel() == CodeGenOpt::None)
     return false;
 
   // Don't use instr-ref if this function is marked optnone.

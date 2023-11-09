@@ -2829,7 +2829,9 @@ ARMPreAllocLoadStoreOpt::RescheduleLoadStoreInstrs(MachineBasicBlock *MBB) {
               return Var == DbgVar;
             };
 
-            llvm::erase_if(InstrVec, IsDbgVar);
+            InstrVec.erase(
+                std::remove_if(InstrVec.begin(), InstrVec.end(), IsDbgVar),
+                InstrVec.end());
           }
           forEachDbgRegOperand(Instr,
                                [&](MachineOperand &Op) { Op.setReg(0); });

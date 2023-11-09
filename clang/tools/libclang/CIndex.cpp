@@ -2735,7 +2735,6 @@ void OMPClauseEnqueue::VisitOMPDoacrossClause(const OMPDoacrossClause *C) {
 }
 void OMPClauseEnqueue::VisitOMPXAttributeClause(const OMPXAttributeClause *C) {
 }
-void OMPClauseEnqueue::VisitOMPXBareClause(const OMPXBareClause *C) {}
 
 } // namespace
 
@@ -6848,6 +6847,7 @@ CXCursor clang_getCursorDefinition(CXCursor C) {
   case Decl::Captured:
   case Decl::OMPCapturedExpr:
   case Decl::Label: // FIXME: Is this right??
+  case Decl::ClassScopeFunctionSpecialization:
   case Decl::CXXDeductionGuide:
   case Decl::Import:
   case Decl::OMPThreadPrivate:
@@ -8246,17 +8246,15 @@ CXLinkageKind clang_getCursorLinkage(CXCursor cursor) {
   const Decl *D = cxcursor::getCursorDecl(cursor);
   if (const NamedDecl *ND = dyn_cast_or_null<NamedDecl>(D))
     switch (ND->getLinkageInternal()) {
-    case Linkage::Invalid:
-      return CXLinkage_Invalid;
-    case Linkage::None:
-    case Linkage::VisibleNone:
+    case NoLinkage:
+    case VisibleNoLinkage:
       return CXLinkage_NoLinkage;
-    case Linkage::Internal:
+    case InternalLinkage:
       return CXLinkage_Internal;
-    case Linkage::UniqueExternal:
+    case UniqueExternalLinkage:
       return CXLinkage_UniqueExternal;
-    case Linkage::Module:
-    case Linkage::External:
+    case ModuleLinkage:
+    case ExternalLinkage:
       return CXLinkage_External;
     };
 
@@ -8764,8 +8762,7 @@ unsigned clang_Cursor_isObjCOptional(CXCursor C) {
   if (const ObjCPropertyDecl *PD = dyn_cast<ObjCPropertyDecl>(D))
     return PD->getPropertyImplementation() == ObjCPropertyDecl::Optional;
   if (const ObjCMethodDecl *MD = dyn_cast<ObjCMethodDecl>(D))
-    return MD->getImplementationControl() ==
-           ObjCImplementationControl::Optional;
+    return MD->getImplementationControl() == ObjCMethodDecl::Optional;
 
   return 0;
 }

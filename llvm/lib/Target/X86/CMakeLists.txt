@@ -33,6 +33,7 @@ set(sources
   X86DiscriminateMemOps.cpp
   X86LowerTileCopy.cpp
   X86LowerAMXType.cpp
+  X86PreAMXConfig.cpp
   X86LowerAMXIntrinsics.cpp
   X86TileConfig.cpp
   X86FastPreTileConfig.cpp

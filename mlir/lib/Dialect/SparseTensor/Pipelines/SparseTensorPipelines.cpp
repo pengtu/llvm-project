@@ -35,15 +35,13 @@ void mlir::sparse_tensor::buildSparseCompiler(
   pm.addPass(createSparsificationAndBufferizationPass(
       getBufferizationOptionsForSparsification(
           options.testBufferizationAnalysisOnly),
-      options.sparsificationOptions(), options.createSparseDeallocs,
-      options.enableRuntimeLibrary, options.enableBufferInitialization,
-      options.vectorLength,
+      options.sparsificationOptions(), options.sparseTensorConversionOptions(),
+      options.createSparseDeallocs, options.enableRuntimeLibrary,
+      options.enableBufferInitialization, options.vectorLength,
       /*enableVLAVectorization=*/options.armSVE,
       /*enableSIMDIndex32=*/options.force32BitVectorIndices));
   if (options.testBufferizationAnalysisOnly)
     return;
-
-  pm.addPass(createStorageSpecifierToLLVMPass());
   pm.addNestedPass<func::FuncOp>(createCanonicalizerPass());
   pm.addNestedPass<func::FuncOp>(
       mlir::bufferization::createFinalizingBufferizePass());
@@ -80,15 +78,11 @@ void mlir::sparse_tensor::buildSparseCompiler(
 
   // Finalize GPU code generation.
   if (gpuCodegen) {
-    GpuNVVMAttachTargetOptions nvvmTargetOptions;
-    nvvmTargetOptions.triple = options.gpuTriple;
-    nvvmTargetOptions.chip = options.gpuChip;
-    nvvmTargetOptions.features = options.gpuFeatures;
-    pm.addPass(createGpuNVVMAttachTarget(nvvmTargetOptions));
+#if MLIR_GPU_TO_CUBIN_PASS_ENABLE
+    pm.addNestedPass<gpu::GPUModuleOp>(createGpuSerializeToCubinPass(
+        options.gpuTriple, options.gpuChip, options.gpuFeatures));
+#endif
     pm.addPass(createGpuToLLVMConversionPass());
-    GpuModuleToBinaryPassOptions gpuModuleToBinaryPassOptions;
-    gpuModuleToBinaryPassOptions.compilationTarget = options.gpuFormat;
-    pm.addPass(createGpuModuleToBinaryPass(gpuModuleToBinaryPassOptions));
   }
 
   pm.addPass(createReconcileUnrealizedCastsPass());

@@ -19,7 +19,6 @@
 #include "mlir/Dialect/Affine/LoopUtils.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/IR/Operation.h"
-#include "mlir/IR/PatternMatch.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <optional>
@@ -362,22 +361,16 @@ static LogicalResult promoteSingleIterReductionLoop(AffineForOp forOp,
   std::optional<uint64_t> tripCount = getConstantTripCount(forOp);
   if (!tripCount || *tripCount != 1)
     return failure();
+  auto iterOperands = forOp.getIterOperands();
   auto *parentOp = forOp->getParentOp();
   if (!isa<AffineForOp>(parentOp))
     return failure();
-  SmallVector<Value> newOperands;
-  llvm::append_range(newOperands,
-                     forOp.getBody()->getTerminator()->getOperands());
-  IRRewriter rewriter(parentOp->getContext());
-  int64_t parentOpNumResults = parentOp->getNumResults();
+  auto newOperands = forOp.getBody()->getTerminator()->getOperands();
+  OpBuilder b(parentOp);
   // Replace the parent loop and add iteroperands and results from the `forOp`.
   AffineForOp parentForOp = forOp->getParentOfType<AffineForOp>();
-  AffineForOp newLoop =
-      cast<AffineForOp>(*parentForOp.replaceWithAdditionalYields(
-          rewriter, forOp.getInits(), /*replaceInitOperandUsesInLoop=*/false,
-          [&](OpBuilder &b, Location loc, ArrayRef<BlockArgument> newBbArgs) {
-            return newOperands;
-          }));
+  AffineForOp newLoop = replaceForOpWithNewYields(
+      b, parentForOp, iterOperands, newOperands, forOp.getRegionIterArgs());
 
   // For sibling-fusion users, collect operations that use the results of the
   // `forOp` outside the new parent loop that has absorbed all its iter args
@@ -394,7 +387,7 @@ static LogicalResult promoteSingleIterReductionLoop(AffineForOp forOp,
   // Update the results of the `forOp` in the new loop.
   for (unsigned i = 0, e = forOp.getNumResults(); i != e; ++i) {
     forOp.getResult(i).replaceAllUsesWith(
-        newLoop.getResult(i + parentOpNumResults));
+        newLoop.getResult(i + parentOp->getNumResults()));
   }
   // For sibling-fusion users, move operations that use the results of the
   // `forOp` outside the new parent loop
@@ -419,6 +412,7 @@ static LogicalResult promoteSingleIterReductionLoop(AffineForOp forOp,
   parentBlock->getOperations().splice(Block::iterator(forOp),
                                       forOp.getBody()->getOperations());
   forOp.erase();
+  parentForOp.erase();
   return success();
 }
 

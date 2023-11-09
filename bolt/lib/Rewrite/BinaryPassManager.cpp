@@ -111,7 +111,7 @@ static cl::opt<bool>
 
 static cl::opt<bool> PrintJTFootprintReduction(
     "print-after-jt-footprint-reduction",
-    cl::desc("print function after jt-footprint-reduction pass"), cl::Hidden,
+    cl::desc("print function after jt-footprint-reduction pass"),
     cl::cat(BoltOptCategory));
 
 static cl::opt<bool>
@@ -160,7 +160,7 @@ static cl::opt<bool>
 
 static cl::opt<bool> PrintRetpolineInsertion(
     "print-retpoline-insertion",
-    cl::desc("print functions after retpoline insertion pass"), cl::Hidden,
+    cl::desc("print functions after retpoline insertion pass"),
     cl::cat(BoltCategory));
 
 static cl::opt<bool> PrintSCTC(
@@ -179,21 +179,21 @@ static cl::opt<bool>
 
 static cl::opt<bool>
     PrintStoke("print-stoke", cl::desc("print functions after stoke analysis"),
-               cl::Hidden, cl::cat(BoltOptCategory));
+               cl::cat(BoltOptCategory));
 
 static cl::opt<bool>
     PrintFixRelaxations("print-fix-relaxations",
                         cl::desc("print functions after fix relaxations pass"),
-                        cl::Hidden, cl::cat(BoltOptCategory));
+                        cl::cat(BoltOptCategory));
 
 static cl::opt<bool>
     PrintFixRISCVCalls("print-fix-riscv-calls",
                        cl::desc("print functions after fix RISCV calls pass"),
-                       cl::Hidden, cl::cat(BoltOptCategory));
+                       cl::cat(BoltOptCategory));
 
 static cl::opt<bool> PrintVeneerElimination(
     "print-veneer-elimination",
-    cl::desc("print functions after veneer elimination pass"), cl::Hidden,
+    cl::desc("print functions after veneer elimination pass"),
     cl::cat(BoltOptCategory));
 
 static cl::opt<bool>

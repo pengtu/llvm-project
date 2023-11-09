@@ -52,7 +52,8 @@ llvm::Value *CodeGenFunction::EmitObjCStringLiteral(const ObjCStringLiteral *E)
 {
   llvm::Constant *C =
       CGM.getObjCRuntime().GenerateConstantString(E->getString()).getPointer();
-  return C;
+  // FIXME: This bitcast should just be made an invariant on the Runtime.
+  return llvm::ConstantExpr::getBitCast(C, ConvertType(E->getType()));
 }
 
 /// EmitObjCBoxedExpr - This routine generates code to call
@@ -148,9 +149,9 @@ llvm::Value *CodeGenFunction::EmitObjCCollectionLiteral(const Expr *E,
   llvm::APInt APNumElements(Context.getTypeSize(Context.getSizeType()),
                             NumElements);
   QualType ElementType = Context.getObjCIdType().withConst();
-  QualType ElementArrayType = Context.getConstantArrayType(
-      ElementType, APNumElements, nullptr, ArraySizeModifier::Normal,
-      /*IndexTypeQuals=*/0);
+  QualType ElementArrayType
+    = Context.getConstantArrayType(ElementType, APNumElements, nullptr,
+                                   ArrayType::Normal, /*IndexTypeQuals=*/0);
 
   // Allocate the temporary array(s).
   Address Objects = CreateMemTemp(ElementArrayType, "objects");
@@ -1800,9 +1801,10 @@ void CodeGenFunction::EmitObjCForCollectionStmt(const ObjCForCollectionStmt &S){
   Selector FastEnumSel =
       CGM.getContext().Selectors.getSelector(std::size(II), &II[0]);
 
-  QualType ItemsTy = getContext().getConstantArrayType(
-      getContext().getObjCIdType(), llvm::APInt(32, NumItems), nullptr,
-      ArraySizeModifier::Normal, 0);
+  QualType ItemsTy =
+    getContext().getConstantArrayType(getContext().getObjCIdType(),
+                                      llvm::APInt(32, NumItems), nullptr,
+                                      ArrayType::Normal, 0);
   Address ItemsPtr = CreateMemTemp(ItemsTy, "items.ptr");
 
   // Emit the collection pointer.  In ARC, we do a retain.
@@ -3709,7 +3711,7 @@ CodeGenFunction::GenerateObjCAtomicSetterCopyHelperFunction(
     CharUnits Alignment = C.getTypeAlignInChars(Ty);
     llvm::Constant *Fn = getNonTrivialCStructMoveAssignmentOperator(
         CGM, Alignment, Alignment, Ty.isVolatileQualified(), Ty);
-    return Fn;
+    return llvm::ConstantExpr::getBitCast(Fn, VoidPtrTy);
   }
 
   if (!getLangOpts().CPlusPlus ||
@@ -3789,7 +3791,7 @@ CodeGenFunction::GenerateObjCAtomicSetterCopyHelperFunction(
   EmitStmt(TheCall);
 
   FinishFunction();
-  HelperFn = Fn;
+  HelperFn = llvm::ConstantExpr::getBitCast(Fn, VoidPtrTy);
   CGM.setAtomicSetterHelperFnMap(Ty, HelperFn);
   return HelperFn;
 }
@@ -3807,7 +3809,7 @@ llvm::Constant *CodeGenFunction::GenerateObjCAtomicGetterCopyHelperFunction(
     CharUnits Alignment = C.getTypeAlignInChars(Ty);
     llvm::Constant *Fn = getNonTrivialCStructCopyConstructor(
         CGM, Alignment, Alignment, Ty.isVolatileQualified(), Ty);
-    return Fn;
+    return llvm::ConstantExpr::getBitCast(Fn, VoidPtrTy);
   }
 
   if (!getLangOpts().CPlusPlus ||
@@ -3908,7 +3910,7 @@ llvm::Constant *CodeGenFunction::GenerateObjCAtomicGetterCopyHelperFunction(
                   AggValueSlot::IsNotAliased, AggValueSlot::DoesNotOverlap));
 
   FinishFunction();
-  HelperFn = Fn;
+  HelperFn = llvm::ConstantExpr::getBitCast(Fn, VoidPtrTy);
   CGM.setAtomicGetterHelperFnMap(Ty, HelperFn);
   return HelperFn;
 }
@@ -3952,7 +3954,7 @@ static unsigned getBaseMachOPlatformID(const llvm::Triple &TT) {
   case llvm::Triple::DriverKit:
     return llvm::MachO::PLATFORM_DRIVERKIT;
   default:
-    return llvm::MachO::PLATFORM_UNKNOWN;
+    return /*Unknown platform*/ 0;
   }
 }
 

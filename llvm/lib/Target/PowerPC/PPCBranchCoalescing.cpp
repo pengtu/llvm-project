@@ -702,7 +702,6 @@ bool PPCBranchCoalescing::mergeCandidates(CoalescingCandidateInfo &SourceRegion,
   TargetRegion.FallThroughBlock->transferSuccessorsAndUpdatePHIs(
       SourceRegion.FallThroughBlock);
   TargetRegion.FallThroughBlock->removeSuccessor(SourceRegion.BranchBlock);
-  TargetRegion.FallThroughBlock->normalizeSuccProbs();
 
   // Remove the blocks from the function.
   assert(SourceRegion.BranchBlock->empty() &&

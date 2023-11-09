@@ -11,7 +11,6 @@
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/DebugInfo/Symbolize/SymbolizableModule.h"
-#include "llvm/Transforms/IPO/SampleProfile.h"
 #include <cstdint>
 #include <queue>
 
@@ -36,6 +35,13 @@ STATISTIC(
 // TODO: the actual threshold to be tuned here because the size here is based
 // on machine code not LLVM IR.
 namespace llvm {
+extern cl::opt<int> SampleHotCallSiteThreshold;
+extern cl::opt<int> SampleColdCallSiteThreshold;
+extern cl::opt<int> ProfileInlineGrowthLimit;
+extern cl::opt<int> ProfileInlineLimitMin;
+extern cl::opt<int> ProfileInlineLimitMax;
+extern cl::opt<bool> SortProfiledSCC;
+
 cl::opt<bool> EnableCSPreInliner(
     "csspgo-preinliner", cl::Hidden, cl::init(true),
     cl::desc("Run a global pre-inliner to merge context profile based on "
@@ -74,8 +80,8 @@ CSPreInliner::CSPreInliner(SampleContextTracker &Tracker,
     ProfileInlineLimitMax = 50000;
 }
 
-std::vector<FunctionId> CSPreInliner::buildTopDownOrder() {
-  std::vector<FunctionId> Order;
+std::vector<StringRef> CSPreInliner::buildTopDownOrder() {
+  std::vector<StringRef> Order;
   // Trim cold edges to get a more stable call graph. This allows for a more
   // stable top-down order which in turns helps the stablity of the generated
   // profile from run to run.
@@ -129,7 +135,7 @@ bool CSPreInliner::getInlineCandidates(ProfiledCandidateQueue &CQueue,
     LineLocation Callsite = CalleeNode->getCallSiteLoc();
     if (auto CallTargets = CallerSamples->findCallTargetMapAt(Callsite)) {
       SampleRecord::CallTargetMap &TargetCounts = CallTargets.get();
-      auto It = TargetCounts.find(CalleeSamples->getFunction());
+      auto It = TargetCounts.find(CalleeSamples->getName());
       if (It != TargetCounts.end())
         CallsiteCount = It->second;
     }
@@ -196,7 +202,7 @@ bool CSPreInliner::shouldInline(ProfiledInlineCandidate &Candidate) {
   return (Candidate.SizeCost < SampleThreshold);
 }
 
-void CSPreInliner::processFunction(const FunctionId Name) {
+void CSPreInliner::processFunction(const StringRef Name) {
   FunctionSamples *FSamples = ContextTracker.getBaseSamplesFor(Name);
   if (!FSamples)
     return;
@@ -297,7 +303,7 @@ void CSPreInliner::run() {
   // It also helps better compress context profile to control profile
   // size, as we now only need context profile for functions going to
   // be inlined.
-  for (FunctionId FuncName : buildTopDownOrder()) {
+  for (StringRef FuncName : buildTopDownOrder()) {
     processFunction(FuncName);
   }
 

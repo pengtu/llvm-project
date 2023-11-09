@@ -10,7 +10,7 @@
 #include "src/string/memory_utils/utils.h"
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 TEST(LlvmLibcUtilsTest, IsPowerOfTwoOrZero) {
   static const cpp::array<bool, 65> kExpectedValues{
@@ -197,4 +197,4 @@ TEST(LlvmLibcUtilsTest, LoadStoreAligned) {
   }
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

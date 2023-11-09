@@ -10,7 +10,6 @@
 #include "llvm/MC/MCDXContainerWriter.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCFixupKindInfo.h"
-#include "llvm/MC/MCGOFFObjectWriter.h"
 #include "llvm/MC/MCMachObjectWriter.h"
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCSPIRVObjectWriter.h"
@@ -23,7 +22,7 @@
 
 using namespace llvm;
 
-MCAsmBackend::MCAsmBackend(llvm::endianness Endian, unsigned RelaxFixupKind)
+MCAsmBackend::MCAsmBackend(support::endianness Endian, unsigned RelaxFixupKind)
     : Endian(Endian), RelaxFixupKind(RelaxFixupKind) {}
 
 MCAsmBackend::~MCAsmBackend() = default;
@@ -33,11 +32,11 @@ MCAsmBackend::createObjectWriter(raw_pwrite_stream &OS) const {
   auto TW = createObjectTargetWriter();
   switch (TW->getFormat()) {
   case Triple::ELF:
-    return createELFObjectWriter(cast<MCELFObjectTargetWriter>(std::move(TW)),
-                                 OS, Endian == llvm::endianness::little);
+    return createELFObjectWriter(cast<MCELFObjectTargetWriter>(std::move(TW)), OS,
+                                 Endian == support::little);
   case Triple::MachO:
     return createMachObjectWriter(cast<MCMachObjectTargetWriter>(std::move(TW)),
-                                  OS, Endian == llvm::endianness::little);
+                                  OS, Endian == support::little);
   case Triple::COFF:
     return createWinCOFFObjectWriter(
         cast<MCWinCOFFObjectTargetWriter>(std::move(TW)), OS);
@@ -46,9 +45,6 @@ MCAsmBackend::createObjectWriter(raw_pwrite_stream &OS) const {
         cast<MCSPIRVObjectTargetWriter>(std::move(TW)), OS);
   case Triple::Wasm:
     return createWasmObjectWriter(cast<MCWasmObjectTargetWriter>(std::move(TW)),
-                                  OS);
-  case Triple::GOFF:
-    return createGOFFObjectWriter(cast<MCGOFFObjectTargetWriter>(std::move(TW)),
                                   OS);
   case Triple::XCOFF:
     return createXCOFFObjectWriter(
@@ -72,7 +68,7 @@ MCAsmBackend::createDwoObjectWriter(raw_pwrite_stream &OS,
   case Triple::ELF:
     return createELFDwoObjectWriter(
         cast<MCELFObjectTargetWriter>(std::move(TW)), OS, DwoOS,
-        Endian == llvm::endianness::little);
+        Endian == support::little);
   case Triple::Wasm:
     return createWasmDwoObjectWriter(
         cast<MCWasmObjectTargetWriter>(std::move(TW)), OS, DwoOS);

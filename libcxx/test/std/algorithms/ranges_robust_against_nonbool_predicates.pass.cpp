@@ -22,7 +22,6 @@
 #include <ranges>
 
 #include "boolean_testable.h"
-#include "test_macros.h"
 
 constexpr auto unary_pred = [](int i) { return BooleanTestable(i > 0); };
 static_assert(!std::same_as<decltype(unary_pred(1)), bool>);
@@ -69,9 +68,6 @@ constexpr bool test_all() {
 
   test(std::ranges::any_of, in, unary_pred);
   test(std::ranges::all_of, in, unary_pred);
-#if TEST_STD_VER >= 23
-  test(std::ranges::ends_with, in, in2, binary_pred);
-#endif
   test(std::ranges::none_of, in, unary_pred);
   test(std::ranges::find_if, in, unary_pred);
   test(std::ranges::find_if_not, in, unary_pred);
@@ -122,9 +118,6 @@ constexpr bool test_all() {
   test(std::ranges::partition_copy, in, out, out2, unary_pred);
   test(std::ranges::partial_sort_copy, in, in2, binary_pred);
   test(std::ranges::merge, in, in2, out, binary_pred);
-#if TEST_STD_VER > 20
-  test(std::ranges::starts_with, in, in2, binary_pred);
-#endif
   test(std::ranges::set_difference, in, in2, out, binary_pred);
   test(std::ranges::set_intersection, in, in2, out, binary_pred);
   test(std::ranges::set_symmetric_difference, in, in2, out, binary_pred);

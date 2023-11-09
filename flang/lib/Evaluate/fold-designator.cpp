@@ -373,9 +373,7 @@ ConstantObjectPointer ConstantObjectPointer::From(
     FoldingContext &context, const Expr<SomeType> &expr) {
   auto extents{GetConstantExtents(context, expr)};
   CHECK(extents);
-  std::optional<uint64_t> optElements{TotalElementCount(*extents)};
-  CHECK(optElements);
-  uint64_t elements{*optElements};
+  std::size_t elements{TotalElementCount(*extents)};
   CHECK(elements > 0);
   int rank{GetRank(*extents)};
   ConstantSubscripts at(rank, 1);

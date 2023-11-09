@@ -29,7 +29,7 @@ namespace llvm {
 
   FunctionPass *createXCoreFrameToArgsOffsetEliminationPass();
   FunctionPass *createXCoreISelDag(XCoreTargetMachine &TM,
-                                   CodeGenOptLevel OptLevel);
+                                   CodeGenOpt::Level OptLevel);
   ModulePass *createXCoreLowerThreadLocalPass();
   void initializeXCoreDAGToDAGISelPass(PassRegistry &);
 

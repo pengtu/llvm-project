@@ -23,18 +23,22 @@ TEST_CONSTEXPR_CXX20 void test(S s, typename S::value_type str, S expected) {
   assert(s == expected);
 }
 
-template <class S>
-TEST_CONSTEXPR_CXX20 void test_string() {
-  test(S(), 'a', S("a"));
-  test(S("12345"), 'a', S("12345a"));
-  test(S("1234567890"), 'a', S("1234567890a"));
-  test(S("12345678901234567890"), 'a', S("12345678901234567890a"));
-}
-
 TEST_CONSTEXPR_CXX20 bool test() {
-  test_string<std::string>();
+  {
+    typedef std::string S;
+    test(S(), 'a', S("a"));
+    test(S("12345"), 'a', S("12345a"));
+    test(S("1234567890"), 'a', S("1234567890a"));
+    test(S("12345678901234567890"), 'a', S("12345678901234567890a"));
+  }
 #if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    test(S(), 'a', S("a"));
+    test(S("12345"), 'a', S("12345a"));
+    test(S("1234567890"), 'a', S("1234567890a"));
+    test(S("12345678901234567890"), 'a', S("12345678901234567890a"));
+  }
 #endif
 
   return true;

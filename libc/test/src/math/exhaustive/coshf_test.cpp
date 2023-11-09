@@ -10,11 +10,11 @@
 #include "src/math/coshf.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
+namespace mpfr = __llvm_libc::testing::mpfr;
 
 using LlvmLibcCoshfExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Cosh,
-                                      LIBC_NAMESPACE::coshf>;
+                                      __llvm_libc::coshf>;
 
 // Range: [0, Inf];
 static constexpr uint32_t POS_START = 0x0000'0000U;

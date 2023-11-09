@@ -38,11 +38,11 @@ public:
                                       bool NeedExecCopyReservedReg) const;
   void emitCSRSpillStores(MachineFunction &MF, MachineBasicBlock &MBB,
                           MachineBasicBlock::iterator MBBI, DebugLoc &DL,
-                          LiveRegUnits &LiveUnits, Register FrameReg,
+                          LivePhysRegs &LiveRegs, Register FrameReg,
                           Register FramePtrRegScratchCopy) const;
   void emitCSRSpillRestores(MachineFunction &MF, MachineBasicBlock &MBB,
                             MachineBasicBlock::iterator MBBI, DebugLoc &DL,
-                            LiveRegUnits &LiveUnits, Register FrameReg,
+                            LivePhysRegs &LiveRegs, Register FrameReg,
                             Register FramePtrRegScratchCopy) const;
   bool
   assignCalleeSavedSpillSlots(MachineFunction &MF,

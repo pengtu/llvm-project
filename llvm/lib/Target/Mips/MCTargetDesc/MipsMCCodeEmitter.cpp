@@ -206,8 +206,7 @@ void MipsMCCodeEmitter::encodeInstruction(const MCInst &MI,
   if (!Size)
     llvm_unreachable("Desc.getSize() returns 0");
 
-  auto Endian =
-      IsLittleEndian ? llvm::endianness::little : llvm::endianness::big;
+  auto Endian = IsLittleEndian ? support::little : support::big;
   if (Size == 2) {
     support::endian::write<uint16_t>(CB, Binary, Endian);
   } else if (IsLittleEndian && isMicroMips(STI)) {

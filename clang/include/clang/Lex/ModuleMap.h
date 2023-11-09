@@ -20,8 +20,8 @@
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/PointerIntPair.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
@@ -194,12 +194,13 @@ public:
     }
   };
 
-  using AdditionalModMapsSet = llvm::DenseSet<FileEntryRef>;
+  using AdditionalModMapsSet = llvm::SmallPtrSet<FileEntryRef, 1>;
 
 private:
   friend class ModuleMapParser;
 
-  using HeadersMap = llvm::DenseMap<FileEntryRef, SmallVector<KnownHeader, 1>>;
+  using HeadersMap =
+      llvm::DenseMap<const FileEntry *, SmallVector<KnownHeader, 1>>;
 
   /// Mapping from each header to the module that owns the contents of
   /// that header.
@@ -232,20 +233,16 @@ private:
   /// The set of attributes that can be attached to a module.
   struct Attributes {
     /// Whether this is a system module.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsSystem : 1;
 
     /// Whether this is an extern "C" module.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsExternC : 1;
 
     /// Whether this is an exhaustive set of configuration macros.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsExhaustive : 1;
 
     /// Whether files in this module can only include non-modular headers
     /// and headers from used modules.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned NoUndeclaredIncludes : 1;
 
     Attributes()
@@ -256,15 +253,14 @@ private:
   /// A directory for which framework modules can be inferred.
   struct InferredDirectory {
     /// Whether to infer modules from this directory.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned InferModules : 1;
 
     /// The attributes to use for inferred modules.
     Attributes Attrs;
 
     /// If \c InferModules is non-zero, the module map file that allowed
-    /// inferred modules.  Otherwise, nullopt.
-    OptionalFileEntryRef ModuleMapFile;
+    /// inferred modules.  Otherwise, nullptr.
+    const FileEntry *ModuleMapFile;
 
     /// The names of modules that cannot be inferred within this
     /// directory.
@@ -279,8 +275,7 @@ private:
 
   /// A mapping from an inferred module to the module map that allowed the
   /// inference.
-  // FIXME: Consider making the values non-optional.
-  llvm::DenseMap<const Module *, OptionalFileEntryRef> InferredModuleAllowedBy;
+  llvm::DenseMap<const Module *, const FileEntry *> InferredModuleAllowedBy;
 
   llvm::DenseMap<const Module *, AdditionalModMapsSet> AdditionalModMaps;
 
@@ -361,7 +356,7 @@ private:
   /// If \p File represents a builtin header within Clang's builtin include
   /// directory, this also loads all of the module maps to see if it will get
   /// associated with a specific module (e.g. in /usr/include).
-  HeadersMap::iterator findKnownHeader(FileEntryRef File);
+  HeadersMap::iterator findKnownHeader(const FileEntry *File);
 
   /// Searches for a module whose umbrella directory contains \p File.
   ///
@@ -415,15 +410,13 @@ public:
   }
 
   /// Get the directory that contains Clang-supplied include files.
-  OptionalDirectoryEntryRefDegradesToDirectoryEntryPtr getBuiltinDir() const {
+  const DirectoryEntry *getBuiltinDir() const {
     return BuiltinIncludeDir;
   }
 
   /// Is this a compiler builtin header?
-  bool isBuiltinHeader(FileEntryRef File);
-
-  bool shouldImportRelativeToBuiltinIncludeDir(StringRef FileName,
-                                               Module *Module) const;
+  static bool isBuiltinHeader(StringRef FileName);
+  bool isBuiltinHeader(const FileEntry *File);
 
   /// Add a module map callback.
   void addModuleMapCallbacks(std::unique_ptr<ModuleMapCallbacks> Callback) {
@@ -458,7 +451,8 @@ public:
 
   /// Like \ref findAllModulesForHeader, but do not attempt to infer module
   /// ownership from umbrella headers if we've not already done so.
-  ArrayRef<KnownHeader> findResolvedModulesForHeader(FileEntryRef File) const;
+  ArrayRef<KnownHeader>
+  findResolvedModulesForHeader(const FileEntry *File) const;
 
   /// Resolve all lazy header directives for the specified file.
   ///
@@ -637,7 +631,7 @@ public:
   /// getContainingModuleMapFile().
   OptionalFileEntryRef getModuleMapFileForUniquing(const Module *M) const;
 
-  void setInferredModuleAllowedBy(Module *M, OptionalFileEntryRef ModMap);
+  void setInferredModuleAllowedBy(Module *M, const FileEntry *ModMap);
 
   /// Canonicalize \p Path in a manner suitable for a module map file. In
   /// particular, this canonicalizes the parent directory separately from the

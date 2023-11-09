@@ -218,11 +218,11 @@ void hexagon::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
 
   addSanitizerRuntimes(HTC, Args, CmdArgs);
 
-  assert((Output.isFilename() || Output.isNothing()) && "Invalid output.");
   if (Output.isFilename()) {
     CmdArgs.push_back("-o");
     CmdArgs.push_back(Output.getFilename());
   } else {
+    assert(Output.isNothing() && "Unexpected output");
     CmdArgs.push_back("-fsyntax-only");
   }
 
@@ -363,7 +363,7 @@ constructHexagonLinkArgs(Compilation &C, const JobAction &JA,
 
     CmdArgs.push_back(
         Args.MakeArgString(StringRef("-L") + D.SysRoot + "/usr/lib"));
-    Args.addAllArgs(CmdArgs, {options::OPT_T_Group, options::OPT_s,
+    Args.AddAllArgs(CmdArgs, {options::OPT_T_Group, options::OPT_s,
                               options::OPT_t, options::OPT_u_Group});
     AddLinkerInputs(HTC, Inputs, Args, CmdArgs, JA);
 
@@ -377,8 +377,7 @@ constructHexagonLinkArgs(Compilation &C, const JobAction &JA,
         linkXRayRuntimeDeps(HTC, Args, CmdArgs);
 
       CmdArgs.push_back("-lclang_rt.builtins-hexagon");
-      if (!Args.hasArg(options::OPT_nolibc))
-        CmdArgs.push_back("-lc");
+      CmdArgs.push_back("-lc");
     }
     if (D.CCCIsCXX()) {
       if (HTC.ShouldLinkCXXStdlib(Args))
@@ -451,7 +450,7 @@ constructHexagonLinkArgs(Compilation &C, const JobAction &JA,
   //----------------------------------------------------------------------------
   //
   //----------------------------------------------------------------------------
-  Args.addAllArgs(CmdArgs, {options::OPT_T_Group, options::OPT_s,
+  Args.AddAllArgs(CmdArgs, {options::OPT_T_Group, options::OPT_s,
                             options::OPT_t, options::OPT_u_Group});
 
   AddLinkerInputs(HTC, Inputs, Args, CmdArgs, JA);
@@ -471,8 +470,7 @@ constructHexagonLinkArgs(Compilation &C, const JobAction &JA,
     if (!IsShared) {
       for (StringRef Lib : OsLibs)
         CmdArgs.push_back(Args.MakeArgString("-l" + Lib));
-      if (!Args.hasArg(options::OPT_nolibc))
-        CmdArgs.push_back("-lc");
+      CmdArgs.push_back("-lc");
     }
     CmdArgs.push_back("-lgcc");
 

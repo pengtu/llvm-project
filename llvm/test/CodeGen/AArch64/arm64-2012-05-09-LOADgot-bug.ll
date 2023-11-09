@@ -4,8 +4,7 @@
 
 define hidden void @t(ptr %addr) optsize ssp {
 entry:
-  %ext = zext i32 ptrtoint (ptr @x to i32) to i64
-  store i64 %ext, ptr %addr, align 8
+  store i64 zext (i32 ptrtoint (ptr @x to i32) to i64), ptr %addr, align 8
 ; CHECK:             adrp    x{{[0-9]+}}, _x@GOTPAGE
 ; CHECK:        ldr     x{{[0-9]+}}, [x{{[0-9]+}}, _x@GOTPAGEOFF]
 ; CHECK-NEXT:        and     x{{[0-9]+}}, x{{[0-9]+}}, #0xffffffff

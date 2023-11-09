@@ -9,12 +9,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "State.h"
-#include "Allocator.h"
-#include "Configuration.h"
 #include "Debug.h"
 #include "Environment.h"
 #include "Interface.h"
-#include "LibC.h"
 #include "Mapping.h"
 #include "Synchronization.h"
 #include "Types.h"
@@ -28,19 +25,17 @@ using namespace ompx;
 ///
 ///{
 
+/// Add worst-case padding so that future allocations are properly aligned.
+/// FIXME: The stack shouldn't require worst-case padding. Alignment needs to be
+/// passed in as an argument and the stack rewritten to support it.
+constexpr const uint32_t Alignment = 16;
+
 /// External symbol to access dynamic shared memory.
-[[gnu::aligned(
-    allocator::ALIGNMENT)]] extern unsigned char DynamicSharedBuffer[];
+extern unsigned char DynamicSharedBuffer[] __attribute__((aligned(Alignment)));
 #pragma omp allocate(DynamicSharedBuffer) allocator(omp_pteam_mem_alloc)
 
 /// The kernel environment passed to the init method by the compiler.
 static KernelEnvironmentTy *SHARED(KernelEnvironmentPtr);
-
-/// The kernel launch environment passed as argument to the kernel by the
-/// runtime.
-static KernelLaunchEnvironmentTy *SHARED(KernelLaunchEnvironmentPtr);
-
-///}
 
 namespace {
 
@@ -49,19 +44,29 @@ namespace {
 /// dedicated begin/end declare variant.
 ///
 ///{
+
 extern "C" {
-#ifdef __AMDGPU__
-
-[[gnu::weak]] void *malloc(uint64_t Size) { return allocator::alloc(Size); }
-[[gnu::weak]] void free(void *Ptr) { allocator::free(Ptr); }
-
-#else
-
-[[gnu::weak, gnu::leaf]] void *malloc(uint64_t Size);
-[[gnu::weak, gnu::leaf]] void free(void *Ptr);
-
-#endif
+__attribute__((leaf)) void *malloc(uint64_t Size);
+__attribute__((leaf)) void free(void *Ptr);
 }
+
+///}
+
+/// AMDGCN implementations of the shuffle sync idiom.
+///
+///{
+#pragma omp begin declare variant match(device = {arch(amdgcn)})
+
+extern "C" {
+void *malloc(uint64_t Size) {
+  // TODO: Use some preallocated space for dynamic malloc.
+  return nullptr;
+}
+
+void free(void *Ptr) {}
+}
+
+#pragma omp end declare variant
 ///}
 
 /// A "smart" stack in shared memory.
@@ -90,7 +95,7 @@ private:
   uint32_t computeThreadStorageTotal() {
     uint32_t NumLanesInBlock = mapping::getNumberOfThreadsInBlock();
     return utils::align_down((state::SharedScratchpadSize / NumLanesInBlock),
-                             allocator::ALIGNMENT);
+                             Alignment);
   }
 
   /// Return the top address of the warp data stack, that is the first address
@@ -100,10 +105,10 @@ private:
   }
 
   /// The actual storage, shared among all warps.
-  [[gnu::aligned(
-      allocator::ALIGNMENT)]] unsigned char Data[state::SharedScratchpadSize];
-  [[gnu::aligned(
-      allocator::ALIGNMENT)]] unsigned char Usage[mapping::MaxThreadsPerTeam];
+  unsigned char Data[state::SharedScratchpadSize]
+      __attribute__((aligned(Alignment)));
+  unsigned char Usage[mapping::MaxThreadsPerTeam]
+      __attribute__((aligned(Alignment)));
 };
 
 static_assert(state::SharedScratchpadSize / mapping::MaxThreadsPerTeam <= 256,
@@ -118,9 +123,7 @@ void SharedMemorySmartStackTy::init(bool IsSPMD) {
 
 void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
   // First align the number of requested bytes.
-  /// FIXME: The stack shouldn't require worst-case padding. Alignment needs to
-  /// be passed in as an argument and the stack rewritten to support it.
-  uint64_t AlignedBytes = utils::align_up(Bytes, allocator::ALIGNMENT);
+  uint64_t AlignedBytes = utils::align_up(Bytes, Alignment);
 
   uint32_t StorageTotal = computeThreadStorageTotal();
 
@@ -136,7 +139,7 @@ void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
     return Ptr;
   }
 
-  if (config::isDebugMode(DeviceDebugKind::CommonIssues))
+  if (config::isDebugMode(config::DebugKind::CommonIssues))
     PRINT("Shared memory stack full, fallback to dynamic allocation of global "
           "memory will negatively impact performance.\n");
   void *GlobalMemory = memory::allocGlobal(
@@ -148,7 +151,7 @@ void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
 }
 
 void SharedMemorySmartStackTy::pop(void *Ptr, uint32_t Bytes) {
-  uint64_t AlignedBytes = utils::align_up(Bytes, allocator::ALIGNMENT);
+  uint64_t AlignedBytes = utils::align_up(Bytes, Alignment);
   if (utils::isSharedMemPtr(Ptr)) {
     int TId = mapping::getThreadIdInBlock();
     Usage[TId] -= AlignedBytes;
@@ -171,7 +174,7 @@ void memory::freeShared(void *Ptr, uint64_t Bytes, const char *Reason) {
 
 void *memory::allocGlobal(uint64_t Bytes, const char *Reason) {
   void *Ptr = malloc(Bytes);
-  if (config::isDebugMode(DeviceDebugKind::CommonIssues) && Ptr == nullptr)
+  if (config::isDebugMode(config::DebugKind::CommonIssues) && Ptr == nullptr)
     PRINT("nullptr returned by malloc!\n");
   return Ptr;
 }
@@ -242,23 +245,17 @@ int returnValIfLevelIsActive(int Level, int Val, int DefaultVal,
 
 } // namespace
 
-void state::init(bool IsSPMD, KernelEnvironmentTy &KernelEnvironment,
-                 KernelLaunchEnvironmentTy &KernelLaunchEnvironment) {
+void state::init(bool IsSPMD, KernelEnvironmentTy &KernelEnvironment) {
   SharedMemorySmartStack.init(IsSPMD);
   if (mapping::isInitialThreadInLevel0(IsSPMD)) {
     TeamState.init(IsSPMD);
     ThreadStates = nullptr;
     KernelEnvironmentPtr = &KernelEnvironment;
-    KernelLaunchEnvironmentPtr = &KernelLaunchEnvironment;
   }
 }
 
 KernelEnvironmentTy &state::getKernelEnvironment() {
   return *KernelEnvironmentPtr;
-}
-
-KernelLaunchEnvironmentTy &state::getKernelLaunchEnvironment() {
-  return *KernelLaunchEnvironmentPtr;
 }
 
 void state::enterDataEnvironment(IdentTy *Ident) {
@@ -268,15 +265,13 @@ void state::enterDataEnvironment(IdentTy *Ident) {
     return;
 
   unsigned TId = mapping::getThreadIdInBlock();
-  ThreadStateTy *NewThreadState = static_cast<ThreadStateTy *>(
-      memory::allocGlobal(sizeof(ThreadStateTy), "ThreadStates alloc"));
+  ThreadStateTy *NewThreadState =
+      static_cast<ThreadStateTy *>(__kmpc_alloc_shared(sizeof(ThreadStateTy)));
   uintptr_t *ThreadStatesBitsPtr = reinterpret_cast<uintptr_t *>(&ThreadStates);
   if (!atomic::load(ThreadStatesBitsPtr, atomic::seq_cst)) {
-    uint32_t Bytes =
-        sizeof(ThreadStates[0]) * mapping::getNumberOfThreadsInBlock();
+    uint32_t Bytes = sizeof(ThreadStates[0]) * mapping::getMaxTeamThreads();
     void *ThreadStatesPtr =
         memory::allocGlobal(Bytes, "Thread state array allocation");
-    memset(ThreadStatesPtr, 0, Bytes);
     if (!atomic::cas(ThreadStatesBitsPtr, uintptr_t(0),
                      reinterpret_cast<uintptr_t>(ThreadStatesPtr),
                      atomic::seq_cst, atomic::seq_cst))
@@ -305,7 +300,7 @@ void state::resetStateForThread(uint32_t TId) {
     return;
 
   ThreadStateTy *PreviousThreadState = ThreadStates[TId]->PreviousThreadState;
-  memory::freeGlobal(ThreadStates[TId], "ThreadStates dealloc");
+  __kmpc_free_shared(ThreadStates[TId], sizeof(ThreadStateTy));
   ThreadStates[TId] = PreviousThreadState;
 }
 
@@ -428,11 +423,11 @@ int omp_get_initial_device(void) { return -1; }
 }
 
 extern "C" {
-[[clang::noinline]] void *__kmpc_alloc_shared(uint64_t Bytes) {
+__attribute__((noinline)) void *__kmpc_alloc_shared(uint64_t Bytes) {
   return memory::allocShared(Bytes, "Frontend alloc shared");
 }
 
-[[clang::noinline]] void __kmpc_free_shared(void *Ptr, uint64_t Bytes) {
+__attribute__((noinline)) void __kmpc_free_shared(void *Ptr, uint64_t Bytes) {
   memory::freeShared(Ptr, Bytes, "Frontend free shared");
 }
 

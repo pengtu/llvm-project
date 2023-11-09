@@ -289,7 +289,7 @@ void LoopVectorizeHints::getHintsFromMetadata() {
 }
 
 void LoopVectorizeHints::setHint(StringRef Name, Metadata *Arg) {
-  if (!Name.starts_with(Prefix()))
+  if (!Name.startswith(Prefix()))
     return;
   Name = Name.substr(Prefix().size(), StringRef::npos);
 

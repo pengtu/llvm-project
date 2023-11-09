@@ -9,8 +9,8 @@
 #include "src/math/tanh.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(double, tanh, (double x)) { return __builtin_tanh(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

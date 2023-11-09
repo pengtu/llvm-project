@@ -31,15 +31,18 @@
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | %{run_sve} | FileCheck %s %}
 
 #Tensor1  = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d0 : compressed, d1 : compressed, d2 : compressed)
+  lvlTypes = [ "compressed", "compressed", "compressed" ],
+  dimToLvl = affine_map<(i,j,k) -> (i,j,k)>
 }>
 
 #Tensor2  = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d1 : compressed, d2 : compressed, d0 : compressed)
+  lvlTypes = [ "compressed", "compressed", "compressed" ],
+  dimToLvl = affine_map<(i,j,k) -> (j,k,i)>
 }>
 
 #Tensor3  = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d2 : compressed, d0 : compressed, d1 : compressed)
+  lvlTypes = [ "compressed", "compressed", "compressed" ],
+  dimToLvl = affine_map<(i,j,k) -> (k,i,j)>
 }>
 
 //

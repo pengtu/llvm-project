@@ -24,10 +24,9 @@ bb1:                                              ; preds = %bb11
 
 bb2:                                              ; preds = %bb1, %bb
   %tmp3 = phi i32 [ %tmp, %bb1 ], [ 0, %bb ]
-  %ext = zext i1 icmp ne (i64 ptrtoint (ptr @global5 to i64), i64 1) to i32
-  %tmp4 = xor i32 %tmp3, %ext
+  %tmp4 = xor i32 %tmp3, zext (i1 icmp ne (i64 ptrtoint (ptr @global5 to i64), i64 1) to i32)
   store i32 %tmp4, ptr @global5, align 4
-  %tmp5 = icmp eq i32 %tmp3, %ext
+  %tmp5 = icmp eq i32 %tmp3, zext (i1 icmp ne (i64 ptrtoint (ptr @global5 to i64), i64 1) to i32)
   br i1 %tmp5, label %bb8, label %bb6
 
 bb6:                                              ; preds = %bb2

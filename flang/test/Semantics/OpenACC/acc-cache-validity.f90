@@ -29,11 +29,15 @@ program openacc_cache_validity
   !$acc cache(t%arr)
   !$acc cache(ta(1:2)%arr)
   !$acc cache(ta(1:2)%arr(1:4))
-  !$acc cache(i)
-  !$acc cache(t%s)
 
   !ERROR: Only array element or subarray are allowed in CACHE directive
-  !$acc cache(t)
+  !$acc cache(ta(1:2)%s)
+
+  !ERROR: Only array element or subarray are allowed in CACHE directive
+  !$acc cache(i)
+
+  !ERROR: Only array element or subarray are allowed in CACHE directive
+  !$acc cache(t%s)
 
   !ERROR: Only array element or subarray are allowed in CACHE directive
   !$acc cache(/i/)

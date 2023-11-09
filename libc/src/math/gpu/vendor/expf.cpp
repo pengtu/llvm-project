@@ -11,8 +11,8 @@
 
 #include "common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, expf, (float x)) { return internal::expf(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -636,8 +636,7 @@ class SizeClassAllocator64 {
   }
   uptr SpaceEnd() const { return  SpaceBeg() + kSpaceSize; }
   // kRegionSize should be able to satisfy the largest size class.
-  static_assert(kRegionSize >= SizeClassMap::kMaxSize,
-                "Region size exceed largest size");
+  static_assert(kRegionSize >= SizeClassMap::kMaxSize);
   // kRegionSize must be <= 2^36, see CompactPtrT.
   COMPILER_CHECK((kRegionSize) <= (1ULL << (SANITIZER_WORDSIZE / 2 + 4)));
   // Call mmap for user memory with at least this size.

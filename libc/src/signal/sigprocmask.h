@@ -11,11 +11,11 @@
 
 #include <signal.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int sigprocmask(int how, const sigset_t *__restrict set,
                 sigset_t *__restrict oldset);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_SIGNAL_SIGPROCMASK_H

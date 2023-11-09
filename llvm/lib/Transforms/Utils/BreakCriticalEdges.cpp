@@ -387,7 +387,7 @@ bool llvm::SplitIndirectBrCriticalEdges(Function &F,
     if (ShouldUpdateAnalysis) {
       // Copy the BFI/BPI from Target to BodyBlock.
       BPI->setEdgeProbability(BodyBlock, EdgeProbabilities);
-      BFI->setBlockFreq(BodyBlock, BFI->getBlockFreq(Target));
+      BFI->setBlockFreq(BodyBlock, BFI->getBlockFreq(Target).getFrequency());
     }
     // It's possible Target was its own successor through an indirectbr.
     // In this case, the indirectbr now comes from BodyBlock.
@@ -411,10 +411,10 @@ bool llvm::SplitIndirectBrCriticalEdges(Function &F,
             BPI->getEdgeProbability(Src, DirectSucc);
     }
     if (ShouldUpdateAnalysis) {
-      BFI->setBlockFreq(DirectSucc, BlockFreqForDirectSucc);
+      BFI->setBlockFreq(DirectSucc, BlockFreqForDirectSucc.getFrequency());
       BlockFrequency NewBlockFreqForTarget =
           BFI->getBlockFreq(Target) - BlockFreqForDirectSucc;
-      BFI->setBlockFreq(Target, NewBlockFreqForTarget);
+      BFI->setBlockFreq(Target, NewBlockFreqForTarget.getFrequency());
     }
 
     // Ok, now fix up the PHIs. We know the two blocks only have PHIs, and that

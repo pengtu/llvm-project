@@ -133,7 +133,12 @@ TEST_F(PPDependencyDirectivesTest, MacroGuard) {
   SmallVector<StringRef> IncludedFiles;
   PP.addPPCallbacks(std::make_unique<IncludeCollector>(PP, IncludedFiles));
   PP.EnterMainSourceFile();
-  PP.LexTokensUntilEOF();
+  while (true) {
+    Token tok;
+    PP.Lex(tok);
+    if (tok.is(tok::eof))
+      break;
+  }
 
   SmallVector<std::string> IncludedFilesSlash;
   for (StringRef IncludedFile : IncludedFiles)

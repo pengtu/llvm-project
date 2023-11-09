@@ -23,7 +23,7 @@ using namespace llvm::object;
 namespace lld::wasm {
 SymbolTable *symtab;
 
-void SymbolTable::addFile(InputFile *file, StringRef symName) {
+void SymbolTable::addFile(InputFile *file) {
   log("Processing: " + toString(file));
 
   // .a file
@@ -50,7 +50,7 @@ void SymbolTable::addFile(InputFile *file, StringRef symName) {
 
   // LLVM bitcode file
   if (auto *f = dyn_cast<BitcodeFile>(file)) {
-    f->parse(symName);
+    f->parse();
     bitcodeFiles.push_back(f);
     return;
   }
@@ -233,8 +233,7 @@ DefinedData *SymbolTable::addOptionalDataSymbol(StringRef name,
   else if (!s || s->isDefined())
     return nullptr;
   LLVM_DEBUG(dbgs() << "addOptionalDataSymbol: " << name << "\n");
-  auto *rtn = replaceSymbol<DefinedData>(
-      s, name, WASM_SYMBOL_VISIBILITY_HIDDEN | WASM_SYMBOL_ABSOLUTE);
+  auto *rtn = replaceSymbol<DefinedData>(s, name, WASM_SYMBOL_VISIBILITY_HIDDEN);
   rtn->setVA(value);
   rtn->referenced = true;
   return rtn;
@@ -244,8 +243,7 @@ DefinedData *SymbolTable::addSyntheticDataSymbol(StringRef name,
                                                  uint32_t flags) {
   LLVM_DEBUG(dbgs() << "addSyntheticDataSymbol: " << name << "\n");
   assert(!find(name));
-  return replaceSymbol<DefinedData>(insertName(name).first, name,
-                                    flags | WASM_SYMBOL_ABSOLUTE);
+  return replaceSymbol<DefinedData>(insertName(name).first, name, flags);
 }
 
 DefinedGlobal *SymbolTable::addSyntheticGlobal(StringRef name, uint32_t flags,

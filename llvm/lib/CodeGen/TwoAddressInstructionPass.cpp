@@ -95,7 +95,7 @@ class TwoAddressInstructionPass : public MachineFunctionPass {
   LiveVariables *LV = nullptr;
   LiveIntervals *LIS = nullptr;
   AliasAnalysis *AA = nullptr;
-  CodeGenOptLevel OptLevel = CodeGenOptLevel::None;
+  CodeGenOpt::Level OptLevel = CodeGenOpt::None;
 
   // The current basic block being processed.
   MachineBasicBlock *MBB = nullptr;
@@ -125,7 +125,6 @@ class TwoAddressInstructionPass : public MachineFunctionPass {
   bool isCopyToReg(MachineInstr &MI, Register &SrcReg, Register &DstReg,
                    bool &IsSrcPhys, bool &IsDstPhys) const;
 
-  bool isPlainlyKilled(const MachineInstr *MI, LiveRange &LR) const;
   bool isPlainlyKilled(const MachineInstr *MI, Register Reg) const;
   bool isPlainlyKilled(const MachineOperand &MO) const;
 
@@ -306,37 +305,27 @@ bool TwoAddressInstructionPass::isCopyToReg(MachineInstr &MI, Register &SrcReg,
   return true;
 }
 
-bool TwoAddressInstructionPass::isPlainlyKilled(const MachineInstr *MI,
-                                                LiveRange &LR) const {
-  // This is to match the kill flag version where undefs don't have kill flags.
-  if (!LR.hasAtLeastOneValue())
-    return false;
-
-  SlotIndex useIdx = LIS->getInstructionIndex(*MI);
-  LiveInterval::const_iterator I = LR.find(useIdx);
-  assert(I != LR.end() && "Reg must be live-in to use.");
-  return !I->end.isBlock() && SlotIndex::isSameInstr(I->end, useIdx);
-}
-
 /// Test if the given register value, which is used by the
 /// given instruction, is killed by the given instruction.
 bool TwoAddressInstructionPass::isPlainlyKilled(const MachineInstr *MI,
                                                 Register Reg) const {
-  // FIXME: Sometimes tryInstructionTransform() will add instructions and
-  // test whether they can be folded before keeping them. In this case it
-  // sets a kill before recursively calling tryInstructionTransform() again.
-  // If there is no interval available, we assume that this instruction is
-  // one of those. A kill flag is manually inserted on the operand so the
-  // check below will handle it.
-  if (LIS && !LIS->isNotInMIMap(*MI)) {
-    if (Reg.isVirtual())
-      return isPlainlyKilled(MI, LIS->getInterval(Reg));
-    // Reserved registers are considered always live.
-    if (MRI->isReserved(Reg))
+  if (LIS && Reg.isVirtual() && !LIS->isNotInMIMap(*MI)) {
+    // FIXME: Sometimes tryInstructionTransform() will add instructions and
+    // test whether they can be folded before keeping them. In this case it
+    // sets a kill before recursively calling tryInstructionTransform() again.
+    // If there is no interval available, we assume that this instruction is
+    // one of those. A kill flag is manually inserted on the operand so the
+    // check below will handle it.
+    LiveInterval &LI = LIS->getInterval(Reg);
+    // This is to match the kill flag version where undefs don't have kill
+    // flags.
+    if (!LI.hasAtLeastOneValue())
       return false;
-    return all_of(TRI->regunits(Reg), [&](MCRegUnit U) {
-      return isPlainlyKilled(MI, LIS->getRegUnit(U));
-    });
+
+    SlotIndex useIdx = LIS->getInstructionIndex(*MI);
+    LiveInterval::const_iterator I = LI.find(useIdx);
+    assert(I != LI.end() && "Reg must be live-in to use.");
+    return !I->end.isBlock() && SlotIndex::isSameInstr(I->end, useIdx);
   }
 
   return MI->killsRegister(Reg);
@@ -562,7 +551,7 @@ bool TwoAddressInstructionPass::isProfitableToCommute(Register RegA,
                                                       Register RegC,
                                                       MachineInstr *MI,
                                                       unsigned Dist) {
-  if (OptLevel == CodeGenOptLevel::None)
+  if (OptLevel == CodeGenOpt::None)
     return false;
 
   // Determine if it's profitable to commute this two address instruction. In
@@ -1131,7 +1120,7 @@ bool TwoAddressInstructionPass::rescheduleKillAboveMI(
       if (MOReg.isPhysical() && regOverlapsSet(LiveDefs, MOReg))
         return false;
       // Physical register def is seen.
-      llvm::erase(Defs, MOReg);
+      llvm::erase_value(Defs, MOReg);
     }
   }
 
@@ -1242,7 +1231,7 @@ tryInstructionTransform(MachineBasicBlock::iterator &mi,
                         MachineBasicBlock::iterator &nmi,
                         unsigned SrcIdx, unsigned DstIdx,
                         unsigned &Dist, bool shouldOnlyCommute) {
-  if (OptLevel == CodeGenOptLevel::None)
+  if (OptLevel == CodeGenOpt::None)
     return false;
 
   MachineInstr &MI = *mi;
@@ -1577,7 +1566,7 @@ TwoAddressInstructionPass::processTiedPairs(MachineInstr *MI,
     MachineOperand &MO = MI->getOperand(SrcIdx);
     assert(MO.isReg() && MO.getReg() == RegB && MO.isUse() &&
            "inconsistent operand info for 2-reg pass");
-    if (isPlainlyKilled(MO)) {
+    if (MO.isKill()) {
       MO.setIsKill(false);
       RemovedKillFlag = true;
     }
@@ -1598,7 +1587,7 @@ TwoAddressInstructionPass::processTiedPairs(MachineInstr *MI,
     for (MachineOperand &MO : MI->all_uses()) {
       if (MO.getReg() == RegB) {
         if (MO.getSubReg() == SubRegB && !IsEarlyClobber) {
-          if (isPlainlyKilled(MO)) {
+          if (MO.isKill()) {
             MO.setIsKill(false);
             RemovedKillFlag = true;
           }
@@ -1768,7 +1757,7 @@ bool TwoAddressInstructionPass::runOnMachineFunction(MachineFunction &Func) {
   // Disable optimizations if requested. We cannot skip the whole pass as some
   // fixups are necessary for correctness.
   if (skipFunction(Func.getFunction()))
-    OptLevel = CodeGenOptLevel::None;
+    OptLevel = CodeGenOpt::None;
 
   bool MadeChange = false;
 
@@ -1879,16 +1868,12 @@ bool TwoAddressInstructionPass::runOnMachineFunction(MachineFunction &Func) {
             // %reg.subidx.
             LaneBitmask LaneMask =
                 TRI->getSubRegIndexLaneMask(mi->getOperand(0).getSubReg());
-            SlotIndex Idx = LIS->getInstructionIndex(*mi).getRegSlot();
+            SlotIndex Idx = LIS->getInstructionIndex(*mi);
             for (auto &S : LI.subranges()) {
               if ((S.LaneMask & LaneMask).none()) {
-                LiveRange::iterator DefSeg = S.FindSegmentContaining(Idx);
-                if (mi->getOperand(0).isUndef()) {
-                  S.removeValNo(DefSeg->valno);
-                } else {
-                  LiveRange::iterator UseSeg = std::prev(DefSeg);
-                  S.MergeValueNumberInto(DefSeg->valno, UseSeg->valno);
-                }
+                LiveRange::iterator UseSeg = S.FindSegmentContaining(Idx);
+                LiveRange::iterator DefSeg = std::next(UseSeg);
+                S.MergeValueNumberInto(DefSeg->valno, UseSeg->valno);
               }
             }
 

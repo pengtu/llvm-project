@@ -57,7 +57,7 @@ bool isImportLine(llvm::StringRef Line) {
   return Line.startswith("import");
 }
 
-llvm::StringRef getFileContents(FileEntryRef FE, const SourceManager &SM) {
+llvm::StringRef getFileContents(const FileEntry *FE, const SourceManager &SM) {
   return const_cast<SourceManager &>(SM)
       .getMemoryBufferForFileOrNone(FE)
       .value_or(llvm::MemoryBufferRef())
@@ -66,8 +66,9 @@ llvm::StringRef getFileContents(FileEntryRef FE, const SourceManager &SM) {
 
 } // namespace
 
-bool isSelfContainedHeader(FileEntryRef FE, const SourceManager &SM,
+bool isSelfContainedHeader(const FileEntry *FE, const SourceManager &SM,
                            const HeaderSearch &HeaderInfo) {
+  assert(FE);
   if (!HeaderInfo.isFileMultipleIncludeGuarded(FE) &&
       !HeaderInfo.hasFileBeenImported(FE) &&
       // Any header that contains #imports is supposed to be #import'd so no

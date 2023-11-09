@@ -765,10 +765,8 @@ LogicalResult spirv::Deserializer::processType(spirv::Opcode opcode,
   } break;
   case spirv::Opcode::OpTypeArray:
     return processArrayType(operands);
-  case spirv::Opcode::OpTypeCooperativeMatrixKHR:
-    return processCooperativeMatrixTypeKHR(operands);
   case spirv::Opcode::OpTypeCooperativeMatrixNV:
-    return processCooperativeMatrixTypeNV(operands);
+    return processCooperativeMatrixType(operands);
   case spirv::Opcode::OpTypeFunction:
     return processFunctionType(operands);
   case spirv::Opcode::OpTypeJointMatrixINTEL:
@@ -902,76 +900,32 @@ spirv::Deserializer::processFunctionType(ArrayRef<uint32_t> operands) {
   return success();
 }
 
-LogicalResult spirv::Deserializer::processCooperativeMatrixTypeKHR(
-    ArrayRef<uint32_t> operands) {
-  if (operands.size() != 6) {
-    return emitError(unknownLoc,
-                     "OpTypeCooperativeMatrixKHR must have element type, "
-                     "scope, row and column parameters, and use");
-  }
-
-  Type elementTy = getType(operands[1]);
-  if (!elementTy) {
-    return emitError(unknownLoc,
-                     "OpTypeCooperativeMatrixKHR references undefined <id> ")
-           << operands[1];
-  }
-
-  std::optional<spirv::Scope> scope =
-      spirv::symbolizeScope(getConstantInt(operands[2]).getInt());
-  if (!scope) {
-    return emitError(
-               unknownLoc,
-               "OpTypeCooperativeMatrixKHR references undefined scope <id> ")
-           << operands[2];
-  }
-
-  unsigned rows = getConstantInt(operands[3]).getInt();
-  unsigned columns = getConstantInt(operands[4]).getInt();
-
-  std::optional<spirv::CooperativeMatrixUseKHR> use =
-      spirv::symbolizeCooperativeMatrixUseKHR(
-          getConstantInt(operands[5]).getInt());
-  if (!use) {
-    return emitError(
-               unknownLoc,
-               "OpTypeCooperativeMatrixKHR references undefined use <id> ")
-           << operands[5];
-  }
-
-  typeMap[operands[0]] =
-      spirv::CooperativeMatrixType::get(elementTy, rows, columns, *scope, *use);
-  return success();
-}
-
-LogicalResult spirv::Deserializer::processCooperativeMatrixTypeNV(
-    ArrayRef<uint32_t> operands) {
+LogicalResult
+spirv::Deserializer::processCooperativeMatrixType(ArrayRef<uint32_t> operands) {
   if (operands.size() != 5) {
-    return emitError(unknownLoc, "OpTypeCooperativeMatrixNV must have element "
+    return emitError(unknownLoc, "OpTypeCooperativeMatrix must have element "
                                  "type and row x column parameters");
   }
 
   Type elementTy = getType(operands[1]);
   if (!elementTy) {
     return emitError(unknownLoc,
-                     "OpTypeCooperativeMatrixNV references undefined <id> ")
+                     "OpTypeCooperativeMatrix references undefined <id> ")
            << operands[1];
   }
 
-  std::optional<spirv::Scope> scope =
-      spirv::symbolizeScope(getConstantInt(operands[2]).getInt());
+  auto scope = spirv::symbolizeScope(getConstantInt(operands[2]).getInt());
   if (!scope) {
-    return emitError(
-               unknownLoc,
-               "OpTypeCooperativeMatrixNV references undefined scope <id> ")
+    return emitError(unknownLoc,
+                     "OpTypeCooperativeMatrix references undefined scope <id> ")
            << operands[2];
   }
 
   unsigned rows = getConstantInt(operands[3]).getInt();
   unsigned columns = getConstantInt(operands[4]).getInt();
 
-  typeMap[operands[0]] =
-      spirv::CooperativeMatrixNVType::get(elementTy, *scope, rows, columns);
+  typeMap[operands[0]] = spirv::CooperativeMatrixNVType::get(
+      elementTy, scope.value(), rows, columns);
   return success();
 }
 

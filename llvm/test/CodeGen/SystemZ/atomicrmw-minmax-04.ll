@@ -3,7 +3,7 @@
 ;
 ; RUN: llc < %s -mtriple=s390x-linux-gnu -mcpu=z10 | FileCheck %s
 
-; Check signed minimum.
+; Check signed minium.
 define i64 @f1(i64 %dummy, ptr %src, i64 %b) {
 ; CHECK-LABEL: f1:
 ; CHECK: lg %r2, 0(%r3)

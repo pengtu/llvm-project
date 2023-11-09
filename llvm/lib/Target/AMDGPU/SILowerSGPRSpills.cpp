@@ -281,8 +281,6 @@ void SILowerSGPRSpills::extendWWMVirtRegLiveness(MachineFunction &MF,
       auto MIB = BuildMI(*SaveBlock, *InsertBefore, InsertBefore->getDebugLoc(),
                          TII->get(AMDGPU::IMPLICIT_DEF), Reg);
       MFI->setFlag(Reg, AMDGPU::VirtRegFlag::WWM_REG);
-      // Set SGPR_SPILL asm printer flag
-      MIB->setAsmPrinterFlag(AMDGPU::SGPR_SPILL);
       if (LIS) {
         LIS->InsertMachineInstrInMaps(*MIB);
       }
@@ -357,7 +355,9 @@ bool SILowerSGPRSpills::runOnMachineFunction(MachineFunction &MF) {
         int FI = TII->getNamedOperand(MI, AMDGPU::OpName::addr)->getIndex();
         assert(MFI.getStackID(FI) == TargetStackID::SGPRSpill);
 
-        bool IsCalleeSaveSGPRSpill = llvm::is_contained(CalleeSavedFIs, FI);
+        bool IsCalleeSaveSGPRSpill =
+            std::find(CalleeSavedFIs.begin(), CalleeSavedFIs.end(), FI) !=
+            CalleeSavedFIs.end();
         if (IsCalleeSaveSGPRSpill) {
           // Spill callee-saved SGPRs into physical VGPR lanes.
 

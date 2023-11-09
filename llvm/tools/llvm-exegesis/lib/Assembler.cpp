@@ -299,8 +299,7 @@ Error assembleToStream(const ExegesisTarget &ET,
   TPC->setInitialized();
 
   // AsmPrinter is responsible for generating the assembly into AsmBuffer.
-  if (TM->addAsmPrinter(PM, AsmStream, nullptr, CodeGenFileType::ObjectFile,
-                        MCContext))
+  if (TM->addAsmPrinter(PM, AsmStream, nullptr, CGFT_ObjectFile, MCContext))
     return make_error<Failure>("Cannot add AsmPrinter passes");
 
   PM.run(*Module); // Run all the passes

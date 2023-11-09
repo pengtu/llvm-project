@@ -80,8 +80,7 @@
 
 // expected-no-diagnostics
 
-// Verify no unexpected global symbol aliasing
-// CHECK-NOT: @{{[^ ]+}} = {{.*}}alias
+// CHECK-NOT: alias
 
 // CHECK-NOT: ret i32 {{1|4|81|84}}
 // CHECK-DAG: declare {{.*}}i32 @_Z5bazzzv()

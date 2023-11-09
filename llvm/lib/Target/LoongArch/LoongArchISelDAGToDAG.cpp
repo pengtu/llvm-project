@@ -91,8 +91,7 @@ void LoongArchDAGToDAGISel::Select(SDNode *Node) {
 }
 
 bool LoongArchDAGToDAGISel::SelectInlineAsmMemoryOperand(
-    const SDValue &Op, InlineAsm::ConstraintCode ConstraintID,
-    std::vector<SDValue> &OutOps) {
+    const SDValue &Op, unsigned ConstraintID, std::vector<SDValue> &OutOps) {
   SDValue Base = Op;
   SDValue Offset =
       CurDAG->getTargetConstant(0, SDLoc(Op), Subtarget->getGRLenVT());
@@ -100,12 +99,12 @@ bool LoongArchDAGToDAGISel::SelectInlineAsmMemoryOperand(
   default:
     llvm_unreachable("unexpected asm memory constraint");
   // Reg+Reg addressing.
-  case InlineAsm::ConstraintCode::k:
+  case InlineAsm::Constraint_k:
     Base = Op.getOperand(0);
     Offset = Op.getOperand(1);
     break;
   // Reg+simm12 addressing.
-  case InlineAsm::ConstraintCode::m:
+  case InlineAsm::Constraint_m:
     if (CurDAG->isBaseWithConstantOffset(Op)) {
       ConstantSDNode *CN = dyn_cast<ConstantSDNode>(Op.getOperand(1));
       if (isIntN(12, CN->getSExtValue())) {
@@ -116,10 +115,10 @@ bool LoongArchDAGToDAGISel::SelectInlineAsmMemoryOperand(
     }
     break;
   // Reg+0 addressing.
-  case InlineAsm::ConstraintCode::ZB:
+  case InlineAsm::Constraint_ZB:
     break;
   // Reg+(simm14<<2) addressing.
-  case InlineAsm::ConstraintCode::ZC:
+  case InlineAsm::Constraint_ZC:
     if (CurDAG->isBaseWithConstantOffset(Op)) {
       ConstantSDNode *CN = dyn_cast<ConstantSDNode>(Op.getOperand(1));
       if (isIntN(16, CN->getSExtValue()) &&

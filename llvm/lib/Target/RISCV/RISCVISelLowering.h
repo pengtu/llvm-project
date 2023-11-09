@@ -55,6 +55,9 @@ enum NodeType : unsigned {
   // Selected as PseudoAddTPRel. Used to emit a TP-relative relocation.
   ADD_TPREL,
 
+  // Load address.
+  LA_TLS_GD,
+
   // Multiply high for signedxunsigned.
   MULHSU,
   // RV64I shifts, directly matching the semantics of the named RISC-V
@@ -169,9 +172,9 @@ enum NodeType : unsigned {
   // mask and VL operand.
   TRUNCATE_VECTOR_VL,
   // Matches the semantics of vslideup/vslidedown. The first operand is the
-  // pass-thru operand, the second is the source vector, the third is the XLenVT
-  // index (either constant or non-constant), the fourth is the mask, the fifth
-  // is the VL and the sixth is the policy.
+  // pass-thru operand, the second is the source vector, the third is the
+  // XLenVT index (either constant or non-constant), the fourth is the mask
+  // and the fifth the VL.
   VSLIDEUP_VL,
   VSLIDEDOWN_VL,
   // Matches the semantics of vslide1up/slide1down. The first operand is
@@ -306,7 +309,6 @@ enum NodeType : unsigned {
   VWADDU_W_VL,
   VWSUB_W_VL,
   VWSUBU_W_VL,
-  VWSLL_VL,
 
   VFWMUL_VL,
   VFWADD_VL,
@@ -415,7 +417,12 @@ enum NodeType : unsigned {
   // have memop! In fact, starting from FIRST_TARGET_MEMORY_OPCODE all
   // opcodes will be thought as target memory ops!
 
-  TH_LWD = ISD::FIRST_TARGET_MEMORY_OPCODE,
+  // Represents an AUIPC+L[WD] pair. Selected to PseudoLGA.
+  LGA = ISD::FIRST_TARGET_MEMORY_OPCODE,
+  // Load initial exec thread-local address.
+  LA_TLS_IE,
+
+  TH_LWD,
   TH_LWUD,
   TH_LDD,
   TH_SWD,
@@ -464,7 +471,7 @@ public:
                           SmallVectorImpl<Use *> &Ops) const override;
   bool shouldScalarizeBinop(SDValue VecOp) const override;
   bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
-  std::pair<int, bool> getLegalZfaFPImm(const APFloat &Imm, EVT VT) const;
+  int getLegalZfaFPImm(const APFloat &Imm, EVT VT) const;
   bool isFPImmLegal(const APFloat &Imm, EVT VT,
                     bool ForCodeSize) const override;
   bool isExtractSubvectorCheap(EVT ResVT, EVT SrcVT,
@@ -486,12 +493,6 @@ public:
   unsigned getNumRegistersForCallingConv(LLVMContext &Context,
                                          CallingConv::ID CC,
                                          EVT VT) const override;
-
-  unsigned getVectorTypeBreakdownForCallingConv(LLVMContext &Context,
-                                                CallingConv::ID CC, EVT VT,
-                                                EVT &IntermediateVT,
-                                                unsigned &NumIntermediates,
-                                                MVT &RegisterVT) const override;
 
   bool shouldFoldSelectWithIdentityConstant(unsigned BinOpcode,
                                             EVT VT) const override;
@@ -565,14 +566,13 @@ public:
 
   ConstraintType getConstraintType(StringRef Constraint) const override;
 
-  InlineAsm::ConstraintCode
-  getInlineAsmMemConstraint(StringRef ConstraintCode) const override;
+  unsigned getInlineAsmMemConstraint(StringRef ConstraintCode) const override;
 
   std::pair<unsigned, const TargetRegisterClass *>
   getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
                                StringRef Constraint, MVT VT) const override;
 
-  void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+  void LowerAsmOperandForConstraint(SDValue Op, std::string &Constraint,
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
 
@@ -605,10 +605,6 @@ public:
     return VT.isScalarInteger();
   }
   bool convertSelectOfConstantsToMath(EVT VT) const override { return true; }
-
-  bool isCtpopFast(EVT VT) const override;
-
-  unsigned getCustomCtpopCost(EVT VT, ISD::CondCode Cond) const override;
 
   bool preferZeroCompareBranch() const override { return true; }
 
@@ -751,7 +747,7 @@ public:
                                            const RISCVRegisterInfo *TRI);
   MVT getContainerForFixedLengthVector(MVT VT) const;
 
-  bool shouldRemoveExtendFromGSIndex(SDValue Extend, EVT DataVT) const override;
+  bool shouldRemoveExtendFromGSIndex(EVT IndexVT, EVT DataVT) const override;
 
   bool isLegalElementTypeForRVV(EVT ScalarTy) const;
 
@@ -797,8 +793,6 @@ public:
   bool isLegalStridedLoadStore(EVT DataType, Align Alignment) const;
 
   unsigned getMaxSupportedInterleaveFactor() const override { return 8; }
-
-  bool fallBackToDAGISel(const Instruction &Inst) const override;
 
   bool lowerInterleavedLoad(LoadInst *LI,
                             ArrayRef<ShuffleVectorInst *> Shuffles,
@@ -901,7 +895,6 @@ private:
   SDValue lowerLogicVPOp(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerVPExtMaskOp(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerVPSetCCMaskOp(SDValue Op, SelectionDAG &DAG) const;
-  SDValue lowerVPReverseExperimental(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerVPFPIntConvOp(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerVPStridedLoad(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerVPStridedStore(SDValue Op, SelectionDAG &DAG) const;

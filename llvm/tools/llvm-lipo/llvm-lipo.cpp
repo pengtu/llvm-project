@@ -116,7 +116,6 @@ struct Config {
   std::string ArchType;
   std::string OutputFile;
   LipoAction ActionToPerform;
-  bool UseFat64;
 };
 
 static Slice createSliceFromArchive(LLVMContext &LLVMCtx, const Archive &A) {
@@ -223,8 +222,6 @@ static Config parseLipoOptions(ArrayRef<const char *> ArgsArr) {
                   Twine(1 << Entry.first->second) + ", " +
                   Twine(AlignmentValue));
   }
-
-  C.UseFat64 = InputArgs.hasArg(LIPO_fat64);
 
   SmallVector<opt::Arg *, 1> ActionArgs(InputArgs.filtered(LIPO_action_group));
   if (ActionArgs.empty())
@@ -599,11 +596,9 @@ buildSlices(LLVMContext &LLVMCtx, ArrayRef<OwningBinary<Binary>> InputBinaries,
   return Slices;
 }
 
-[[noreturn]] static void
-createUniversalBinary(LLVMContext &LLVMCtx,
-                      ArrayRef<OwningBinary<Binary>> InputBinaries,
-                      const StringMap<const uint32_t> &Alignments,
-                      StringRef OutputFileName, FatHeaderType HeaderType) {
+[[noreturn]] static void createUniversalBinary(
+    LLVMContext &LLVMCtx, ArrayRef<OwningBinary<Binary>> InputBinaries,
+    const StringMap<const uint32_t> &Alignments, StringRef OutputFileName) {
   assert(InputBinaries.size() >= 1 && "Incorrect number of input binaries");
   assert(!OutputFileName.empty() && "Create expects a single output file");
 
@@ -614,7 +609,7 @@ createUniversalBinary(LLVMContext &LLVMCtx,
   checkUnusedAlignments(Slices, Alignments);
 
   llvm::stable_sort(Slices);
-  if (Error E = writeUniversalBinary(Slices, OutputFileName, HeaderType))
+  if (Error E = writeUniversalBinary(Slices, OutputFileName))
     reportError(std::move(E));
 
   exit(EXIT_SUCCESS);
@@ -752,9 +747,8 @@ int llvm_lipo_main(int argc, char **argv, const llvm::ToolContext &) {
                  C.OutputFile);
     break;
   case LipoAction::CreateUniversal:
-    createUniversalBinary(
-        LLVMCtx, InputBinaries, C.SegmentAlignments, C.OutputFile,
-        C.UseFat64 ? FatHeaderType::Fat64Header : FatHeaderType::FatHeader);
+    createUniversalBinary(LLVMCtx, InputBinaries, C.SegmentAlignments,
+                          C.OutputFile);
     break;
   case LipoAction::ReplaceArch:
     replaceSlices(LLVMCtx, InputBinaries, C.SegmentAlignments, C.OutputFile,

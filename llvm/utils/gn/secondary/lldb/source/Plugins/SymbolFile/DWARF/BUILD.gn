@@ -50,6 +50,7 @@ static_library("DWARF") {
     "DWARFContext.cpp",
     "DWARFDIE.cpp",
     "DWARFDataExtractor.cpp",
+    "DWARFDebugAbbrev.cpp",
     "DWARFDebugArangeSet.cpp",
     "DWARFDebugAranges.cpp",
     "DWARFDebugInfo.cpp",

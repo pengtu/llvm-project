@@ -60,7 +60,6 @@ bool AMDGPUArgumentUsageInfo::doFinalization(Module &M) {
   return false;
 }
 
-// TODO: Print preload kernargs?
 void AMDGPUArgumentUsageInfo::print(raw_ostream &OS, const Module *M) const {
   for (const auto &FI : ArgInfoMap) {
     OS << "Arguments for " << FI.first->getName() << '\n'
@@ -149,7 +148,7 @@ AMDGPUFunctionArgInfo::getPreloadedValue(
   llvm_unreachable("unexpected preloaded value type");
 }
 
-AMDGPUFunctionArgInfo AMDGPUFunctionArgInfo::fixedABILayout() {
+constexpr AMDGPUFunctionArgInfo AMDGPUFunctionArgInfo::fixedABILayout() {
   AMDGPUFunctionArgInfo AI;
   AI.PrivateSegmentBuffer
     = ArgDescriptor::createRegister(AMDGPU::SGPR0_SGPR1_SGPR2_SGPR3);

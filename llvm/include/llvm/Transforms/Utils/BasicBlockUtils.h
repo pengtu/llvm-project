@@ -280,16 +280,10 @@ BasicBlock *ehAwareSplitEdge(BasicBlock *BB, BasicBlock *Succ,
 /// branch. The new block with name \p BBName is returned.
 ///
 /// FIXME: deprecated, switch to the DomTreeUpdater-based one.
-BasicBlock *SplitBlock(BasicBlock *Old, BasicBlock::iterator SplitPt, DominatorTree *DT,
+BasicBlock *SplitBlock(BasicBlock *Old, Instruction *SplitPt, DominatorTree *DT,
                        LoopInfo *LI = nullptr,
                        MemorySSAUpdater *MSSAU = nullptr,
                        const Twine &BBName = "", bool Before = false);
-inline BasicBlock *SplitBlock(BasicBlock *Old, Instruction *SplitPt, DominatorTree *DT,
-                       LoopInfo *LI = nullptr,
-                       MemorySSAUpdater *MSSAU = nullptr,
-                       const Twine &BBName = "", bool Before = false) {
-  return SplitBlock(Old, SplitPt->getIterator(), DT, LI, MSSAU, BBName, Before);
-}
 
 /// Split the specified block at the specified instruction.
 ///
@@ -299,30 +293,19 @@ inline BasicBlock *SplitBlock(BasicBlock *Old, Instruction *SplitPt, DominatorTr
 /// Everything before \p SplitPt stays in \p Old and everything starting with \p
 /// SplitPt moves to a new block. The two blocks are joined by an unconditional
 /// branch. The new block with name \p BBName is returned.
-BasicBlock *SplitBlock(BasicBlock *Old, BasicBlock::iterator SplitPt,
+BasicBlock *SplitBlock(BasicBlock *Old, Instruction *SplitPt,
                        DomTreeUpdater *DTU = nullptr, LoopInfo *LI = nullptr,
                        MemorySSAUpdater *MSSAU = nullptr,
                        const Twine &BBName = "", bool Before = false);
-inline BasicBlock *SplitBlock(BasicBlock *Old, Instruction *SplitPt,
-                       DomTreeUpdater *DTU = nullptr, LoopInfo *LI = nullptr,
-                       MemorySSAUpdater *MSSAU = nullptr,
-                       const Twine &BBName = "", bool Before = false) {
-  return SplitBlock(Old, SplitPt->getIterator(), DTU, LI, MSSAU, BBName, Before);
-}
 
 /// Split the specified block at the specified instruction \p SplitPt.
 /// All instructions before \p SplitPt are moved to a new block and all
 /// instructions after \p SplitPt stay in the old block. The new block and the
 /// old block are joined by inserting an unconditional branch to the end of the
 /// new block. The new block with name \p BBName is returned.
-BasicBlock *splitBlockBefore(BasicBlock *Old, BasicBlock::iterator SplitPt,
+BasicBlock *splitBlockBefore(BasicBlock *Old, Instruction *SplitPt,
                              DomTreeUpdater *DTU, LoopInfo *LI,
                              MemorySSAUpdater *MSSAU, const Twine &BBName = "");
-inline BasicBlock *splitBlockBefore(BasicBlock *Old, Instruction *SplitPt,
-                             DomTreeUpdater *DTU, LoopInfo *LI,
-                             MemorySSAUpdater *MSSAU, const Twine &BBName = "") {
-  return splitBlockBefore(Old, SplitPt->getIterator(), DTU, LI, MSSAU, BBName);
-}
 
 /// This method introduces at least one new basic block into the function and
 /// moves some of the predecessors of BB to be predecessors of the new block.
@@ -434,43 +417,21 @@ ReturnInst *FoldReturnIntoUncondBranch(ReturnInst *RI, BasicBlock *BB,
 /// Returns the NewBasicBlock's terminator.
 ///
 /// Updates DTU and LI if given.
-Instruction *SplitBlockAndInsertIfThen(Value *Cond, BasicBlock::iterator SplitBefore,
+Instruction *SplitBlockAndInsertIfThen(Value *Cond, Instruction *SplitBefore,
                                        bool Unreachable,
                                        MDNode *BranchWeights = nullptr,
                                        DomTreeUpdater *DTU = nullptr,
                                        LoopInfo *LI = nullptr,
                                        BasicBlock *ThenBlock = nullptr);
 
-inline Instruction *SplitBlockAndInsertIfThen(Value *Cond, Instruction *SplitBefore,
-                                       bool Unreachable,
-                                       MDNode *BranchWeights = nullptr,
-                                       DomTreeUpdater *DTU = nullptr,
-                                       LoopInfo *LI = nullptr,
-                                       BasicBlock *ThenBlock = nullptr) {
-  return SplitBlockAndInsertIfThen(Cond, SplitBefore->getIterator(),
-                                   Unreachable, BranchWeights, DTU, LI,
-                                   ThenBlock);
-}
-
 /// Similar to SplitBlockAndInsertIfThen, but the inserted block is on the false
 /// path of the branch.
-Instruction *SplitBlockAndInsertIfElse(Value *Cond, BasicBlock::iterator SplitBefore,
+Instruction *SplitBlockAndInsertIfElse(Value *Cond, Instruction *SplitBefore,
                                        bool Unreachable,
                                        MDNode *BranchWeights = nullptr,
                                        DomTreeUpdater *DTU = nullptr,
                                        LoopInfo *LI = nullptr,
                                        BasicBlock *ElseBlock = nullptr);
-
-inline Instruction *SplitBlockAndInsertIfElse(Value *Cond, Instruction *SplitBefore,
-                                       bool Unreachable,
-                                       MDNode *BranchWeights = nullptr,
-                                       DomTreeUpdater *DTU = nullptr,
-                                       LoopInfo *LI = nullptr,
-                                       BasicBlock *ElseBlock = nullptr) {
-  return SplitBlockAndInsertIfElse(Cond, SplitBefore->getIterator(),
-                                   Unreachable, BranchWeights, DTU, LI,
-                                   ElseBlock);
-}
 
 /// SplitBlockAndInsertIfThenElse is similar to SplitBlockAndInsertIfThen,
 /// but also creates the ElseBlock.
@@ -488,24 +449,12 @@ inline Instruction *SplitBlockAndInsertIfElse(Value *Cond, Instruction *SplitBef
 ///   Tail
 ///
 /// Updates DT if given.
-void SplitBlockAndInsertIfThenElse(Value *Cond,
-                                   BasicBlock::iterator SplitBefore,
+void SplitBlockAndInsertIfThenElse(Value *Cond, Instruction *SplitBefore,
                                    Instruction **ThenTerm,
                                    Instruction **ElseTerm,
                                    MDNode *BranchWeights = nullptr,
                                    DomTreeUpdater *DTU = nullptr,
                                    LoopInfo *LI = nullptr);
-
-inline void SplitBlockAndInsertIfThenElse(Value *Cond, Instruction *SplitBefore,
-                                   Instruction **ThenTerm,
-                                   Instruction **ElseTerm,
-                                   MDNode *BranchWeights = nullptr,
-                                   DomTreeUpdater *DTU = nullptr,
-                                   LoopInfo *LI = nullptr)
-{
-  SplitBlockAndInsertIfThenElse(Cond, SplitBefore->getIterator(), ThenTerm,
-                               ElseTerm, BranchWeights, DTU, LI);
-}
 
 /// Split the containing block at the specified instruction - everything before
 /// SplitBefore stays in the old basic block, and the rest of the instructions
@@ -534,8 +483,7 @@ inline void SplitBlockAndInsertIfThenElse(Value *Cond, Instruction *SplitBefore,
 /// caller must ensure that Tail is reachable from Head.
 /// Returns the newly created blocks in \p ThenBlock and \p ElseBlock.
 /// Updates DTU and LI if given.
-void SplitBlockAndInsertIfThenElse(Value *Cond,
-                                   BasicBlock::iterator SplitBefore,
+void SplitBlockAndInsertIfThenElse(Value *Cond, Instruction *SplitBefore,
                                    BasicBlock **ThenBlock,
                                    BasicBlock **ElseBlock,
                                    bool UnreachableThen = false,
@@ -543,18 +491,6 @@ void SplitBlockAndInsertIfThenElse(Value *Cond,
                                    MDNode *BranchWeights = nullptr,
                                    DomTreeUpdater *DTU = nullptr,
                                    LoopInfo *LI = nullptr);
-
-inline void SplitBlockAndInsertIfThenElse(Value *Cond, Instruction *SplitBefore,
-                                   BasicBlock **ThenBlock,
-                                   BasicBlock **ElseBlock,
-                                   bool UnreachableThen = false,
-                                   bool UnreachableElse = false,
-                                   MDNode *BranchWeights = nullptr,
-                                   DomTreeUpdater *DTU = nullptr,
-                                   LoopInfo *LI = nullptr) {
-  SplitBlockAndInsertIfThenElse(Cond, SplitBefore->getIterator(), ThenBlock,
-    ElseBlock, UnreachableThen, UnreachableElse, BranchWeights, DTU, LI);
-}
 
 /// Insert a for (int i = 0; i < End; i++) loop structure (with the exception
 /// that \p End is assumed > 0, and thus not checked on entry) at \p
@@ -702,9 +638,6 @@ BasicBlock *CreateControlFlowHub(
 // successors
 void InvertBranch(BranchInst *PBI, IRBuilderBase &Builder);
 
-// Check whether the function only has simple terminator:
-// br/brcond/unreachable/ret
-bool hasOnlySimpleTerminator(const Function &F);
 } // end namespace llvm
 
 #endif // LLVM_TRANSFORMS_UTILS_BASICBLOCKUTILS_H

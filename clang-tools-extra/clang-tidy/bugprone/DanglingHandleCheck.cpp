@@ -33,20 +33,14 @@ handleFrom(const ast_matchers::internal::Matcher<RecordDecl> &IsAHandle,
 
 ast_matchers::internal::Matcher<Stmt> handleFromTemporaryValue(
     const ast_matchers::internal::Matcher<RecordDecl> &IsAHandle) {
-
-  const auto TemporaryExpr = anyOf(
-      cxxBindTemporaryExpr(),
-      cxxFunctionalCastExpr(
-          hasCastKind(CK_ConstructorConversion),
-          hasSourceExpression(ignoringParenImpCasts(cxxBindTemporaryExpr()))));
   // If a ternary operator returns a temporary value, then both branches hold a
   // temporary value. If one of them is not a temporary then it must be copied
   // into one to satisfy the type of the operator.
   const auto TemporaryTernary = conditionalOperator(
-      hasTrueExpression(ignoringParenImpCasts(TemporaryExpr)),
-      hasFalseExpression(ignoringParenImpCasts(TemporaryExpr)));
+      hasTrueExpression(ignoringParenImpCasts(cxxBindTemporaryExpr())),
+      hasFalseExpression(ignoringParenImpCasts(cxxBindTemporaryExpr())));
 
-  return handleFrom(IsAHandle, anyOf(TemporaryExpr, TemporaryTernary));
+  return handleFrom(IsAHandle, anyOf(cxxBindTemporaryExpr(), TemporaryTernary));
 }
 
 ast_matchers::internal::Matcher<RecordDecl> isASequence() {

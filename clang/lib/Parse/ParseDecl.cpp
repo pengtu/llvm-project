@@ -4038,11 +4038,11 @@ void Parser::ParseDeclarationSpecifiers(
       isStorageClass = true;
       break;
     case tok::kw_auto:
-      if (getLangOpts().CPlusPlus11 || getLangOpts().C23) {
+      if (getLangOpts().CPlusPlus11) {
         if (isKnownToBeTypeSpecifier(GetLookAheadToken(1))) {
           isInvalid = DS.SetStorageClassSpec(Actions, DeclSpec::SCS_auto, Loc,
                                              PrevSpec, DiagID, Policy);
-          if (!isInvalid && !getLangOpts().C23)
+          if (!isInvalid)
             Diag(Tok, diag::ext_auto_storage_class)
               << FixItHint::CreateRemoval(DS.getStorageClassSpecLoc());
         } else
@@ -4076,15 +4076,8 @@ void Parser::ParseDeclarationSpecifiers(
     case tok::kw_thread_local:
       if (getLangOpts().C23)
         Diag(Tok, diag::warn_c23_compat_keyword) << Tok.getName();
-      // We map thread_local to _Thread_local in C23 mode so it retains the C
-      // semantics rather than getting the C++ semantics.
-      // FIXME: diagnostics will show _Thread_local when the user wrote
-      // thread_local in source in C23 mode; we need some general way to
-      // identify which way the user spelled the keyword in source.
-      isInvalid = DS.SetStorageClassSpecThread(
-          getLangOpts().C23 ? DeclSpec::TSCS__Thread_local
-                            : DeclSpec::TSCS_thread_local,
-          Loc, PrevSpec, DiagID);
+      isInvalid = DS.SetStorageClassSpecThread(DeclSpec::TSCS_thread_local, Loc,
+                                               PrevSpec, DiagID);
       isStorageClass = true;
       break;
     case tok::kw__Thread_local:
@@ -4127,11 +4120,7 @@ void Parser::ParseDeclarationSpecifiers(
           ExprResult ExplicitExpr(static_cast<Expr *>(nullptr));
           BalancedDelimiterTracker Tracker(*this, tok::l_paren);
           Tracker.consumeOpen();
-
-          EnterExpressionEvaluationContext ConstantEvaluated(
-              Actions, Sema::ExpressionEvaluationContext::ConstantEvaluated);
-
-          ExplicitExpr = ParseConstantExpressionInExprEvalContext();
+          ExplicitExpr = ParseConstantExpression();
           ConsumedEnd = Tok.getLocation();
           if (ExplicitExpr.isUsable()) {
             CloseParenLoc = Tok.getLocation();
@@ -5016,7 +5005,7 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
 
       BaseRange = SourceRange(ColonLoc, DeclaratorInfo.getSourceRange().getEnd());
 
-      if (!getLangOpts().ObjC && !getLangOpts().C23) {
+      if (!getLangOpts().ObjC) {
         if (getLangOpts().CPlusPlus11)
           Diag(ColonLoc, diag::warn_cxx98_compat_enum_fixed_underlying_type)
               << BaseRange;
@@ -5842,7 +5831,8 @@ bool Parser::isDeclarationSpecifier(
 bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
                                      DeclSpec::FriendSpecified IsFriend,
                                      const ParsedTemplateInfo *TemplateInfo) {
-  RevertingTentativeParsingAction TPA(*this);
+  TentativeParsingAction TPA(*this);
+
   // Parse the C++ scope specifier.
   CXXScopeSpec SS;
   if (TemplateInfo && TemplateInfo->TemplateParams)
@@ -5851,6 +5841,7 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
   if (ParseOptionalCXXScopeSpecifier(SS, /*ObjectType=*/nullptr,
                                      /*ObjectHasErrors=*/false,
                                      /*EnteringContext=*/true)) {
+    TPA.Revert();
     return false;
   }
 
@@ -5862,6 +5853,7 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
   } else if (Tok.is(tok::annot_template_id)) {
     ConsumeAnnotationToken();
   } else {
+    TPA.Revert();
     return false;
   }
 
@@ -5871,6 +5863,7 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
 
   // Current class name must be followed by a left parenthesis.
   if (Tok.isNot(tok::l_paren)) {
+    TPA.Revert();
     return false;
   }
   ConsumeParen();
@@ -5879,6 +5872,7 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
   // that we have a constructor.
   if (Tok.is(tok::r_paren) ||
       (Tok.is(tok::ellipsis) && NextToken().is(tok::r_paren))) {
+    TPA.Revert();
     return true;
   }
 
@@ -5887,6 +5881,7 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
   if (getLangOpts().CPlusPlus11 &&
       isCXX11AttributeSpecifier(/*Disambiguate*/ false,
                                 /*OuterMightBeMessageSend*/ true)) {
+    TPA.Revert();
     return true;
   }
 
@@ -5907,17 +5902,9 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
   // If we parsed a scope specifier as well as friend,
   // we might be parsing a friend constructor.
   bool IsConstructor = false;
-  ImplicitTypenameContext ITC = IsFriend && !SS.isSet()
-                                    ? ImplicitTypenameContext::No
-                                    : ImplicitTypenameContext::Yes;
-  // Constructors cannot have this parameters, but we support that scenario here
-  // to improve diagnostic.
-  if (Tok.is(tok::kw_this)) {
-    ConsumeToken();
-    return isDeclarationSpecifier(ITC);
-  }
-
-  if (isDeclarationSpecifier(ITC))
+  if (isDeclarationSpecifier(IsFriend && !SS.isSet()
+                                 ? ImplicitTypenameContext::No
+                                 : ImplicitTypenameContext::Yes))
     IsConstructor = true;
   else if (Tok.is(tok::identifier) ||
            (Tok.is(tok::annot_cxxscope) && NextToken().is(tok::identifier))) {
@@ -5986,6 +5973,8 @@ bool Parser::isConstructorDeclarator(bool IsUnqualified, bool DeductionGuide,
       break;
     }
   }
+
+  TPA.Revert();
   return IsConstructor;
 }
 
@@ -6678,7 +6667,7 @@ void Parser::ParseDirectDeclarator(Declarator &D) {
       // Objective-C++: Detect C++ keywords and try to prevent further errors by
       // treating these keyword as valid member names.
       if (getLangOpts().ObjC && getLangOpts().CPlusPlus &&
-          !Tok.isAnnotation() && Tok.getIdentifierInfo() &&
+          Tok.getIdentifierInfo() &&
           Tok.getIdentifierInfo()->isCPlusPlusKeyword(getLangOpts())) {
         Diag(getMissingDeclaratorIdLoc(D, Tok.getLocation()),
              diag::err_expected_member_name_or_semi_objcxx_keyword)
@@ -7363,7 +7352,6 @@ void Parser::ParseFunctionDeclaratorIdentifierList(
 ///           '=' assignment-expression
 /// [GNU]   declaration-specifiers abstract-declarator[opt] attributes
 /// [C++11] attribute-specifier-seq parameter-declaration
-/// [C++2b] attribute-specifier-seq 'this' parameter-declaration
 ///
 void Parser::ParseParameterDeclarationClause(
     DeclaratorContext DeclaratorCtx, ParsedAttributes &FirstArgAttrs,
@@ -7428,16 +7416,9 @@ void Parser::ParseParameterDeclarationClause(
 
     SourceLocation DSStart = Tok.getLocation();
 
-    // Parse a C++23 Explicit Object Parameter
-    // We do that in all language modes to produce a better diagnostic.
-    SourceLocation ThisLoc;
-    if (getLangOpts().CPlusPlus && Tok.is(tok::kw_this))
-      ThisLoc = ConsumeToken();
-
     ParseDeclarationSpecifiers(DS, /*TemplateInfo=*/ParsedTemplateInfo(),
                                AS_none, DeclSpecContext::DSC_normal,
                                /*LateAttrs=*/nullptr, AllowImplicitTypename);
-
     DS.takeAttributesFrom(ArgDeclSpecAttrs);
 
     // Parse the declarator.  This is "PrototypeContext" or
@@ -7450,9 +7431,6 @@ void Parser::ParseParameterDeclarationClause(
                                   ? DeclaratorContext::LambdaExprParameter
                                   : DeclaratorContext::Prototype);
     ParseDeclarator(ParmDeclarator);
-
-    if (ThisLoc.isValid())
-      ParmDeclarator.SetRangeBegin(ThisLoc);
 
     // Parse GNU attributes, if present.
     MaybeParseGNUAttributes(ParmDeclarator);
@@ -7523,8 +7501,7 @@ void Parser::ParseParameterDeclarationClause(
       }
       // Inform the actions module about the parameter declarator, so it gets
       // added to the current scope.
-      Decl *Param =
-          Actions.ActOnParamDeclarator(getCurScope(), ParmDeclarator, ThisLoc);
+      Decl *Param = Actions.ActOnParamDeclarator(getCurScope(), ParmDeclarator);
       // Parse the default argument, if any. We parse the default
       // arguments in all dialects; the semantic analysis in
       // ActOnParamDefaultArgument will reject the default argument in
@@ -7710,7 +7687,7 @@ void Parser::ParseBracketDeclarator(Declarator &D) {
     // Parse the constant-expression or assignment-expression now (depending
     // on dialect).
     if (getLangOpts().CPlusPlus) {
-      NumElements = ParseArrayBoundExpression();
+      NumElements = ParseConstantExpression();
     } else {
       EnterExpressionEvaluationContext Unevaluated(
           Actions, Sema::ExpressionEvaluationContext::ConstantEvaluated);

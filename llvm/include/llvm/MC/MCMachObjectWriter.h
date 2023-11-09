@@ -131,8 +131,7 @@ public:
       : TargetObjectWriter(std::move(MOTW)),
         StringTable(TargetObjectWriter->is64Bit() ? StringTableBuilder::MachO64
                                                   : StringTableBuilder::MachO),
-        W(OS,
-          IsLittleEndian ? llvm::endianness::little : llvm::endianness::big) {}
+        W(OS, IsLittleEndian ? support::little : support::big) {}
 
   support::endian::Writer W;
 

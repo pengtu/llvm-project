@@ -9,8 +9,7 @@
 # RUN: llvm-readobj -r %t | FileCheck --check-prefix=RELOC %s
 # RUN: llvm-objdump -d --no-show-raw-insn %t | FileCheck %s
 
-## RELATIVE relocs relocating NOBITS .branch_lt do not cause --check-dynamic-relocations errors.
-# RUN: ld.lld -shared -T %t.script %t.o -o %t.so --apply-dynamic-relocs --check-dynamic-relocations
+# RUN: ld.lld -shared -T %t.script %t.o -o %t.so
 # RUN: llvm-readelf -S %t.so | FileCheck --check-prefix=SEC-SHARED %s
 # RUN: llvm-objdump -d --no-show-raw-insn %t.so | FileCheck %s
 

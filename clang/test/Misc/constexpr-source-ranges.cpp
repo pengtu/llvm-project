@@ -49,7 +49,3 @@ constexpr int uninit() {
   return aaa;
 }
 static_assert(uninit() == 0, "");
-
-
-constexpr void neverValid() { throw; }
-// CHECK: :{[[@LINE-1]]:16-[[@LINE-1]]:26}:

@@ -171,7 +171,9 @@ public:
   ///
   /// Can provide false-negative in case the location was parsed after this
   /// instance had been constructed.
-  bool hasAlredyBeenParsed(SourceLocation Loc, FileID FID, FileEntryRef FE) {
+  bool hasAlredyBeenParsed(SourceLocation Loc, FileID FID,
+                           const FileEntry *FE) {
+    assert(FE);
     PPRegion region = getRegion(Loc, FID, FE);
     if (region.isInvalid())
       return false;
@@ -197,11 +199,12 @@ public:
   }
 
 private:
-  PPRegion getRegion(SourceLocation Loc, FileID FID, FileEntryRef FE) {
+  PPRegion getRegion(SourceLocation Loc, FileID FID, const FileEntry *FE) {
+    assert(FE);
     auto Bail = [this, FE]() {
       if (isParsedOnceInclude(FE)) {
-        const llvm::sys::fs::UniqueID &ID = FE.getUniqueID();
-        return PPRegion(ID, 0, FE.getModificationTime());
+        const llvm::sys::fs::UniqueID &ID = FE->getUniqueID();
+        return PPRegion(ID, 0, FE->getModificationTime());
       }
       return PPRegion();
     };
@@ -219,11 +222,11 @@ private:
     if (RegionFID != FID)
       return Bail();
 
-    const llvm::sys::fs::UniqueID &ID = FE.getUniqueID();
-    return PPRegion(ID, RegionOffset, FE.getModificationTime());
+    const llvm::sys::fs::UniqueID &ID = FE->getUniqueID();
+    return PPRegion(ID, RegionOffset, FE->getModificationTime());
   }
 
-  bool isParsedOnceInclude(FileEntryRef FE) {
+  bool isParsedOnceInclude(const FileEntry *FE) {
     return PP.getHeaderSearchInfo().isFileMultipleIncludeGuarded(FE) ||
            PP.getHeaderSearchInfo().hasFileBeenImported(FE);
   }
@@ -393,11 +396,11 @@ public:
     // Don't skip bodies from main files; this may be revisited.
     if (SM.getMainFileID() == FID)
       return false;
-    OptionalFileEntryRef FE = SM.getFileEntryRefForID(FID);
+    const FileEntry *FE = SM.getFileEntryForID(FID);
     if (!FE)
       return false;
 
-    return ParsedLocsTracker->hasAlredyBeenParsed(Loc, FID, *FE);
+    return ParsedLocsTracker->hasAlredyBeenParsed(Loc, FID, FE);
   }
 
   TranslationUnitKind getTranslationUnitKind() override {

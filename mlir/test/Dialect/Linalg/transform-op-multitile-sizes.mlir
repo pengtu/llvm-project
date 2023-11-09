@@ -1,13 +1,11 @@
-// RUN: mlir-opt %s --transform-interpreter --split-input-file --verify-diagnostics | FileCheck %s
+// RUN: mlir-opt %s --test-transform-dialect-interpreter --split-input-file --verify-diagnostics | FileCheck %s
 
 // CHECK-DAG: #[[$MAP13:.+]] = affine_map<() -> (13)>
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      transform.structured.multitile_sizes %0 { target_size = 3, dimension = 0 } : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    transform.structured.multitile_sizes %0 { target_size = 3, dimension = 0 } : (!transform.any_op) -> !transform.any_op
 }
 
 // CHECK-LABEL: @multitile_sizes_static
@@ -28,20 +26,18 @@ func.func @multitile_sizes_static(
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %low_tile, %high_tile, %split_point =
-        transform.structured.multitile_sizes %0 { target_size = 3, dimension = 0 }
-        : (!transform.any_op) -> !transform.param<i64>
-      // expected-remark @below {{2 : i64}}
-      transform.test_print_param %low_tile : !transform.param<i64>
-      // expected-remark @below {{3 : i64}}
-      transform.test_print_param %high_tile : !transform.param<i64>
-      // expected-remark @below {{4 : i64}}
-      transform.test_print_param %split_point : !transform.param<i64>
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %low_tile, %high_tile, %split_point =
+      transform.structured.multitile_sizes %0 { target_size = 3, dimension = 0 }
+      : (!transform.any_op) -> !transform.param<i64>
+    // expected-remark @below {{2 : i64}}
+    transform.test_print_param %low_tile : !transform.param<i64>
+    // expected-remark @below {{3 : i64}}
+    transform.test_print_param %high_tile : !transform.param<i64>
+    // expected-remark @below {{4 : i64}}
+    transform.test_print_param %split_point : !transform.param<i64>
 }
 
 // CHECK-LABEL: @multitile_sizes_static_gen
@@ -57,12 +53,10 @@ func.func @multitile_sizes_static_gen(
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      transform.structured.multitile_sizes %0 { target_size = 3, divisor = 2, dimension = 0 } : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    transform.structured.multitile_sizes %0 { target_size = 3, divisor = 2, dimension = 0 } : (!transform.any_op) -> !transform.any_op
 }
 
 // CHECK: #[[$MAP_A:.+]] = affine_map<()[s0] -> ([[A_IMPL:s0 floordiv 2]])>
@@ -100,14 +94,12 @@ func.func @multitile_sizes_dynamic(
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      // expected-error @below {{cannot compute parametric tile sizes for dynamically shaped payload op}}
-      transform.structured.multitile_sizes %0 { target_size = 3, divisor = 2, dimension = 0 }
-        : (!transform.any_op) -> !transform.param<i64>
-        transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    // expected-error @below {{cannot compute parametric tile sizes for dynamically shaped payload op}}
+    transform.structured.multitile_sizes %0 { target_size = 3, divisor = 2, dimension = 0 }
+      : (!transform.any_op) -> !transform.param<i64>
 }
 
 func.func @multitile_sizes_dynamic_gen(

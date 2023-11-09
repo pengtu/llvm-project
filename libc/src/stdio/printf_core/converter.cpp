@@ -21,7 +21,7 @@
 
 #include <stddef.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace printf_core {
 
 int convert(Writer *writer, const FormatSection &to_conv) {
@@ -86,4 +86,4 @@ int convert(Writer *writer, const FormatSection &to_conv) {
 }
 
 } // namespace printf_core
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -78,8 +78,7 @@ static CompilerType GetLLDBNSPairType(TargetSP target_sp) {
   if (!compiler_type) {
     compiler_type = scratch_ts_sp->CreateRecordType(
         nullptr, OptionalClangModuleID(), lldb::eAccessPublic,
-        g_lldb_autogen_nspair, llvm::to_underlying(clang::TagTypeKind::Struct),
-        lldb::eLanguageTypeC);
+        g_lldb_autogen_nspair, clang::TTK_Struct, lldb::eLanguageTypeC);
 
     if (compiler_type) {
       TypeSystemClang::StartTagDeclarationDefinition(compiler_type);

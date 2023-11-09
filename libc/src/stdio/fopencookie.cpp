@@ -14,11 +14,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 namespace {
 
-class CookieFile : public LIBC_NAMESPACE::File {
+class CookieFile : public __llvm_libc::File {
   void *cookie;
   cookie_io_functions_t ops;
 
@@ -96,4 +96,4 @@ LLVM_LIBC_FUNCTION(::FILE *, fopencookie,
   return reinterpret_cast<::FILE *>(file);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

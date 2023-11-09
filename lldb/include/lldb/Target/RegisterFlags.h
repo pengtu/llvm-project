@@ -9,26 +9,18 @@
 #ifndef LLDB_TARGET_REGISTERFLAGS_H
 #define LLDB_TARGET_REGISTERFLAGS_H
 
-#include <stdint.h>
-#include <string>
-#include <vector>
+#include "lldb/Utility/Log.h"
 
 namespace lldb_private {
-
-class StreamString;
-class Log;
 
 class RegisterFlags {
 public:
   class Field {
   public:
-    /// Where start is the least significant bit and end is the most
-    /// significant bit. The start bit must be <= the end bit.
-    Field(std::string name, unsigned start, unsigned end);
-
-    /// Construct a field that occupies a single bit.
-    Field(std::string name, unsigned bit_position)
-        : m_name(std::move(name)), m_start(bit_position), m_end(bit_position) {}
+    Field(std::string name, unsigned start, unsigned end)
+        : m_name(std::move(name)), m_start(start), m_end(end) {
+      assert(m_start <= m_end && "Start bit must be <= end bit.");
+    }
 
     /// Get size of the field in bits. Will always be at least 1.
     unsigned GetSizeInBits() const { return m_end - m_start + 1; }
@@ -52,11 +44,6 @@ public:
     /// Return the number of bits between this field and the other, that are not
     /// covered by either field.
     unsigned PaddingDistance(const Field &other) const;
-
-    /// Output XML that describes this field, to be inserted into a target XML
-    /// file. Reserved characters in field names like "<" are replaced with
-    /// their XML safe equivalents like "&gt;".
-    void ToXML(StreamString &strm) const;
 
     bool operator<(const Field &rhs) const {
       return GetStart() < rhs.GetStart();
@@ -112,9 +99,6 @@ public:
   /// going to print the table to. If the table would exceed this width, it will
   /// be split into many tables as needed.
   std::string AsTable(uint32_t max_width) const;
-
-  // Output XML that describes this set of flags.
-  void ToXML(StreamString &strm) const;
 
 private:
   const std::string m_id;

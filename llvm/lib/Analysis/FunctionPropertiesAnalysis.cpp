@@ -25,7 +25,6 @@
 
 using namespace llvm;
 
-namespace llvm {
 cl::opt<bool> EnableDetailedFunctionProperties(
     "enable-detailed-function-properties", cl::Hidden, cl::init(false),
     cl::desc("Whether or not to compute detailed function properties."));
@@ -39,9 +38,8 @@ cl::opt<unsigned> MediumBasicBlockInstructionThreshold(
     "medium-basic-block-instruction-threshold", cl::Hidden, cl::init(15),
     cl::desc("The minimum number of instructions a basic block should contain "
              "before being considered medium-sized."));
-}
 
-static cl::opt<unsigned> CallWithManyArgumentsThreshold(
+cl::opt<unsigned> CallWithManyArgumentsThreshold(
     "call-with-many-arguments-threshold", cl::Hidden, cl::init(4),
     cl::desc("The minimum number of arguments a function call must have before "
              "it is considered having many arguments."));

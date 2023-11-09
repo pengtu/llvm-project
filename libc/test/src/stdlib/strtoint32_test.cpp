@@ -14,7 +14,7 @@
 #include "StrtolTest.h"
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int32_t strtoint32(const char *__restrict str, char **__restrict str_end,
                    int base) {
@@ -39,7 +39,7 @@ uint32_t strtouint32(const char *__restrict str, char **__restrict str_end,
 
   return result;
 }
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-STRTOL_TEST(Strtoint32, LIBC_NAMESPACE::strtoint32)
-STRTOL_TEST(Strtouint32, LIBC_NAMESPACE::strtouint32)
+STRTOL_TEST(Strtoint32, __llvm_libc::strtoint32)
+STRTOL_TEST(Strtouint32, __llvm_libc::strtouint32)

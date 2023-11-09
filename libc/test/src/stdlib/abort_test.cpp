@@ -14,6 +14,6 @@
 
 TEST(LlvmLibcStdlib, abort) {
   // -1 matches against any signal, which is necessary for now until
-  // LIBC_NAMESPACE::abort() unblocks SIGABRT.
-  EXPECT_DEATH([] { LIBC_NAMESPACE::abort(); }, WITH_SIGNAL(-1));
+  // __llvm_libc::abort() unblocks SIGABRT.
+  EXPECT_DEATH([] { __llvm_libc::abort(); }, WITH_SIGNAL(-1));
 }

@@ -248,10 +248,8 @@ void OpenStatementState::CompleteOperation() {
   }
   if (path_.get() || wasExtant_ ||
       (status_ && *status_ == OpenStatus::Scratch)) {
-    if (unit().OpenUnit(status_, action_, position_.value_or(Position::AsIs),
-            std::move(path_), pathLength_, convert_, *this)) {
-      wasExtant_ = false; // existing unit was closed
-    }
+    unit().OpenUnit(status_, action_, position_.value_or(Position::AsIs),
+        std::move(path_), pathLength_, convert_, *this);
   } else {
     unit().OpenAnonymousUnit(
         status_, action_, position_.value_or(Position::AsIs), convert_, *this);
@@ -1273,7 +1271,7 @@ bool InquireNoUnitState::Inquire(
 bool InquireNoUnitState::Inquire(InquiryKeywordHash inquiry, bool &result) {
   switch (inquiry) {
   case HashInquiryKeyword("EXIST"):
-    result = badUnitNumber() >= 0;
+    result = true;
     return true;
   case HashInquiryKeyword("NAMED"):
   case HashInquiryKeyword("OPENED"):

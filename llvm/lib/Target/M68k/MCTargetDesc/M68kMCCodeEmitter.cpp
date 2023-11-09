@@ -203,13 +203,14 @@ void M68kMCCodeEmitter::encodeInstruction(const MCInst &MI,
                                           SmallVectorImpl<char> &CB,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {
-  LLVM_DEBUG(dbgs() << "EncodeInstruction: " << MCII.getName(MI.getOpcode())
-                    << "(" << MI.getOpcode() << ")\n");
-  (void)MCII;
+  unsigned Opcode = MI.getOpcode();
+
+  LLVM_DEBUG(dbgs() << "EncodeInstruction: " << MCII.getName(Opcode) << "("
+                    << Opcode << ")\n");
 
   // Try using the new method first.
   APInt EncodedInst(16, 0U);
-  APInt Scratch(64, 0U); // One APInt word is enough.
+  APInt Scratch(16, 0U);
   getBinaryCodeForInstr(MI, Fixups, EncodedInst, Scratch, STI);
 
   ArrayRef<uint64_t> Data(EncodedInst.getRawData(), EncodedInst.getNumWords());
@@ -217,7 +218,7 @@ void M68kMCCodeEmitter::encodeInstruction(const MCInst &MI,
   for (uint64_t Word : Data) {
     for (int i = 0; i < 4 && InstSize > 0; ++i, InstSize -= 16) {
       support::endian::write<uint16_t>(CB, static_cast<uint16_t>(Word),
-                                       llvm::endianness::big);
+                                       support::big);
       Word >>= 16;
     }
   }

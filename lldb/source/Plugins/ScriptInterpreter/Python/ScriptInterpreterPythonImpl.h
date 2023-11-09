@@ -134,9 +134,23 @@ public:
 
   lldb::ScriptedProcessInterfaceUP CreateScriptedProcessInterface() override;
 
-  lldb::ScriptedThreadInterfaceSP CreateScriptedThreadInterface() override;
+  StructuredData::GenericSP
+  OSPlugin_CreatePluginObject(const char *class_name,
+                              lldb::ProcessSP process_sp) override;
 
-  lldb::OperatingSystemInterfaceSP CreateOperatingSystemInterface() override;
+  StructuredData::DictionarySP
+  OSPlugin_RegisterInfo(StructuredData::ObjectSP os_plugin_object_sp) override;
+
+  StructuredData::ArraySP
+  OSPlugin_ThreadsInfo(StructuredData::ObjectSP os_plugin_object_sp) override;
+
+  StructuredData::StringSP
+  OSPlugin_RegisterContextData(StructuredData::ObjectSP os_plugin_object_sp,
+                               lldb::tid_t thread_id) override;
+
+  StructuredData::DictionarySP
+  OSPlugin_CreateThread(StructuredData::ObjectSP os_plugin_object_sp,
+                        lldb::tid_t tid, lldb::addr_t context) override;
 
   StructuredData::ObjectSP
   LoadPluginModule(const FileSpec &file_spec,

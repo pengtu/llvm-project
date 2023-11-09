@@ -334,7 +334,7 @@ are no syntax errors may indicate that a function was declared but never called.
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_options.m_use_dummy);
 
     const BreakpointList &breakpoints = target.GetBreakpointList();
@@ -342,7 +342,7 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist to have commands added");
-      return;
+      return false;
     }
 
     if (!m_func_options.GetName().empty()) {
@@ -412,6 +412,8 @@ protected:
           CollectDataForBreakpointCommandCallback(m_bp_options_vec, result);
       }
     }
+
+    return result.Succeeded();
   }
 
 private:
@@ -504,7 +506,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_options.m_use_dummy);
 
     const BreakpointList &breakpoints = target.GetBreakpointList();
@@ -512,13 +514,13 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist to have commands deleted");
-      return;
+      return false;
     }
 
     if (command.empty()) {
       result.AppendError(
           "No breakpoint specified from which to delete the commands");
-      return;
+      return false;
     }
 
     BreakpointIDList valid_bp_ids;
@@ -542,7 +544,7 @@ protected:
               result.AppendErrorWithFormat("Invalid breakpoint ID: %u.%u.\n",
                                            cur_bp_id.GetBreakpointID(),
                                            cur_bp_id.GetLocationID());
-              return;
+              return false;
             }
           } else {
             bp->ClearCallback();
@@ -550,6 +552,7 @@ protected:
         }
       }
     }
+    return result.Succeeded();
   }
 
 private:
@@ -583,7 +586,7 @@ public:
   ~CommandObjectBreakpointCommandList() override = default;
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target *target = &GetSelectedTarget();
 
     const BreakpointList &breakpoints = target->GetBreakpointList();
@@ -591,13 +594,13 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist for which to list commands");
-      return;
+      return false;
     }
 
     if (command.empty()) {
       result.AppendError(
           "No breakpoint specified for which to list the commands");
-      return;
+      return false;
     }
 
     BreakpointIDList valid_bp_ids;
@@ -621,7 +624,7 @@ protected:
                 result.AppendErrorWithFormat("Invalid breakpoint ID: %u.%u.\n",
                                              cur_bp_id.GetBreakpointID(),
                                              cur_bp_id.GetLocationID());
-                return;
+                return false;
               }
             }
 
@@ -658,6 +661,8 @@ protected:
         }
       }
     }
+
+    return result.Succeeded();
   }
 };
 

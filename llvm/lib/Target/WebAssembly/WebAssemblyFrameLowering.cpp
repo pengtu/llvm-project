@@ -130,15 +130,7 @@ bool WebAssemblyFrameLowering::hasReservedCallFrame(
 bool WebAssemblyFrameLowering::needsSPForLocalFrame(
     const MachineFunction &MF) const {
   auto &MFI = MF.getFrameInfo();
-  auto &MRI = MF.getRegInfo();
-  // llvm.stacksave can explicitly read SP register and it can appear without
-  // dynamic alloca.
-  bool HasExplicitSPUse =
-      any_of(MRI.use_operands(getSPReg(MF)),
-             [](MachineOperand &MO) { return !MO.isImplicit(); });
-
-  return MFI.getStackSize() || MFI.adjustsStack() || hasFP(MF) ||
-         HasExplicitSPUse;
+  return MFI.getStackSize() || MFI.adjustsStack() || hasFP(MF);
 }
 
 // In function with EH pads, we need to make a copy of the value of

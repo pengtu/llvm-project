@@ -107,9 +107,10 @@ namespace detail {
 template <typename T>
 struct EndianAdapter final
     : public FormatAdapter<support::detail::packed_endian_specific_integral<
-          T, llvm::endianness::little, support::unaligned>> {
-  using EndianType = support::detail::packed_endian_specific_integral<
-      T, llvm::endianness::little, support::unaligned>;
+          T, support::little, support::unaligned>> {
+  using EndianType =
+      support::detail::packed_endian_specific_integral<T, support::little,
+                                                       support::unaligned>;
 
   explicit EndianAdapter(EndianType &&Item)
       : FormatAdapter<EndianType>(std::move(Item)) {}
@@ -121,9 +122,10 @@ struct EndianAdapter final
 } // namespace detail
 
 template <typename T>
-detail::EndianAdapter<T> fmtle(support::detail::packed_endian_specific_integral<
-                               T, llvm::endianness::little, support::unaligned>
-                                   Value) {
+detail::EndianAdapter<T>
+fmtle(support::detail::packed_endian_specific_integral<T, support::little,
+                                                       support::unaligned>
+          Value) {
   return detail::EndianAdapter<T>(std::move(Value));
 }
 } // namespace pdb

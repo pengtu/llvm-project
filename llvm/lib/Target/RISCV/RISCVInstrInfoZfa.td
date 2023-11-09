@@ -7,7 +7,9 @@
 //===----------------------------------------------------------------------===//
 //
 // This file describes the RISC-V instructions from the standard 'Zfa'
-// additional floating-point extension, version 1.0.
+// additional floating-point extension, version 0.1.
+// This version is still experimental as the 'Zfa' extension hasn't been
+// ratified yet.
 //
 //===----------------------------------------------------------------------===//
 
@@ -112,7 +114,6 @@ def FROUND_D : FPUnaryOp_r_frm<0b0100001, 0b00100, FPR64, FPR64, "fround.d">,
 def FROUNDNX_D : FPUnaryOp_r_frm<0b0100001, 0b00101, FPR64, FPR64, "froundnx.d">,
                  Sched<[WriteFRoundF64, ReadFRoundF64]>;
 
-let IsSignExtendingOpW = 1 in
 def FCVTMOD_W_D
     : FPUnaryOp_r_rtz<0b1100001, 0b01000, GPR, FPR64, "fcvtmod.w.d">,
       Sched<[WriteFCvtF64ToI32, ReadFCvtF64ToI32]>;

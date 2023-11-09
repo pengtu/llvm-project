@@ -238,17 +238,17 @@ public:
 
 private:
   CallDescriptionMap<FnDescription> FnDescriptions = {
-      {{{"fopen"}, 2}, {nullptr, &StreamChecker::evalFopen, ArgNone}},
+      {{{"fopen"}}, {nullptr, &StreamChecker::evalFopen, ArgNone}},
       {{{"freopen"}, 3},
        {&StreamChecker::preFreopen, &StreamChecker::evalFreopen, 2}},
-      {{{"tmpfile"}, 0}, {nullptr, &StreamChecker::evalFopen, ArgNone}},
+      {{{"tmpfile"}}, {nullptr, &StreamChecker::evalFopen, ArgNone}},
       {{{"fclose"}, 1},
        {&StreamChecker::preDefault, &StreamChecker::evalFclose, 0}},
       {{{"fread"}, 4},
-       {std::bind(&StreamChecker::preFreadFwrite, _1, _2, _3, _4, true),
+       {&StreamChecker::preFread,
         std::bind(&StreamChecker::evalFreadFwrite, _1, _2, _3, _4, true), 3}},
       {{{"fwrite"}, 4},
-       {std::bind(&StreamChecker::preFreadFwrite, _1, _2, _3, _4, false),
+       {&StreamChecker::preFwrite,
         std::bind(&StreamChecker::evalFreadFwrite, _1, _2, _3, _4, false), 3}},
       {{{"fseek"}, 3},
        {&StreamChecker::preFseek, &StreamChecker::evalFseek, 0}},
@@ -305,8 +305,11 @@ private:
   void evalFclose(const FnDescription *Desc, const CallEvent &Call,
                   CheckerContext &C) const;
 
-  void preFreadFwrite(const FnDescription *Desc, const CallEvent &Call,
-                      CheckerContext &C, bool IsFread) const;
+  void preFread(const FnDescription *Desc, const CallEvent &Call,
+                CheckerContext &C) const;
+
+  void preFwrite(const FnDescription *Desc, const CallEvent &Call,
+                 CheckerContext &C) const;
 
   void evalFreadFwrite(const FnDescription *Desc, const CallEvent &Call,
                        CheckerContext &C, bool IsFread) const;
@@ -404,14 +407,23 @@ private:
 
   /// Generate a message for BugReporterVisitor if the stored symbol is
   /// marked as interesting by the actual bug report.
+  // FIXME: Use lambda instead.
+  struct NoteFn {
+    const BugType *BT_ResourceLeak;
+    SymbolRef StreamSym;
+    std::string Message;
+
+    std::string operator()(PathSensitiveBugReport &BR) const {
+      if (BR.isInteresting(StreamSym) && &BR.getBugType() == BT_ResourceLeak)
+        return Message;
+
+      return "";
+    }
+  };
+
   const NoteTag *constructNoteTag(CheckerContext &C, SymbolRef StreamSym,
                                   const std::string &Message) const {
-    return C.getNoteTag([this, StreamSym,
-                         Message](PathSensitiveBugReport &BR) -> std::string {
-      if (BR.isInteresting(StreamSym) && &BR.getBugType() == &BT_ResourceLeak)
-        return Message;
-      return "";
-    });
+    return C.getNoteTag(NoteFn{&BT_ResourceLeak, StreamSym, Message});
   }
 
   const NoteTag *constructSetEofNoteTag(CheckerContext &C,
@@ -634,9 +646,8 @@ void StreamChecker::evalFclose(const FnDescription *Desc, const CallEvent &Call,
   C.addTransition(StateFailure);
 }
 
-void StreamChecker::preFreadFwrite(const FnDescription *Desc,
-                                   const CallEvent &Call, CheckerContext &C,
-                                   bool IsFread) const {
+void StreamChecker::preFread(const FnDescription *Desc, const CallEvent &Call,
+                             CheckerContext &C) const {
   ProgramStateRef State = C.getState();
   SVal StreamVal = getStreamArg(Desc, Call);
   State = ensureStreamNonNull(StreamVal, Call.getArgExpr(Desc->StreamArgNo), C,
@@ -650,11 +661,6 @@ void StreamChecker::preFreadFwrite(const FnDescription *Desc,
   if (!State)
     return;
 
-  if (!IsFread) {
-    C.addTransition(State);
-    return;
-  }
-
   SymbolRef Sym = StreamVal.getAsSymbol();
   if (Sym && State->get<StreamMap>(Sym)) {
     const StreamState *SS = State->get<StreamMap>(Sym);
@@ -663,6 +669,24 @@ void StreamChecker::preFreadFwrite(const FnDescription *Desc,
   } else {
     C.addTransition(State);
   }
+}
+
+void StreamChecker::preFwrite(const FnDescription *Desc, const CallEvent &Call,
+                              CheckerContext &C) const {
+  ProgramStateRef State = C.getState();
+  SVal StreamVal = getStreamArg(Desc, Call);
+  State = ensureStreamNonNull(StreamVal, Call.getArgExpr(Desc->StreamArgNo), C,
+                              State);
+  if (!State)
+    return;
+  State = ensureStreamOpened(StreamVal, C, State);
+  if (!State)
+    return;
+  State = ensureNoFilePositionIndeterminate(StreamVal, C, State);
+  if (!State)
+    return;
+
+  C.addTransition(State);
 }
 
 void StreamChecker::evalFreadFwrite(const FnDescription *Desc,
@@ -1037,7 +1061,7 @@ StreamChecker::ensureStreamNonNull(SVal StreamVal, const Expr *StreamE,
   ConstraintManager &CM = C.getConstraintManager();
 
   ProgramStateRef StateNotNull, StateNull;
-  std::tie(StateNotNull, StateNull) = CM.assumeDual(State, *Stream);
+  std::tie(StateNotNull, StateNull) = CM.assumeDual(C.getState(), *Stream);
 
   if (!StateNotNull && StateNull) {
     if (ExplodedNode *N = C.generateErrorNode(StateNull)) {
@@ -1207,7 +1231,7 @@ StreamChecker::reportLeaks(const SmallVector<SymbolRef, 2> &LeakedSyms,
 
     PathDiagnosticLocation LocUsedForUniqueing;
     if (const Stmt *StreamStmt = StreamOpenNode->getStmtForDiagnostics())
-      LocUsedForUniqueing = PathDiagnosticLocation::createBegin(
+       LocUsedForUniqueing = PathDiagnosticLocation::createBegin(
           StreamStmt, C.getSourceManager(),
           StreamOpenNode->getLocationContext());
 

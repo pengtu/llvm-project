@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=amdgcn-unknown-amdhsa < %s | FileCheck -check-prefix=HSA %s
+; RUN: llc -march=amdgcn -mtriple=amdgcn-unknown-amdhsa < %s | FileCheck -check-prefix=HSA %s
 
 @lds.align16.0 = internal unnamed_addr addrspace(3) global [38 x i8] undef, align 16
 @lds.align16.1 = internal unnamed_addr addrspace(3) global [38 x i8] undef, align 16
@@ -14,7 +14,7 @@ declare void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) nocapture, ptr addrspace(3)
 
 
 ; HSA-LABEL: {{^}}test_no_round_size_1:
-; HSA: .amdhsa_group_segment_fixed_size 38
+; HSA: workgroup_group_segment_byte_size = 38
 define amdgpu_kernel void @test_no_round_size_1(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 4 @lds.align16.0, ptr addrspace(1) align 4 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 4 %out, ptr addrspace(3) align 4 @lds.align16.0, i32 38, i1 false)
@@ -31,7 +31,8 @@ define amdgpu_kernel void @test_no_round_size_1(ptr addrspace(1) %out, ptr addrs
 ; add the alignment padding if necessary alignment padding if needed.
 
 ; HSA-LABEL: {{^}}test_round_size_2:
-; HSA: .amdhsa_group_segment_fixed_size 86
+; HSA: workgroup_group_segment_byte_size = 86
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_2(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 4 @lds.align16.0, ptr addrspace(1) align 4 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 4 %out, ptr addrspace(3) align 4 @lds.align16.0, i32 38, i1 false)
@@ -44,7 +45,8 @@ define amdgpu_kernel void @test_round_size_2(ptr addrspace(1) %out, ptr addrspac
 
 ; 38 + (10 pad) + 38  (= 86)
 ; HSA-LABEL: {{^}}test_round_size_2_align_8:
-; HSA: .amdhsa_group_segment_fixed_size 86
+; HSA: workgroup_group_segment_byte_size = 86
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_2_align_8(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align16.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align16.0, i32 38, i1 false)
@@ -56,7 +58,8 @@ define amdgpu_kernel void @test_round_size_2_align_8(ptr addrspace(1) %out, ptr 
 }
 
 ; HSA-LABEL: {{^}}test_round_local_lds_and_arg:
-; HSA: .amdhsa_group_segment_fixed_size 38
+; HSA: workgroup_group_segment_byte_size = 38
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_local_lds_and_arg(ptr addrspace(1) %out, ptr addrspace(1) %in, ptr addrspace(3) %lds.arg) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 4 @lds.align16.0, ptr addrspace(1) align 4 %in, i32 38, i1 false)
 
@@ -67,7 +70,8 @@ define amdgpu_kernel void @test_round_local_lds_and_arg(ptr addrspace(1) %out, p
 }
 
 ; HSA-LABEL: {{^}}test_round_lds_arg:
-; HSA: .amdhsa_group_segment_fixed_size 0
+; HSA: workgroup_group_segment_byte_size = 0
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_lds_arg(ptr addrspace(1) %out, ptr addrspace(1) %in, ptr addrspace(3) %lds.arg) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 4 %lds.arg, ptr addrspace(1) align 4 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 4 %out, ptr addrspace(3) align 4 %lds.arg, i32 38, i1 false)
@@ -76,7 +80,8 @@ define amdgpu_kernel void @test_round_lds_arg(ptr addrspace(1) %out, ptr addrspa
 
 ; FIXME: Parameter alignment not considered
 ; HSA-LABEL: {{^}}test_high_align_lds_arg:
-; HSA: .amdhsa_group_segment_fixed_size 0
+; HSA: workgroup_group_segment_byte_size = 0
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_high_align_lds_arg(ptr addrspace(1) %out, ptr addrspace(1) %in, ptr addrspace(3) align 64 %lds.arg) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 64 %lds.arg, ptr addrspace(1) align 64 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 64 %out, ptr addrspace(3) align 64 %lds.arg, i32 38, i1 false)
@@ -85,7 +90,8 @@ define amdgpu_kernel void @test_high_align_lds_arg(ptr addrspace(1) %out, ptr ad
 
 ; (39 * 4) + (4 pad) + (7 * 8) = 216
 ; HSA-LABEL: {{^}}test_missing_alignment_size_2_order0:
-; HSA: .amdhsa_group_segment_fixed_size 216
+; HSA: workgroup_group_segment_byte_size = 216
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_missing_alignment_size_2_order0(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 4 @lds.missing.align.0, ptr addrspace(1) align 4 %in, i32 160, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 4 %out, ptr addrspace(3) align 4 @lds.missing.align.0, i32 160, i1 false)
@@ -98,7 +104,8 @@ define amdgpu_kernel void @test_missing_alignment_size_2_order0(ptr addrspace(1)
 
 ; (39 * 4) + (4 pad) + (7 * 8) = 216
 ; HSA-LABEL: {{^}}test_missing_alignment_size_2_order1:
-; HSA: .amdhsa_group_segment_fixed_size 216
+; HSA: workgroup_group_segment_byte_size = 216
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_missing_alignment_size_2_order1(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.missing.align.1, ptr addrspace(1) align 8 %in, i32 56, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.missing.align.1, i32 56, i1 false)
@@ -112,7 +119,8 @@ define amdgpu_kernel void @test_missing_alignment_size_2_order1(ptr addrspace(1)
 ; align 32, 16, 16
 ; 38 + (10 pad) + 38 + (10 pad) + 38  ( = 134)
 ; HSA-LABEL: {{^}}test_round_size_3_order0:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order0(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align32.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align32.0, i32 38, i1 false)
@@ -129,7 +137,8 @@ define amdgpu_kernel void @test_round_size_3_order0(ptr addrspace(1) %out, ptr a
 ; align 32, 16, 16
 ; 38 (+ 10 pad) + 38 + (10 pad) + 38 ( = 134)
 ; HSA-LABEL: {{^}}test_round_size_3_order1:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order1(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align32.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align32.0, i32 38, i1 false)
@@ -146,7 +155,8 @@ define amdgpu_kernel void @test_round_size_3_order1(ptr addrspace(1) %out, ptr a
 ; align 32, 16, 16
 ; 38 + (10 pad) + 38 + (10 pad) + 38  ( = 126)
 ; HSA-LABEL: {{^}}test_round_size_3_order2:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order2(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align16.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align16.0, i32 38, i1 false)
@@ -163,7 +173,8 @@ define amdgpu_kernel void @test_round_size_3_order2(ptr addrspace(1) %out, ptr a
 ; align 32, 16, 16
 ; 38 + (10 pad) + 38 + (10 pad) + 38 ( = 134)
 ; HSA-LABEL: {{^}}test_round_size_3_order3:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order3(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align16.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align16.0, i32 38, i1 false)
@@ -180,7 +191,8 @@ define amdgpu_kernel void @test_round_size_3_order3(ptr addrspace(1) %out, ptr a
 ; align 32, 16, 16
 ; 38 + (10 pad) + 38 + (10 pad) + 38  (= 134)
 ; HSA-LABEL: {{^}}test_round_size_3_order4:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order4(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align8.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align8.0, i32 38, i1 false)
@@ -197,7 +209,8 @@ define amdgpu_kernel void @test_round_size_3_order4(ptr addrspace(1) %out, ptr a
 ; align 32, 16, 16
 ; 38 + (10 pad) + 38 + (10 pad) + 38  (= 134)
 ; HSA-LABEL: {{^}}test_round_size_3_order5:
-; HSA: .amdhsa_group_segment_fixed_size 134
+; HSA: workgroup_group_segment_byte_size = 134
+; HSA: group_segment_alignment = 4
 define amdgpu_kernel void @test_round_size_3_order5(ptr addrspace(1) %out, ptr addrspace(1) %in) #1 {
   call void @llvm.memcpy.p3.p1.i32(ptr addrspace(3) align 8 @lds.align8.0, ptr addrspace(1) align 8 %in, i32 38, i1 false)
   call void @llvm.memcpy.p1.p3.i32(ptr addrspace(1) align 8 %out, ptr addrspace(3) align 8 @lds.align8.0, i32 38, i1 false)
@@ -216,4 +229,4 @@ attributes #1 = { nounwind }
 attributes #2 = { convergent nounwind }
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 400}
+!0 = !{i32 1, !"amdgpu_code_object_version", i32 200}

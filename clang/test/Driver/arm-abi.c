@@ -33,8 +33,6 @@
 // RUN:   | FileCheck -check-prefix=CHECK-AAPCS-LINUX %s
 // RUN: %clang -target arm--openbsd- %s -### -o %t.o 2>&1 \
 // RUN:   | FileCheck -check-prefix=CHECK-AAPCS-LINUX %s
-// RUN: %clang -target arm--haiku- %s -### -o %t.o 2>&1 \
-// RUN:   | FileCheck -check-prefix=CHECK-AAPCS-LINUX %s
 
 // Otherwise, ABI is selected based on environment
 // RUN: %clang -target arm---android %s -### -o %t.o 2>&1 \

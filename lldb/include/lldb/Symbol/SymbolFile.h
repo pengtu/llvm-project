@@ -22,7 +22,6 @@
 #include "lldb/Symbol/TypeList.h"
 #include "lldb/Symbol/TypeSystem.h"
 #include "lldb/Target/Statistics.h"
-#include "lldb/Utility/StructuredData.h"
 #include "lldb/Utility/XcodeSDK.h"
 #include "lldb/lldb-private.h"
 #include "llvm/ADT/DenseSet.h"
@@ -225,16 +224,14 @@ public:
 
   virtual bool CompleteType(CompilerType &compiler_type) = 0;
   virtual void ParseDeclsForContext(CompilerDeclContext decl_ctx) {}
-  virtual CompilerDecl GetDeclForUID(lldb::user_id_t uid) { return {}; }
+  virtual CompilerDecl GetDeclForUID(lldb::user_id_t uid) {
+    return CompilerDecl();
+  }
   virtual CompilerDeclContext GetDeclContextForUID(lldb::user_id_t uid) {
-    return {};
+    return CompilerDeclContext();
   }
   virtual CompilerDeclContext GetDeclContextContainingUID(lldb::user_id_t uid) {
-    return {};
-  }
-  virtual std::vector<CompilerContext>
-  GetCompilerContextForUID(lldb::user_id_t uid) {
-    return {};
+    return CompilerDeclContext();
   }
   virtual uint32_t ResolveSymbolContext(const Address &so_addr,
                                         lldb::SymbolContextItem resolve_scope,
@@ -436,23 +433,6 @@ public:
   /// GetFrameVariableError() for details on what are considered errors.
   virtual bool GetDebugInfoHadFrameVariableErrors() const = 0;
   virtual void SetDebugInfoHadFrameVariableErrors() = 0;
-
-  /// Return true if separate debug info files are supported and this function
-  /// succeeded, false otherwise.
-  ///
-  /// \param[out] d
-  ///     If this function succeeded, then this will be a dictionary that
-  ///     contains the keys "type", "symfile", and "separate-debug-info-files".
-  ///     "type" can be used to assume the structure of each object in
-  ///     "separate-debug-info-files".
-  /// \param errors_only
-  ///     If true, then only return separate debug info files that encountered
-  ///     errors during loading. If false, then return all expected separate
-  ///     debug info files, regardless of whether they were successfully loaded.
-  virtual bool GetSeparateDebugInfo(StructuredData::Dictionary &d,
-                                    bool errors_only) {
-    return false;
-  };
 
   virtual lldb::TypeSP
   MakeType(lldb::user_id_t uid, ConstString name,

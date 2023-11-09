@@ -154,8 +154,8 @@ private:
   }
 
 public:
-  SystemZOperand(OperandKind Kind, SMLoc StartLoc, SMLoc EndLoc)
-      : Kind(Kind), StartLoc(StartLoc), EndLoc(EndLoc) {}
+  SystemZOperand(OperandKind kind, SMLoc startLoc, SMLoc endLoc)
+      : Kind(kind), StartLoc(startLoc), EndLoc(endLoc) {}
 
   // Create particular kinds of operand.
   static std::unique_ptr<SystemZOperand> createInvalid(SMLoc StartLoc,
@@ -1084,8 +1084,7 @@ SystemZAsmParser::parseAddressRegister(Register &Reg) {
   if (Reg.Group == RegV) {
     Error(Reg.StartLoc, "invalid use of vector addressing");
     return true;
-  }
-  if (Reg.Group != RegGR) {
+  } else if (Reg.Group != RegGR) {
     Error(Reg.StartLoc, "invalid address register");
     return true;
   }
@@ -1237,8 +1236,8 @@ bool SystemZAsmParser::ParseDirectiveInsn(SMLoc L) {
   assert(Entry->Format == Format);
 
   // Parse the following operands using the table's information.
-  for (int I = 0; I < Entry->NumOperands; I++) {
-    MatchClassKind Kind = Entry->OperandKinds[I];
+  for (int i = 0; i < Entry->NumOperands; i++) {
+    MatchClassKind Kind = Entry->OperandKinds[i];
 
     SMLoc StartLoc = Parser.getTok().getLoc();
 
@@ -1286,9 +1285,9 @@ bool SystemZAsmParser::ParseDirectiveInsn(SMLoc L) {
   // Build the instruction with the parsed operands.
   MCInst Inst = MCInstBuilder(Entry->Opcode);
 
-  for (size_t I = 0; I < Operands.size(); I++) {
-    MCParsedAsmOperand &Operand = *Operands[I];
-    MatchClassKind Kind = Entry->OperandKinds[I];
+  for (size_t i = 0; i < Operands.size(); i++) {
+    MCParsedAsmOperand &Operand = *Operands[i];
+    MatchClassKind Kind = Entry->OperandKinds[i];
 
     // Verify operand.
     unsigned Res = validateOperandClass(Operand, Kind);
@@ -1584,7 +1583,7 @@ ParseStatus SystemZAsmParser::parsePCRel(OperandVector &Operands,
   if (getParser().parseExpression(Expr))
     return ParseStatus::NoMatch;
 
-  auto IsOutOfRangeConstant = [&](const MCExpr *E, bool Negate) -> bool {
+  auto isOutOfRangeConstant = [&](const MCExpr *E, bool Negate) -> bool {
     if (auto *CE = dyn_cast<MCConstantExpr>(E)) {
       int64_t Value = CE->getValue();
       if (Negate)
@@ -1600,7 +1599,7 @@ ParseStatus SystemZAsmParser::parsePCRel(OperandVector &Operands,
   if (auto *CE = dyn_cast<MCConstantExpr>(Expr)) {
     if (isParsingHLASM())
       return Error(StartLoc, "Expected PC-relative expression");
-    if (IsOutOfRangeConstant(CE, false))
+    if (isOutOfRangeConstant(CE, false))
       return Error(StartLoc, "offset out of range");
     int64_t Value = CE->getValue();
     MCSymbol *Sym = Ctx.createTempSymbol();
@@ -1613,8 +1612,8 @@ ParseStatus SystemZAsmParser::parsePCRel(OperandVector &Operands,
   // For consistency with the GNU assembler, conservatively assume that a
   // constant offset must by itself be within the given size range.
   if (const auto *BE = dyn_cast<MCBinaryExpr>(Expr))
-    if (IsOutOfRangeConstant(BE->getLHS(), false) ||
-        IsOutOfRangeConstant(BE->getRHS(),
+    if (isOutOfRangeConstant(BE->getLHS(), false) ||
+        isOutOfRangeConstant(BE->getRHS(),
                              BE->getOpcode() == MCBinaryExpr::Sub))
       return Error(StartLoc, "offset out of range");
 
@@ -1703,7 +1702,6 @@ bool SystemZAsmParser::isLabel(AsmToken &Token) {
 }
 
 // Force static initialization.
-// NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSystemZAsmParser() {
   RegisterMCAsmParser<SystemZAsmParser> X(getTheSystemZTarget());
 }

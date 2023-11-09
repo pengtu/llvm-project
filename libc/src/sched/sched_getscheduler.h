@@ -11,10 +11,10 @@
 
 #include <sched.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int sched_getscheduler(pid_t tid);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_SCHED_SCHED_GETSCHEDULER_H

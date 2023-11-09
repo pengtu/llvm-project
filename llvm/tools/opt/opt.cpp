@@ -39,7 +39,6 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Remarks/HotnessThresholdParser.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/PluginLoader.h"
@@ -175,7 +174,7 @@ static cl::opt<bool>
     OptLevelO3("O3", cl::desc("Optimization level 3. Similar to clang -O3. "
                               "Same as -passes='default<O3>'"));
 
-static cl::opt<unsigned> CodeGenOptLevelCL(
+static cl::opt<unsigned> CodeGenOptLevel(
     "codegen-opt-level",
     cl::desc("Override optimization level for codegen hooks, legacy PM only"));
 
@@ -283,8 +282,26 @@ static cl::list<std::string>
 // CodeGen-related helper functions.
 //
 
-static CodeGenOptLevel GetCodeGenOptLevel() {
-  return static_cast<CodeGenOptLevel>(unsigned(CodeGenOptLevelCL));
+static CodeGenOpt::Level GetCodeGenOptLevel() {
+  return static_cast<CodeGenOpt::Level>(unsigned(CodeGenOptLevel));
+}
+
+// Returns the TargetMachine instance or zero if no triple is provided.
+static TargetMachine* GetTargetMachine(Triple TheTriple, StringRef CPUStr,
+                                       StringRef FeaturesStr,
+                                       const TargetOptions &Options) {
+  std::string Error;
+  const Target *TheTarget =
+      TargetRegistry::lookupTarget(codegen::getMArch(), TheTriple, Error);
+  // Some modules don't specify a triple, and this is okay.
+  if (!TheTarget) {
+    return nullptr;
+  }
+
+  return TheTarget->createTargetMachine(
+      TheTriple.getTriple(), codegen::getCPUStr(), codegen::getFeaturesStr(),
+      Options, codegen::getExplicitRelocModel(),
+      codegen::getExplicitCodeModel(), GetCodeGenOptLevel());
 }
 
 struct TimeTracerRAII {
@@ -314,7 +331,6 @@ static bool shouldPinPassToLegacyPM(StringRef Pass) {
       "nvvm-reflect",
       "nvvm-intr-range",
       "amdgpu-simplifylib",
-      "amdgpu-image-intrinsic-opt",
       "amdgpu-usenative",
       "amdgpu-promote-alloca",
       "amdgpu-promote-alloca-to-vector",
@@ -352,6 +368,7 @@ static bool shouldPinPassToLegacyPM(StringRef Pass) {
       "expandmemcmp",
       "loop-reduce",
       "lower-amx-type",
+      "pre-amx-config",
       "lower-amx-intrinsics",
       "polyhedral-info",
       "print-polyhedral-info",
@@ -441,8 +458,11 @@ int main(int argc, char **argv) {
   SmallVector<PassPlugin, 1> PluginList;
   PassPlugins.setCallback([&](const std::string &PluginPath) {
     auto Plugin = PassPlugin::Load(PluginPath);
-    if (!Plugin)
-      report_fatal_error(Plugin.takeError(), /*gen_crash_diag=*/false);
+    if (!Plugin) {
+      errs() << "Failed to load passes from '" << PluginPath
+             << "'. Request ignored.\n";
+      return;
+    }
     PluginList.emplace_back(Plugin.get());
   });
 
@@ -500,36 +520,10 @@ int main(int argc, char **argv) {
   std::unique_ptr<ToolOutputFile> RemarksFile = std::move(*RemarksFileOrErr);
 
   // Load the input module...
-  auto SetDataLayout = [&](StringRef IRTriple,
-                           StringRef IRLayout) -> std::optional<std::string> {
-    // Data layout specified on the command line has the highest priority.
-    if (!ClDataLayout.empty())
-      return ClDataLayout;
-    // If an explicit data layout is already defined in the IR, don't infer.
-    if (!IRLayout.empty())
+  auto SetDataLayout = [](StringRef, StringRef) -> std::optional<std::string> {
+    if (ClDataLayout.empty())
       return std::nullopt;
-
-    // If an explicit triple was specified (either in the IR or on the
-    // command line), use that to infer the default data layout. However, the
-    // command line target triple should override the IR file target triple.
-    std::string TripleStr =
-        TargetTriple.empty() ? IRTriple.str() : Triple::normalize(TargetTriple);
-    // If the triple string is still empty, we don't fall back to
-    // sys::getDefaultTargetTriple() since we do not want to have differing
-    // behaviour dependent on the configured default triple. Therefore, if the
-    // user did not pass -mtriple or define an explicit triple/datalayout in
-    // the IR, we should default to an empty (default) DataLayout.
-    if (TripleStr.empty())
-      return std::nullopt;
-    // Otherwise we infer the DataLayout from the target machine.
-    Expected<std::unique_ptr<TargetMachine>> ExpectedTM =
-        codegen::createTargetMachineForTriple(TripleStr, GetCodeGenOptLevel());
-    if (!ExpectedTM) {
-      errs() << argv[0] << ": warning: failed to infer data layout: "
-             << toString(ExpectedTM.takeError()) << "\n";
-      return std::nullopt;
-    }
-    return (*ExpectedTM)->createDataLayout().getStringRepresentation();
+    return ClDataLayout;
   };
   std::unique_ptr<Module> M;
   if (NoUpgradeDebugInfo)
@@ -557,7 +551,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  // If we are supposed to override the target triple, do so now.
+  // If we are supposed to override the target triple or data layout, do so now.
   if (!TargetTriple.empty())
     M->setTargetTriple(Triple::normalize(TargetTriple));
 
@@ -574,14 +568,9 @@ int main(int argc, char **argv) {
   // the facility for updating public visibility to linkage unit visibility when
   // specified by an internal option. This is normally done during LTO which is
   // not performed via opt.
-  updateVCallVisibilityInModule(
-      *M,
-      /*WholeProgramVisibilityEnabledInLTO=*/false,
-      // FIXME: These need linker information via a
-      // TBD new interface.
-      /*DynamicExportSymbols=*/{},
-      /*ValidateAllVtablesHaveTypeInfos=*/false,
-      /*IsVisibleToRegularObj=*/[](StringRef) { return true; });
+  updateVCallVisibilityInModule(*M,
+                                /* WholeProgramVisibilityEnabledInLTO */ false,
+                                /* DynamicExportSymbols */ {});
 
   // Figure out what stream we are supposed to write to...
   std::unique_ptr<ToolOutputFile> Out;
@@ -616,25 +605,22 @@ int main(int argc, char **argv) {
 
   Triple ModuleTriple(M->getTargetTriple());
   std::string CPUStr, FeaturesStr;
-  std::unique_ptr<TargetMachine> TM;
+  TargetMachine *Machine = nullptr;
+  const TargetOptions Options =
+      codegen::InitTargetOptionsFromCodeGenFlags(ModuleTriple);
+
   if (ModuleTriple.getArch()) {
     CPUStr = codegen::getCPUStr();
     FeaturesStr = codegen::getFeaturesStr();
-    Expected<std::unique_ptr<TargetMachine>> ExpectedTM =
-        codegen::createTargetMachineForTriple(ModuleTriple.str(),
-                                              GetCodeGenOptLevel());
-    if (auto E = ExpectedTM.takeError()) {
-      errs() << argv[0] << ": WARNING: failed to create target machine for '"
-             << ModuleTriple.str() << "': " << toString(std::move(E)) << "\n";
-    } else {
-      TM = std::move(*ExpectedTM);
-    }
+    Machine = GetTargetMachine(ModuleTriple, CPUStr, FeaturesStr, Options);
   } else if (ModuleTriple.getArchName() != "unknown" &&
              ModuleTriple.getArchName() != "") {
     errs() << argv[0] << ": unrecognized architecture '"
            << ModuleTriple.getArchName() << "' provided.\n";
     return 1;
   }
+
+  std::unique_ptr<TargetMachine> TM(Machine);
 
   // Override function attributes based on CPUStr, FeaturesStr, and command line
   // flags.

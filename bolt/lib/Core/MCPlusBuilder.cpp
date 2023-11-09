@@ -120,7 +120,7 @@ bool MCPlusBuilder::equals(const MCTargetExpr &A, const MCTargetExpr &B,
   llvm_unreachable("target-specific expressions are unsupported");
 }
 
-void MCPlusBuilder::setTailCall(MCInst &Inst) const {
+void MCPlusBuilder::setTailCall(MCInst &Inst) {
   assert(!hasAnnotation(Inst, MCAnnotation::kTailCall));
   setAnnotationOpValue(Inst, MCAnnotation::kTailCall, true);
 }
@@ -149,7 +149,7 @@ std::optional<MCLandingPad> MCPlusBuilder::getEHInfo(const MCInst &Inst) const {
                         static_cast<uint64_t>(*Action));
 }
 
-void MCPlusBuilder::addEHInfo(MCInst &Inst, const MCLandingPad &LP) const {
+void MCPlusBuilder::addEHInfo(MCInst &Inst, const MCLandingPad &LP) {
   if (isCall(Inst)) {
     assert(!getEHInfo(Inst));
     setAnnotationOpValue(Inst, MCAnnotation::kEHLandingPad,
@@ -159,7 +159,7 @@ void MCPlusBuilder::addEHInfo(MCInst &Inst, const MCLandingPad &LP) const {
   }
 }
 
-bool MCPlusBuilder::updateEHInfo(MCInst &Inst, const MCLandingPad &LP) const {
+bool MCPlusBuilder::updateEHInfo(MCInst &Inst, const MCLandingPad &LP) {
   if (!isInvoke(Inst))
     return false;
 
@@ -178,12 +178,13 @@ int64_t MCPlusBuilder::getGnuArgsSize(const MCInst &Inst) const {
   return *Value;
 }
 
-void MCPlusBuilder::addGnuArgsSize(MCInst &Inst, int64_t GnuArgsSize) const {
+void MCPlusBuilder::addGnuArgsSize(MCInst &Inst, int64_t GnuArgsSize,
+                                   AllocatorIdTy AllocId) {
   assert(GnuArgsSize >= 0 && "cannot set GNU_args_size to negative value");
   assert(getGnuArgsSize(Inst) == -1LL && "GNU_args_size already set");
   assert(isInvoke(Inst) && "GNU_args_size can only be set for invoke");
 
-  setAnnotationOpValue(Inst, MCAnnotation::kGnuArgsSize, GnuArgsSize);
+  setAnnotationOpValue(Inst, MCAnnotation::kGnuArgsSize, GnuArgsSize, AllocId);
 }
 
 uint64_t MCPlusBuilder::getJumpTable(const MCInst &Inst) const {
@@ -202,12 +203,12 @@ bool MCPlusBuilder::setJumpTable(MCInst &Inst, uint64_t Value,
                                  uint16_t IndexReg, AllocatorIdTy AllocId) {
   if (!isIndirectBranch(Inst))
     return false;
-  setAnnotationOpValue(Inst, MCAnnotation::kJumpTable, Value);
+  setAnnotationOpValue(Inst, MCAnnotation::kJumpTable, Value, AllocId);
   getOrCreateAnnotationAs<uint16_t>(Inst, "JTIndexReg", AllocId) = IndexReg;
   return true;
 }
 
-bool MCPlusBuilder::unsetJumpTable(MCInst &Inst) const {
+bool MCPlusBuilder::unsetJumpTable(MCInst &Inst) {
   if (!getJumpTable(Inst))
     return false;
   removeAnnotation(Inst, MCAnnotation::kJumpTable);
@@ -224,7 +225,7 @@ MCPlusBuilder::getConditionalTailCall(const MCInst &Inst) const {
   return static_cast<uint64_t>(*Value);
 }
 
-bool MCPlusBuilder::setConditionalTailCall(MCInst &Inst, uint64_t Dest) const {
+bool MCPlusBuilder::setConditionalTailCall(MCInst &Inst, uint64_t Dest) {
   if (!isConditionalBranch(Inst))
     return false;
 
@@ -232,7 +233,7 @@ bool MCPlusBuilder::setConditionalTailCall(MCInst &Inst, uint64_t Dest) const {
   return true;
 }
 
-bool MCPlusBuilder::unsetConditionalTailCall(MCInst &Inst) const {
+bool MCPlusBuilder::unsetConditionalTailCall(MCInst &Inst) {
   if (!getConditionalTailCall(Inst))
     return false;
   removeAnnotation(Inst, MCAnnotation::kConditionalTailCall);
@@ -254,67 +255,63 @@ uint32_t MCPlusBuilder::getOffsetWithDefault(const MCInst &Inst,
   return Default;
 }
 
-bool MCPlusBuilder::setOffset(MCInst &Inst, uint32_t Offset) const {
-  setAnnotationOpValue(Inst, MCAnnotation::kOffset, Offset);
+bool MCPlusBuilder::setOffset(MCInst &Inst, uint32_t Offset,
+                              AllocatorIdTy AllocatorId) {
+  setAnnotationOpValue(Inst, MCAnnotation::kOffset, Offset, AllocatorId);
   return true;
 }
 
-bool MCPlusBuilder::clearOffset(MCInst &Inst) const {
+bool MCPlusBuilder::clearOffset(MCInst &Inst) {
   if (!hasAnnotation(Inst, MCAnnotation::kOffset))
     return false;
   removeAnnotation(Inst, MCAnnotation::kOffset);
   return true;
 }
 
-MCSymbol *MCPlusBuilder::getLabel(const MCInst &Inst) const {
-  if (std::optional<int64_t> Label =
-          getAnnotationOpValue(Inst, MCAnnotation::kLabel))
-    return reinterpret_cast<MCSymbol *>(*Label);
-  return nullptr;
-}
-
-bool MCPlusBuilder::setLabel(MCInst &Inst, MCSymbol *Label) const {
-  setAnnotationOpValue(Inst, MCAnnotation::kLabel,
-                       reinterpret_cast<int64_t>(Label));
-  return true;
-}
-
 bool MCPlusBuilder::hasAnnotation(const MCInst &Inst, unsigned Index) const {
+  const MCInst *AnnotationInst = getAnnotationInst(Inst);
+  if (!AnnotationInst)
+    return false;
+
   return (bool)getAnnotationOpValue(Inst, Index);
 }
 
-bool MCPlusBuilder::removeAnnotation(MCInst &Inst, unsigned Index) const {
-  std::optional<unsigned> FirstAnnotationOp = getFirstAnnotationOpIndex(Inst);
-  if (!FirstAnnotationOp)
+bool MCPlusBuilder::removeAnnotation(MCInst &Inst, unsigned Index) {
+  MCInst *AnnotationInst = getAnnotationInst(Inst);
+  if (!AnnotationInst)
     return false;
 
-  for (unsigned I = Inst.getNumOperands() - 1; I >= *FirstAnnotationOp; --I) {
-    const int64_t ImmValue = Inst.getOperand(I).getImm();
+  for (int I = AnnotationInst->getNumOperands() - 1; I >= 0; --I) {
+    int64_t ImmValue = AnnotationInst->getOperand(I).getImm();
     if (extractAnnotationIndex(ImmValue) == Index) {
-      Inst.erase(Inst.begin() + I);
+      AnnotationInst->erase(AnnotationInst->begin() + I);
       return true;
     }
   }
   return false;
 }
 
-void MCPlusBuilder::stripAnnotations(MCInst &Inst, bool KeepTC) const {
-  KeepTC &= hasAnnotation(Inst, MCAnnotation::kTailCall);
+void MCPlusBuilder::stripAnnotations(MCInst &Inst, bool KeepTC) {
+  MCInst *AnnotationInst = getAnnotationInst(Inst);
+  if (!AnnotationInst)
+    return;
+  // Preserve TailCall annotation.
+  auto IsTC = hasAnnotation(Inst, MCAnnotation::kTailCall);
 
-  removeAnnotations(Inst);
+  removeAnnotationInst(Inst);
 
-  if (KeepTC)
+  if (KeepTC && IsTC)
     setTailCall(Inst);
 }
 
 void MCPlusBuilder::printAnnotations(const MCInst &Inst,
                                      raw_ostream &OS) const {
-  std::optional<unsigned> FirstAnnotationOp = getFirstAnnotationOpIndex(Inst);
-  if (!FirstAnnotationOp)
+  const MCInst *AnnotationInst = getAnnotationInst(Inst);
+  if (!AnnotationInst)
     return;
 
-  for (unsigned I = *FirstAnnotationOp; I < Inst.getNumOperands(); ++I) {
-    const int64_t Imm = Inst.getOperand(I).getImm();
+  for (unsigned I = 0; I < AnnotationInst->getNumOperands(); ++I) {
+    const int64_t Imm = AnnotationInst->getOperand(I).getImm();
     const unsigned Index = extractAnnotationIndex(Imm);
     const int64_t Value = extractAnnotationValue(Imm);
     const auto *Annotation = reinterpret_cast<const MCAnnotation *>(Value);

@@ -11,5 +11,5 @@
 
 TEST(LlvmLibcGetPidTest, SmokeTest) {
   // getpid always succeeds. So, we just call it as a smoke test.
-  LIBC_NAMESPACE::getpid();
+  __llvm_libc::getpid();
 }

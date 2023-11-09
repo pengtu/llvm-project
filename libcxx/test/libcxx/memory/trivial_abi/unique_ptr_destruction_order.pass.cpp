@@ -26,8 +26,6 @@ struct Base {
 
   explicit Base(char* buf, int* idx, char ch)
       : shared_buff(buf), cur_idx(idx), id(ch) {}
-  Base(const Base& other) = default;
-  Base& operator=(const Base&) = delete;
   ~Base() { shared_buff[(*cur_idx)++] = id; }
 };
 

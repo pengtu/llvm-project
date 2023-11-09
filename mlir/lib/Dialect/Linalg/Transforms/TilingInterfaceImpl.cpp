@@ -335,7 +335,7 @@ struct LinalgOpPartialReductionInterface
     }
 
     // Step 1: Extract a slice of the input operands.
-    SmallVector<Value> valuesToTile = linalgOp.getDpsInputs();
+    SmallVector<Value> valuesToTile = linalgOp.getDpsInputOperands();
     SmallVector<Value, 4> tiledOperands = makeTiledShapes(
         b, loc, linalgOp, valuesToTile, offsets, sizes, {}, true);
 
@@ -397,7 +397,8 @@ struct LinalgOpPartialReductionInterface
 
     auto reduction = b.create<GenericOp>(
         loc, op->getResultTypes(), ValueRange({partialReduce[0]}),
-        linalgOp.getDpsInits(), reductionMaps, reductionIteratorTypes,
+        SmallVector<Value>{linalgOp.getDpsInitOperands()}, reductionMaps,
+        reductionIteratorTypes,
         [reductionOp](OpBuilder &b, Location loc, ValueRange inputs) {
           Operation *clonedReductionOp = b.clone(*reductionOp);
           clonedReductionOp->setOperand(0, inputs[0]);

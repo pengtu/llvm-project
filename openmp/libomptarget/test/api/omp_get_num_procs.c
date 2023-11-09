@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-int omp_get_num_procs(void);
+int omp_get_num_procs();
 
 int main() {
   int num_procs;

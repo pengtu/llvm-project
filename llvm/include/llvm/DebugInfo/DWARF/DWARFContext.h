@@ -97,7 +97,6 @@ public:
         getDWOContext(StringRef AbsolutePath) = 0;
     virtual const DenseMap<uint64_t, DWARFTypeUnit *> &
     getTypeUnitMap(bool IsDWO) = 0;
-    virtual bool isThreadSafe() const = 0;
 
     /// Parse a macro[.dwo] or macinfo[.dwo] section.
     std::unique_ptr<DWARFDebugMacro>

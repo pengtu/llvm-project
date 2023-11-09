@@ -18,7 +18,7 @@
 #include <sys/syscall.h> // For syscall numbers.
 #include <sys/wait.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace internal {
 
 // The implementation of wait here is very minimal. We will add more
@@ -27,8 +27,8 @@ namespace internal {
 LIBC_INLINE ErrorOr<pid_t> wait4impl(pid_t pid, int *wait_status, int options,
                                      struct rusage *usage) {
 #if SYS_wait4
-  pid = LIBC_NAMESPACE::syscall_impl<pid_t>(SYS_wait4, pid, wait_status,
-                                            options, usage);
+  pid = __llvm_libc::syscall_impl<pid_t>(SYS_wait4, pid, wait_status, options,
+                                         usage);
 #elif defined(SYS_waitid)
   int idtype = P_PID;
   if (pid == -1) {
@@ -43,8 +43,8 @@ LIBC_INLINE ErrorOr<pid_t> wait4impl(pid_t pid, int *wait_status, int options,
   options |= WEXITED;
 
   siginfo_t info;
-  pid = LIBC_NAMESPACE::syscall_impl<pid_t>(SYS_waitid, idtype, pid, &info,
-                                            options, usage);
+  pid = __llvm_libc::syscall_impl<pid_t>(SYS_waitid, idtype, pid, &info,
+                                         options, usage);
   if (pid >= 0)
     pid = info.si_pid;
 
@@ -80,6 +80,6 @@ LIBC_INLINE ErrorOr<pid_t> wait4impl(pid_t pid, int *wait_status, int options,
 }
 
 } // namespace internal
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_SYS_WAIT_WAIT4IMPL_H

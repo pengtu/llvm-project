@@ -9,8 +9,8 @@
 #include "src/math/rintf.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, rintf, (float x)) { return __builtin_rintf(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

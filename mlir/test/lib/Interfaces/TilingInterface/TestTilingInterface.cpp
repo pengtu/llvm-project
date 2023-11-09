@@ -16,7 +16,6 @@
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/TilingInterfaceImpl.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
@@ -38,51 +37,51 @@ using namespace mlir;
 namespace {
 
 /// Marker used as attribute name in generated Linalg rewriting transformations.
-const StringLiteral kTransformMarker = "__internal_transform__";
+const StringLiteral kLinalgTransformMarker = "__internal_linalg_transform__";
 
 /// Helper class to control application of linalg transformation patterns.
 /// Control comes in 2 forms:
 ///   1. attribute matching and setting behavior using the attribute named
-///      `kTransformMarker`. This can be used to build a state machine
+///      `kLinalgTransformMarker`. This can be used to build a state machine
 ///      using attributes and incrementally applying patterns to advance states.
 ///   2. filter function, which is a simple lambda on the Operation* that
 ///      returns a LogicalResult.
-struct TransformationFilter {
+struct LinalgTransformationFilter {
   using FilterFunction = std::function<LogicalResult(Operation *)>;
 
-  explicit TransformationFilter(
+  explicit LinalgTransformationFilter(
       ArrayRef<StringAttr> matchDisjunction = {},
       std::optional<StringAttr> replacement = std::nullopt);
 
-  explicit TransformationFilter(
+  explicit LinalgTransformationFilter(
       const FilterFunction &f, ArrayRef<StringAttr> matchDisjunction = {},
       std::optional<StringAttr> replacement = std::nullopt);
 
-  TransformationFilter(TransformationFilter &&) = default;
-  TransformationFilter(const TransformationFilter &) = default;
+  LinalgTransformationFilter(LinalgTransformationFilter &&) = default;
+  LinalgTransformationFilter(const LinalgTransformationFilter &) = default;
   LogicalResult checkAndNotify(PatternRewriter &rewriter, Operation *op) const;
-  void replaceTransformationFilter(PatternRewriter &rewriter,
-                                   Operation *op) const;
+  void replaceLinalgTransformationFilter(PatternRewriter &rewriter,
+                                         Operation *op) const;
 
-  TransformationFilter &addFilter(const FilterFunction &f) {
+  LinalgTransformationFilter &addFilter(const FilterFunction &f) {
     if (f)
       filters.push_back(f);
     return *this;
   }
 
   template <typename... OpTypes>
-  TransformationFilter &addOpFilter() {
+  LinalgTransformationFilter &addOpFilter() {
     return addFilter(
         [](Operation *op) { return success(isa<OpTypes...>(op)); });
   }
 
-  TransformationFilter &addOpNameFilter(StringRef opName) {
+  LinalgTransformationFilter &addOpNameFilter(StringRef opName) {
     return addFilter([opName](Operation *op) {
       return success(op->getName().getStringRef() == opName);
     });
   }
 
-  TransformationFilter &setMatchByDefault() {
+  LinalgTransformationFilter &setMatchByDefault() {
     matchByDefault = true;
     return *this;
   }
@@ -96,19 +95,20 @@ private:
   bool matchByDefault;
 };
 
-TransformationFilter::TransformationFilter(
+LinalgTransformationFilter::LinalgTransformationFilter(
     ArrayRef<StringAttr> matchDisjunction,
     std::optional<StringAttr> replacement)
     : matchDisjunction(matchDisjunction.begin(), matchDisjunction.end()),
       replacement(replacement), matchByDefault(false) {}
 
-LogicalResult TransformationFilter::checkAndNotify(PatternRewriter &rewriter,
-                                                   Operation *op) const {
+LogicalResult
+LinalgTransformationFilter::checkAndNotify(PatternRewriter &rewriter,
+                                           Operation *op) const {
   if (llvm::any_of(filters,
                    [&](const FilterFunction &f) { return failed(f(op)); }))
     return failure();
 
-  auto attr = op->template getAttrOfType<StringAttr>(kTransformMarker);
+  auto attr = op->template getAttrOfType<StringAttr>(kLinalgTransformMarker);
 
   if (!attr) {
     // 1. Has no filter case and matchDisjunction is empty.
@@ -134,12 +134,12 @@ LogicalResult TransformationFilter::checkAndNotify(PatternRewriter &rewriter,
   });
 }
 
-void TransformationFilter::replaceTransformationFilter(
+void LinalgTransformationFilter::replaceLinalgTransformationFilter(
     PatternRewriter &rewriter, Operation *op) const {
   if (replacement.has_value())
-    op->setAttr(kTransformMarker, *replacement);
+    op->setAttr(kLinalgTransformMarker, *replacement);
   else
-    op->removeAttr(rewriter.getStringAttr(kTransformMarker));
+    op->removeAttr(rewriter.getStringAttr(kLinalgTransformMarker));
 }
 
 /// Pattern for testing `TileUsingSCFForOp` pattern (that tiles operations using
@@ -147,17 +147,18 @@ void TransformationFilter::replaceTransformationFilter(
 /// using a `filter` to avoid recursive application.
 struct TestTileUsingSCFForOp
     : public OpInterfaceRewritePattern<TilingInterface> {
-  TestTileUsingSCFForOp(MLIRContext *context, scf::SCFTilingOptions options,
-                        TransformationFilter filter = TransformationFilter(),
-                        PatternBenefit benefit = 1)
+  TestTileUsingSCFForOp(
+      MLIRContext *context, scf::SCFTilingOptions options,
+      LinalgTransformationFilter filter = LinalgTransformationFilter(),
+      PatternBenefit benefit = 1)
       : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
         options(std::move(options)), filter(std::move(filter)) {}
 
   /// Construct a generic pattern applied to `opName`.
-  TestTileUsingSCFForOp(StringRef opName, MLIRContext *context,
-                        scf::SCFTilingOptions options,
-                        TransformationFilter filter = TransformationFilter(),
-                        PatternBenefit benefit = 1)
+  TestTileUsingSCFForOp(
+      StringRef opName, MLIRContext *context, scf::SCFTilingOptions options,
+      LinalgTransformationFilter filter = LinalgTransformationFilter(),
+      PatternBenefit benefit = 1)
       : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
         options(std::move(options)), filter(std::move(filter)) {}
 
@@ -178,58 +179,13 @@ struct TestTileUsingSCFForOp
     }
 
     for (auto *tiledOp : tilingResult->tiledOps)
-      filter.replaceTransformationFilter(rewriter, tiledOp);
+      filter.replaceLinalgTransformationFilter(rewriter, tiledOp);
     return success();
   }
 
 private:
   scf::SCFTilingOptions options;
-  TransformationFilter filter;
-};
-
-/// Pattern for testing `tileUsingSCFForallOp` (that tiles operations using
-/// the `TilingInterface` with `scf.forall` ops for iterating over the tiles)
-/// while using a `filter` to avoid recursive application.
-struct TestTileUsingSCFForallOp
-    : public OpInterfaceRewritePattern<TilingInterface> {
-  TestTileUsingSCFForallOp(MLIRContext *context, scf::SCFTilingOptions options,
-                           TransformationFilter filter = TransformationFilter(),
-                           PatternBenefit benefit = 1)
-      : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
-        options(std::move(options)), filter(std::move(filter)) {}
-
-  /// Construct a generic pattern applied to `opName`.
-  TestTileUsingSCFForallOp(StringRef opName, MLIRContext *context,
-                           scf::SCFTilingOptions options,
-                           TransformationFilter filter = TransformationFilter(),
-                           PatternBenefit benefit = 1)
-      : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
-        options(std::move(options)), filter(std::move(filter)) {}
-
-  LogicalResult matchAndRewrite(TilingInterface op,
-                                PatternRewriter &rewriter) const override {
-    if (failed(filter.checkAndNotify(rewriter, op)))
-      return failure();
-
-    FailureOr<scf::SCFTilingResult> tilingResult =
-        scf::tileUsingSCFForallOp(rewriter, op, options);
-    if (failed(tilingResult))
-      return rewriter.notifyMatchFailure(op, "failed to tile operation");
-
-    if (op->getNumResults()) {
-      rewriter.replaceOp(op, tilingResult->replacements);
-    } else {
-      rewriter.eraseOp(op);
-    }
-
-    for (auto *tiledOp : tilingResult->tiledOps)
-      filter.replaceTransformationFilter(rewriter, tiledOp);
-    return success();
-  }
-
-private:
-  scf::SCFTilingOptions options;
-  TransformationFilter filter;
+  LinalgTransformationFilter filter;
 };
 
 /// Pattern for testing `TileConsumerAndFuseProducersUsingSCFForOp` pattern
@@ -240,7 +196,7 @@ struct TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp
     : public OpInterfaceRewritePattern<TilingInterface> {
   TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp(
       MLIRContext *context, scf::SCFTileAndFuseOptions options,
-      TransformationFilter filter = TransformationFilter(),
+      LinalgTransformationFilter filter = LinalgTransformationFilter(),
       PatternBenefit benefit = 1)
       : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
         options(std::move(options)), filter(std::move(filter)) {}
@@ -249,7 +205,7 @@ struct TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp
   TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp(
       StringRef opName, MLIRContext *context,
       scf::SCFTileAndFuseOptions options,
-      TransformationFilter filter = TransformationFilter(),
+      LinalgTransformationFilter filter = LinalgTransformationFilter(),
       PatternBenefit benefit = 1)
       : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
         options(std::move(options)), filter(std::move(filter)) {}
@@ -273,14 +229,14 @@ struct TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp
     }
     rewriter.replaceOp(op, replacements);
 
-    filter.replaceTransformationFilter(
+    filter.replaceLinalgTransformationFilter(
         rewriter, tileAndFuseResult->tiledAndFusedOps.front());
     return success();
   }
 
 private:
   scf::SCFTileAndFuseOptions options;
-  TransformationFilter filter;
+  LinalgTransformationFilter filter;
 };
 
 /// Pattern to tile a consumer and fuse producer with it
@@ -298,7 +254,7 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
 
   TestTileConsumerFuseAndYieldProducerUsingSCFForOp(
       MLIRContext *context, scf::SCFTilingOptions options,
-      TransformationFilter filter = TransformationFilter(),
+      LinalgTransformationFilter filter = LinalgTransformationFilter(),
       PatternBenefit benefit = 1)
       : OpInterfaceRewritePattern<TilingInterface>(context, benefit),
         options(std::move(options)), filter(std::move(filter)) {}
@@ -346,8 +302,6 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
     std::deque<tensor::ExtractSliceOp> candidates;
     addCandidateSlices(tilingResult->tiledOps.back(), candidates);
     OpBuilder::InsertionGuard g(rewriter);
-    auto forLoops = llvm::to_vector(llvm::map_range(
-        tilingResult->loops, [](auto op) { return cast<scf::ForOp>(op); }));
     while (!candidates.empty()) {
       // Traverse the slices in BFS fashion.
       tensor::ExtractSliceOp candidateSliceOp = candidates.front();
@@ -355,7 +309,8 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
 
       // Materialize the slice of the producer in place.
       std::optional<scf::SCFFuseProducerOfSliceResult> fusedProducer =
-          tileAndFuseProducerOfSlice(rewriter, candidateSliceOp, forLoops);
+          tileAndFuseProducerOfSlice(rewriter, candidateSliceOp,
+                                     tilingResult->loops);
       if (!fusedProducer)
         continue;
 
@@ -363,10 +318,11 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
       // to be yielded from within the tiled loop.
       OpResult untiledProducer = fusedProducer->origProducer;
       if (llvm::any_of(untiledProducer.getUsers(), [&](Operation *user) {
-            return !isIgnoredUser(user, forLoops.front());
+            return !isIgnoredUser(user, tilingResult->loops.front());
           })) {
         yieldReplacementForFusedProducer(rewriter, candidateSliceOp,
-                                         fusedProducer.value(), forLoops);
+                                         fusedProducer.value(),
+                                         tilingResult->loops);
         yieldedValuesToOrigValues.push_back(untiledProducer);
       }
 
@@ -376,7 +332,7 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
         addCandidateSlices(fusedProducerOp, candidates);
     }
 
-    scf::ForOp outermostLoop = forLoops.front();
+    scf::ForOp outermostLoop = tilingResult->loops.front();
     for (auto [index, origVal] : llvm::enumerate(yieldedValuesToOrigValues)) {
       Value replacement = outermostLoop.getResult(index);
       rewriter.replaceUsesWithIf(origVal, replacement, [&](OpOperand &use) {
@@ -384,7 +340,8 @@ struct TestTileConsumerFuseAndYieldProducerUsingSCFForOp
       });
     }
     rewriter.eraseOp(rootOp);
-    filter.replaceTransformationFilter(rewriter, tilingResult->tiledOps.back());
+    filter.replaceLinalgTransformationFilter(rewriter,
+                                             tilingResult->tiledOps.back());
     return success();
   }
 
@@ -413,7 +370,7 @@ private:
   }
 
   scf::SCFTilingOptions options;
-  TransformationFilter filter;
+  LinalgTransformationFilter filter;
 };
 
 /// Pattern to lower operations that implement the `TilingInterface` to
@@ -444,9 +401,9 @@ struct TestTilingInterfacePass
   TestTilingInterfacePass(const TestTilingInterfacePass &pass)
       : PassWrapper(pass) {}
   void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<affine::AffineDialect, gpu::GPUDialect,
-                    linalg::LinalgDialect, memref::MemRefDialect,
-                    scf::SCFDialect, tensor::TensorDialect>();
+    registry.insert<affine::AffineDialect, linalg::LinalgDialect,
+                    memref::MemRefDialect, scf::SCFDialect,
+                    tensor::TensorDialect>();
     linalg::registerTilingInterfaceExternalModels(registry);
     tensor::registerTilingInterfaceExternalModels(registry);
   }
@@ -459,12 +416,6 @@ struct TestTilingInterfacePass
       *this, "tile-using-scf-for",
       llvm::cl::desc(
           "Test tiling using TilingInterface with scf.for operations"),
-      llvm::cl::init(false)};
-
-  Option<bool> testTilingForAll{
-      *this, "tile-using-scf-forall",
-      llvm::cl::desc(
-          "Test tiling using TilingInterface with scf.forall operations"),
       llvm::cl::init(false)};
 
   Option<bool> testTileConsumerFuseAndYieldProducer{
@@ -499,27 +450,10 @@ static void addPatternForTiling(MLIRContext *context,
                                 ArrayRef<int64_t> tileSizes,
                                 ArrayRef<int64_t> interchange = {}) {
   scf::SCFTilingOptions tilingOptions;
-  SmallVector<OpFoldResult> tileSizesOfr =
-      getAsIndexOpFoldResult(context, tileSizes);
-  tilingOptions.setTileSizes(tileSizesOfr).setInterchange(interchange);
-  TransformationFilter filter(StringAttr::get(context, filterName),
-                              StringAttr::get(context, "tiled"));
+  tilingOptions.setTileSizes(tileSizes).setInterchange(interchange);
+  LinalgTransformationFilter filter(StringAttr::get(context, filterName),
+                                    StringAttr::get(context, "tiled"));
   patterns.add<TestTileUsingSCFForOp>(context, tilingOptions, filter);
-}
-
-static void addPatternForTilingUsingForall(
-    MLIRContext *context, RewritePatternSet &patterns, StringRef filterName,
-    ArrayRef<int64_t> tileSizes,
-    ArrayRef<DeviceMappingAttrInterface> mapping = {},
-    ArrayRef<int64_t> interchange = {}) {
-  scf::SCFTilingOptions tilingOptions;
-  SmallVector<OpFoldResult> tileSizesOfr =
-      getAsIndexOpFoldResult(context, tileSizes);
-  tilingOptions.setTileSizes(tileSizesOfr).setInterchange(interchange);
-  tilingOptions.setMapping(mapping);
-  TransformationFilter filter(StringAttr::get(context, filterName),
-                              StringAttr::get(context, "tiled"));
-  patterns.add<TestTileUsingSCFForallOp>(context, tilingOptions, filter);
 }
 
 static void addPatternForTileFuseAndYield(MLIRContext *context,
@@ -528,11 +462,9 @@ static void addPatternForTileFuseAndYield(MLIRContext *context,
                                           ArrayRef<int64_t> tileSizes,
                                           ArrayRef<int64_t> interchange = {}) {
   scf::SCFTilingOptions tilingOptions;
-  SmallVector<OpFoldResult> tileSizesOfr =
-      getAsIndexOpFoldResult(context, tileSizes);
-  tilingOptions.setTileSizes(tileSizesOfr).setInterchange(interchange);
-  TransformationFilter filter(StringAttr::get(context, filterName),
-                              StringAttr::get(context, "tiled"));
+  tilingOptions.setTileSizes(tileSizes).setInterchange(interchange);
+  LinalgTransformationFilter filter(StringAttr::get(context, filterName),
+                                    StringAttr::get(context, "tiled"));
   patterns.add<TestTileConsumerFuseAndYieldProducerUsingSCFForOp>(
       context, tilingOptions, filter);
 }
@@ -543,12 +475,10 @@ static void addPatternForTileAndFuse(MLIRContext *context,
                                      ArrayRef<int64_t> tileSizes,
                                      ArrayRef<int64_t> interchange = {}) {
   scf::SCFTileAndFuseOptions tileAndFuseOptions;
-  SmallVector<OpFoldResult> tileSizesOfr =
-      getAsIndexOpFoldResult(context, tileSizes);
-  tileAndFuseOptions.tilingOptions.setTileSizes(tileSizesOfr)
-      .setInterchange(interchange);
-  TransformationFilter filter(StringAttr::get(context, filterName),
-                              StringAttr::get(context, "tiled"));
+  tileAndFuseOptions.tilingOptions.setTileSizes(tileSizes).setInterchange(
+      interchange);
+  LinalgTransformationFilter filter(StringAttr::get(context, filterName),
+                                    StringAttr::get(context, "tiled"));
   patterns.add<TestTileConsumerAndFuseProducersGreedilyUsingSCFForOp>(
       context, tileAndFuseOptions, filter);
 }
@@ -579,23 +509,6 @@ void TestTilingInterfacePass::addTestPatterns(MLIRContext *context,
     addPatternForTiling(context, patterns, "pad_outer_tiling", {2, 3});
     // 10. Tiling M and N dims of `linalg.copy` on memrefs.
     addPatternForTiling(context, patterns, "simple_copy_memref", {10, 20});
-    return;
-  }
-  if (testTilingForAll) {
-    // 1. Tiling M and N dims of `linalg.matmul` on tensors.
-    addPatternForTilingUsingForall(
-        context, patterns, "simple_gemm", {10, 20},
-        {gpu::GPUBlockMappingAttr::get(context, gpu::MappingId::DimY),
-         gpu::GPUBlockMappingAttr::get(context, gpu::MappingId::DimX)});
-    // 2. Tiling 3D parallel generic op which implements a transpose.
-    addPatternForTilingUsingForall(context, patterns,
-                                   "parallel_generic_transpose", {10, 0, 20});
-    // 3. Tiling 2D conv op.
-    addPatternForTilingUsingForall(context, patterns, "simple_conv",
-                                   {0, 0, 0, 0, 10, 20, 30});
-    // 4. Tiling a simple op with `linalg.index` inside.
-    addPatternForTilingUsingForall(context, patterns, "indexed_semantics",
-                                   {10, 20});
     return;
   }
   if (testTileConsumerAndFuseProducer) {

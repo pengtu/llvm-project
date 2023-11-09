@@ -118,7 +118,7 @@ Expected<std::unique_ptr<BinaryContext>>
 BinaryContext::createBinaryContext(const ObjectFile *File, bool IsPIC,
                                    std::unique_ptr<DWARFContext> DwCtx) {
   StringRef ArchName = "";
-  std::string FeaturesStr = "";
+  StringRef FeaturesStr = "";
   switch (File->getArch()) {
   case llvm::Triple::x86_64:
     ArchName = "x86-64";
@@ -128,20 +128,11 @@ BinaryContext::createBinaryContext(const ObjectFile *File, bool IsPIC,
     ArchName = "aarch64";
     FeaturesStr = "+all";
     break;
-  case llvm::Triple::riscv64: {
+  case llvm::Triple::riscv64:
     ArchName = "riscv64";
-    Expected<SubtargetFeatures> Features = File->getFeatures();
-
-    if (auto E = Features.takeError())
-      return std::move(E);
-
-    // We rely on relaxation for some transformations (e.g., promoting all calls
-    // to PseudoCALL and then making JITLink relax them). Since the relax
-    // feature is not stored in the object file, we manually enable it.
-    Features->AddFeature("relax");
-    FeaturesStr = Features->getString();
+    // RV64GC
+    FeaturesStr = "+m,+a,+f,+d,+zicsr,+zifencei,+c";
     break;
-  }
   default:
     return createStringError(std::errc::not_supported,
                              "BOLT-ERROR: Unrecognized machine in ELF file");
@@ -1035,31 +1026,6 @@ BinaryContext::getBinaryDataContainingAddressImpl(uint64_t Address) const {
   return nullptr;
 }
 
-BinaryData *BinaryContext::getGOTSymbol() {
-  // First tries to find a global symbol with that name
-  BinaryData *GOTSymBD = getBinaryDataByName("_GLOBAL_OFFSET_TABLE_");
-  if (GOTSymBD)
-    return GOTSymBD;
-
-  // This symbol might be hidden from run-time link, so fetch the local
-  // definition if available.
-  GOTSymBD = getBinaryDataByName("_GLOBAL_OFFSET_TABLE_/1");
-  if (!GOTSymBD)
-    return nullptr;
-
-  // If the local symbol is not unique, fail
-  unsigned Index = 2;
-  SmallString<30> Storage;
-  while (const BinaryData *BD =
-             getBinaryDataByName(Twine("_GLOBAL_OFFSET_TABLE_/")
-                                     .concat(Twine(Index++))
-                                     .toStringRef(Storage)))
-    if (BD->getAddress() != GOTSymBD->getAddress())
-      return nullptr;
-
-  return GOTSymBD;
-}
-
 bool BinaryContext::setBinaryDataSize(uint64_t Address, uint64_t Size) {
   auto NI = BinaryDataMap.find(Address);
   assert(NI != BinaryDataMap.end());
@@ -1812,10 +1778,6 @@ MarkerSymType BinaryContext::getMarkerType(const SymbolRef &Symbol) const {
   if (*NameOrError == "$x" || NameOrError->startswith("$x."))
     return MarkerSymType::CODE;
 
-  // $x<ISA>
-  if (isRISCV() && NameOrError->startswith("$x"))
-    return MarkerSymType::CODE;
-
   if (*NameOrError == "$d" || NameOrError->startswith("$d."))
     return MarkerSymType::DATA;
 
@@ -1862,6 +1824,10 @@ void BinaryContext::printInstruction(raw_ostream &OS, const MCInst &Instruction,
                                      bool PrintMCInst, bool PrintMemData,
                                      bool PrintRelocations,
                                      StringRef Endl) const {
+  if (MIB->isEHLabel(Instruction)) {
+    OS << "  EH_LABEL: " << *MIB->getTargetSymbol(Instruction) << Endl;
+    return;
+  }
   OS << format("    %08" PRIx64 ": ", Offset);
   if (MIB->isCFI(Instruction)) {
     uint32_t Offset = Instruction.getOperand(0).getImm();
@@ -1897,8 +1863,6 @@ void BinaryContext::printInstruction(raw_ostream &OS, const MCInst &Instruction,
   }
   if (std::optional<uint32_t> Offset = MIB->getOffset(Instruction))
     OS << " # Offset: " << *Offset;
-  if (MCSymbol *Label = MIB->getLabel(Instruction))
-    OS << " # Label: " << *Label;
 
   MIB->printAnnotations(Instruction, OS);
 

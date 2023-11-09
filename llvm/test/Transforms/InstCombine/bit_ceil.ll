@@ -148,9 +148,10 @@ define i32 @bit_ceil_commuted_operands(i32 %x) {
 ; CHECK-LABEL: @bit_ceil_commuted_operands(
 ; CHECK-NEXT:    [[DEC:%.*]] = add i32 [[X:%.*]], -1
 ; CHECK-NEXT:    [[CTLZ:%.*]] = tail call i32 @llvm.ctlz.i32(i32 [[DEC]], i1 false), !range [[RNG0]]
-; CHECK-NEXT:    [[SUB:%.*]] = sub nuw nsw i32 32, [[CTLZ]]
-; CHECK-NEXT:    [[SHL:%.*]] = shl nuw i32 1, [[SUB]]
-; CHECK-NEXT:    ret i32 [[SHL]]
+; CHECK-NEXT:    [[TMP1:%.*]] = sub nsw i32 0, [[CTLZ]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 31
+; CHECK-NEXT:    [[SEL:%.*]] = shl nuw i32 1, [[TMP2]]
+; CHECK-NEXT:    ret i32 [[SEL]]
 ;
   %dec = add i32 %x, -1
   %ctlz = tail call i32 @llvm.ctlz.i32(i32 %dec, i1 false)

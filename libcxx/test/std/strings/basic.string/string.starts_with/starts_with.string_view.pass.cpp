@@ -16,10 +16,9 @@
 
 #include "test_macros.h"
 
-template <class CharT, template <class> class Alloc>
-constexpr void test_string() {
-  using S       = std::basic_string<CharT, std::char_traits<CharT>, Alloc<CharT> >;
-  using SV      = std::basic_string_view<CharT, std::char_traits<CharT> >;
+constexpr bool test() {
+  typedef std::string S;
+  typedef std::string_view SV;
   const char* s = "abcde";
 
   S s0;
@@ -66,10 +65,6 @@ constexpr void test_string() {
   assert(!sNot.starts_with(sv4));
   assert(!sNot.starts_with(sv5));
   assert(sNot.starts_with(svNot));
-}
-
-constexpr bool test() {
-  test_string<char, std::allocator>();
 
   return true;
 }

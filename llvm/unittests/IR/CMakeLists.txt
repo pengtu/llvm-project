@@ -4,7 +4,6 @@ set(LLVM_LINK_COMPONENTS
   Core
   Support
   Passes
-  TargetParser
   TransformUtils
   ScalarOpts
   )

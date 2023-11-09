@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=hexagon -mcpu=hexagonv55 -filetype=obj -o /dev/null
+; RUN: llc -march=hexagon -mcpu=hexagonv55 -filetype=obj -o /dev/null
 ; REQUIRES: asserts
 ; There should be no output (nothing on stderr).
 

@@ -9,10 +9,10 @@
 #ifndef LLVM_LIBC_SRC_STDIO_SCANF_H
 #define LLVM_LIBC_SRC_STDIO_SCANF_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int scanf(const char *__restrict format, ...);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_SCANF_H

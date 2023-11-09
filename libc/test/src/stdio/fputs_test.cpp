@@ -15,12 +15,12 @@ TEST(LlvmLibcPutsTest, PrintOut) {
   int result;
 
   constexpr char simple[] = "A simple string written to stdout\n";
-  result = LIBC_NAMESPACE::fputs(
-      simple, reinterpret_cast<FILE *>(LIBC_NAMESPACE::stdout));
+  result =
+      __llvm_libc::fputs(simple, reinterpret_cast<FILE *>(__llvm_libc::stdout));
   EXPECT_GE(result, 0);
 
   constexpr char more[] = "A simple string written to stderr\n";
-  result = LIBC_NAMESPACE::fputs(
-      more, reinterpret_cast<FILE *>(LIBC_NAMESPACE::stderr));
+  result =
+      __llvm_libc::fputs(more, reinterpret_cast<FILE *>(__llvm_libc::stderr));
   EXPECT_GE(result, 0);
 }

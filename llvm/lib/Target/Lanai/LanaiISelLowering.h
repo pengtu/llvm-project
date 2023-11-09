@@ -103,7 +103,7 @@ public:
   ConstraintWeight
   getSingleConstraintMatchWeight(AsmOperandInfo &Info,
                                  const char *Constraint) const override;
-  void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+  void LowerAsmOperandForConstraint(SDValue Op, std::string &Constraint,
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
 

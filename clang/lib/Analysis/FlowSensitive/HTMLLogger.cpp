@@ -95,7 +95,6 @@ public:
 
     switch (V.getKind()) {
     case Value::Kind::Integer:
-    case Value::Kind::Record:
     case Value::Kind::TopBool:
     case Value::Kind::AtomicBool:
     case Value::Kind::FormulaBool:
@@ -103,6 +102,14 @@ public:
     case Value::Kind::Pointer:
       JOS.attributeObject(
           "pointee", [&] { dump(cast<PointerValue>(V).getPointeeLoc()); });
+      break;
+    case Value::Kind::Record:
+      for (const auto &Child : cast<RecordValue>(V).getLoc().children())
+        JOS.attributeObject("f:" + Child.first->getNameAsString(), [&] {
+          if (Child.second)
+            if (Value *Val = Env.getValue(*Child.second))
+              dump(*Val);
+        });
       break;
     }
 
@@ -114,10 +121,11 @@ public:
     // guaranteed true/false here is valuable and hard to determine by hand.
     if (auto *B = llvm::dyn_cast<BoolValue>(&V)) {
       JOS.attribute("formula", llvm::to_string(B->formula()));
-      JOS.attribute("truth", Env.proves(B->formula()) ? "true"
-                             : Env.proves(Env.arena().makeNot(B->formula()))
-                                 ? "false"
-                                 : "unknown");
+      JOS.attribute(
+          "truth", Env.flowConditionImplies(B->formula()) ? "true"
+                   : Env.flowConditionImplies(Env.arena().makeNot(B->formula()))
+                       ? "false"
+                       : "unknown");
     }
   }
   void dump(const StorageLocation &L) {
@@ -128,15 +136,6 @@ public:
     JOS.attribute("type", L.getType().getAsString());
     if (auto *V = Env.getValue(L))
       dump(*V);
-
-    if (auto *RLoc = dyn_cast<RecordStorageLocation>(&L)) {
-      for (const auto &Child : RLoc->children())
-        JOS.attributeObject("f:" + Child.first->getNameAsString(), [&] {
-          if (Child.second)
-            if (Value *Val = Env.getValue(*Child.second))
-              dump(*Val);
-        });
-    }
   }
 
   llvm::DenseSet<const void*> Visited;
@@ -145,22 +144,15 @@ public:
 };
 
 class HTMLLogger : public Logger {
-  struct Iteration {
-    const CFGBlock *Block;
-    unsigned Iter;
-    bool PostVisit;
-    bool Converged;
-  };
-
   StreamFactory Streams;
   std::unique_ptr<llvm::raw_ostream> OS;
   std::optional<llvm::json::OStream> JOS;
 
   const ControlFlowContext *CFG;
   // Timeline of iterations of CFG block visitation.
-  std::vector<Iteration> Iters;
-  // Indexes  in `Iters` of the iterations for each block.
-  llvm::DenseMap<const CFGBlock *, llvm::SmallVector<size_t>> BlockIters;
+  std::vector<std::pair<const CFGBlock *, unsigned>> Iters;
+  // Number of times each CFG block has been seen.
+  llvm::DenseMap<const CFGBlock *, unsigned> BlockIters;
   // The messages logged in the current context but not yet written.
   std::string ContextLogs;
   // The number of elements we have visited within the current CFG block.
@@ -204,10 +196,8 @@ public:
     JOS->attributeArray("timeline", [&] {
       for (const auto &E : Iters) {
         JOS->object([&] {
-          JOS->attribute("block", blockID(E.Block->getBlockID()));
-          JOS->attribute("iter", E.Iter);
-          JOS->attribute("post_visit", E.PostVisit);
-          JOS->attribute("converged", E.Converged);
+          JOS->attribute("block", blockID(E.first->getBlockID()));
+          JOS->attribute("iter", E.second);
         });
       }
     });
@@ -222,11 +212,8 @@ public:
     *OS << llvm::StringRef(HTMLLogger_html).split("<?INJECT?>").second;
   }
 
-  void enterBlock(const CFGBlock &B, bool PostVisit) override {
-    llvm::SmallVector<size_t> &BIter = BlockIters[&B];
-    unsigned IterNum = BIter.size() + 1;
-    BIter.push_back(Iters.size());
-    Iters.push_back({&B, IterNum, PostVisit, /*Converged=*/false});
+  void enterBlock(const CFGBlock &B) override {
+    Iters.emplace_back(&B, ++BlockIters[&B]);
     ElementIndex = 0;
   }
   void enterElement(const CFGElement &E) override {
@@ -254,19 +241,17 @@ public:
   //  - meaningful names for values
   //  - which boolean values are implied true/false by the flow condition
   void recordState(TypeErasedDataflowAnalysisState &State) override {
-    unsigned Block = Iters.back().Block->getBlockID();
-    unsigned Iter = Iters.back().Iter;
-    bool PostVisit = Iters.back().PostVisit;
+    unsigned Block = Iters.back().first->getBlockID();
+    unsigned Iter = Iters.back().second;
     JOS->attributeObject(elementIterID(Block, Iter, ElementIndex), [&] {
       JOS->attribute("block", blockID(Block));
       JOS->attribute("iter", Iter);
-      JOS->attribute("post_visit", PostVisit);
       JOS->attribute("element", ElementIndex);
 
       // If this state immediately follows an Expr, show its built-in model.
       if (ElementIndex > 0) {
         auto S =
-            Iters.back().Block->Elements[ElementIndex - 1].getAs<CFGStmt>();
+            Iters.back().first->Elements[ElementIndex - 1].getAs<CFGStmt>();
         if (const Expr *E = S ? llvm::dyn_cast<Expr>(S->getStmt()) : nullptr) {
           if (E->isPRValue()) {
             if (auto *V = State.Env.getValue(*E))
@@ -291,7 +276,7 @@ public:
       }
     });
   }
-  void blockConverged() override { Iters.back().Converged = true; }
+  void blockConverged() override { logText("Block converged"); }
 
   void logText(llvm::StringRef S) override {
     ContextLogs.append(S.begin(), S.end());
@@ -302,18 +287,9 @@ private:
   // Write the CFG block details.
   // Currently this is just the list of elements in execution order.
   // FIXME: an AST dump would be a useful view, too.
-  void writeBlock(const CFGBlock &B, llvm::ArrayRef<size_t> ItersForB) {
+  void writeBlock(const CFGBlock &B, unsigned Iters) {
     JOS->attributeObject(blockID(B.getBlockID()), [&] {
-      JOS->attributeArray("iters", [&] {
-        for (size_t IterIdx : ItersForB) {
-          const Iteration &Iter = Iters[IterIdx];
-          JOS->object([&] {
-            JOS->attribute("iter", Iter.Iter);
-            JOS->attribute("post_visit", Iter.PostVisit);
-            JOS->attribute("converged", Iter.Converged);
-          });
-        }
-      });
+      JOS->attribute("iters", Iters);
       JOS->attributeArray("elements", [&] {
         for (const auto &Elt : B.Elements) {
           std::string Dump;

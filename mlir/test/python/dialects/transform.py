@@ -22,10 +22,6 @@ def testTypes():
     any_op = transform.AnyOpType.get()
     print(any_op)
 
-    # CHECK: !transform.any_param
-    any_param = transform.AnyParamType.get()
-    print(any_param)
-
     # CHECK: !transform.any_value
     any_value = transform.AnyValueType.get()
     print(any_value)
@@ -35,12 +31,6 @@ def testTypes():
     concrete_op = transform.OperationType.get("foo.bar")
     print(concrete_op)
     print(concrete_op.operation_name)
-
-    # CHECK: !transform.param<i32>
-    # CHECK: i32
-    param = transform.ParamType.get(IntegerType.get_signless(32))
-    print(param)
-    print(param.type)
 
 
 @run
@@ -162,16 +152,13 @@ def testGetParentOp():
   )
   with InsertionPoint(sequence.body):
     transform.GetParentOp(
-        transform.AnyOpType.get(),
-        sequence.bodyTarget,
-        isolated_from_above=True,
-        nth_parent=2,
+        transform.AnyOpType.get(), sequence.bodyTarget, isolated_from_above=True
     )
     transform.YieldOp()
   # CHECK-LABEL: TEST: testGetParentOp
   # CHECK: transform.sequence
   # CHECK: ^{{.*}}(%[[ARG1:.+]]: !transform.any_op):
-  # CHECK:   = get_parent_op %[[ARG1]] {isolated_from_above, nth_parent = 2 : i64}
+  # CHECK:   = get_parent_op %[[ARG1]] {isolated_from_above}
 
 
 @run

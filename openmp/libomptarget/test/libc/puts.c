@@ -31,5 +31,5 @@ int main() {
 // CHECK: PASS
 #pragma omp target teams num_teams(4)
 #pragma omp parallel num_threads(2)
-  { puts("PASS\n"); }
+  { fputs("PASS\n", stdout); }
 }

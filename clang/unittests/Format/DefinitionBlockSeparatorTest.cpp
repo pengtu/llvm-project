@@ -140,7 +140,7 @@ TEST_F(DefinitionBlockSeparatorTest, Basic) {
 
   verifyFormat("enum Foo { FOO, BAR };\n"
                "\n"
-               "enum Bar { FOOBAR, BARFOO };",
+               "enum Bar { FOOBAR, BARFOO };\n",
                Style);
 
   FormatStyle BreakAfterReturnTypeStyle = Style;
@@ -158,7 +158,7 @@ TEST_F(DefinitionBlockSeparatorTest, Basic) {
                "    int r = t * p;\n"
                "    return r;\n"
                "  }\n"
-               "}",
+               "}\n",
                BreakAfterReturnTypeStyle);
 }
 

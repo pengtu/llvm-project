@@ -117,7 +117,7 @@ It returns a raw pointer value.  It does **not** check that the
 signature is valid.
 
 `key` should identify a key that is appropriate for `value`, as defined
-by the target-specific [keys](#keys)).
+by the target-specific [keys](#key)).
 
 If `value` is a raw pointer value, it is returned as-is (provided the `key`
 is appropriate for the pointer).
@@ -303,7 +303,8 @@ instructions as such:
 
 #### Assembly Representation
 
-At the assembly level, authenticated relocations are represented
+At the assembly level,
+[Authenticated Relocations](#authenticated-global-relocation) are represented
 using the `@AUTH` modifier:
 
 ```asm
@@ -327,7 +328,8 @@ For example:
 
 #### ELF Object File Representation
 
-At the object file level, authenticated relocations are represented
+At the object file level,
+[Authenticated Relocations](#authenticated-global-relocation) are represented
 using the `R_AARCH64_AUTH_ABS64` relocation kind (with value `0xE100`).
 
 The signing schema is encoded in the place of relocation to be applied

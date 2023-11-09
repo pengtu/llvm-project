@@ -3148,7 +3148,7 @@ bool IEEEFloat::convertFromStringSpecials(StringRef str) {
       return false;
   }
 
-  if (str.starts_with("nan") || str.starts_with("NaN")) {
+  if (str.startswith("nan") || str.startswith("NaN")) {
     str = str.drop_front(3);
 
     // A NaN without payload.

@@ -32,7 +32,7 @@ public:
                      const TargetOptions &Options,
                      std::optional<Reloc::Model> RM,
                      std::optional<CodeModel::Model> CodeModel,
-                     CodeGenOptLevel OptLevel, bool JIT);
+                     CodeGenOpt::Level OptLevel, bool JIT);
 
   const LanaiSubtarget *
   getSubtargetImpl(const llvm::Function & /*Fn*/) const override {

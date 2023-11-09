@@ -62,34 +62,30 @@ void RvalueReferenceParamNotMovedCheck::registerMatchers(MatchFinder *Finder) {
               anyOf(isConstQualified(), substTemplateTypeParmType()))))),
           optionally(hasType(qualType(references(templateTypeParmType(
               hasDeclaration(templateTypeParmDecl().bind("template-type"))))))),
-          hasDeclContext(
-              functionDecl(
-                  isDefinition(), unless(isDeleted()), unless(isDefaulted()),
-                  unless(cxxConstructorDecl(isMoveConstructor())),
-                  unless(cxxMethodDecl(isMoveAssignmentOperator())), ToParam,
-                  anyOf(cxxConstructorDecl(
-                            optionally(hasDescendant(MoveCallMatcher))),
-                        functionDecl(unless(cxxConstructorDecl()),
-                                     optionally(hasBody(
-                                         hasDescendant(MoveCallMatcher))))))
-                  .bind("func"))),
+          anyOf(hasAncestor(cxxConstructorDecl(
+                    ToParam, isDefinition(), unless(isMoveConstructor()),
+                    optionally(hasDescendant(MoveCallMatcher)))),
+                hasAncestor(functionDecl(
+                    unless(cxxConstructorDecl()), ToParam,
+                    unless(cxxMethodDecl(isMoveAssignmentOperator())),
+                    hasBody(optionally(hasDescendant(MoveCallMatcher))))))),
       this);
 }
 
 void RvalueReferenceParamNotMovedCheck::check(
     const MatchFinder::MatchResult &Result) {
   const auto *Param = Result.Nodes.getNodeAs<ParmVarDecl>("param");
-  const auto *Function = Result.Nodes.getNodeAs<FunctionDecl>("func");
   const auto *TemplateType =
       Result.Nodes.getNodeAs<TemplateTypeParmDecl>("template-type");
 
-  if (!Param || !Function)
+  if (!Param)
     return;
 
   if (IgnoreUnnamedParams && Param->getName().empty())
     return;
 
-  if (!Param->isUsed() && Param->hasAttr<UnusedAttr>())
+  const auto *Function = dyn_cast<FunctionDecl>(Param->getDeclContext());
+  if (!Function)
     return;
 
   if (IgnoreNonDeducedTemplateTypes && TemplateType)

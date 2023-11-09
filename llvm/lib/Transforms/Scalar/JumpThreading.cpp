@@ -568,8 +568,6 @@ bool JumpThreadingPass::computeValueKnownInPredecessorsImpl(
     Value *V, BasicBlock *BB, PredValueInfo &Result,
     ConstantPreference Preference, DenseSet<Value *> &RecursionSet,
     Instruction *CxtI) {
-  const DataLayout &DL = BB->getModule()->getDataLayout();
-
   // This method walks up use-def chains recursively.  Because of this, we could
   // get into an infinite loop going around loops in the use-def chain.  To
   // prevent this, keep track of what (value, block) pairs we've already visited
@@ -637,19 +635,16 @@ bool JumpThreadingPass::computeValueKnownInPredecessorsImpl(
   // Handle Cast instructions.
   if (CastInst *CI = dyn_cast<CastInst>(I)) {
     Value *Source = CI->getOperand(0);
-    PredValueInfoTy Vals;
-    computeValueKnownInPredecessorsImpl(Source, BB, Vals, Preference,
+    computeValueKnownInPredecessorsImpl(Source, BB, Result, Preference,
                                         RecursionSet, CxtI);
-    if (Vals.empty())
+    if (Result.empty())
       return false;
 
     // Convert the known values.
-    for (auto &Val : Vals)
-      if (Constant *Folded = ConstantFoldCastOperand(CI->getOpcode(), Val.first,
-                                                     CI->getType(), DL))
-        Result.emplace_back(Folded, Val.second);
+    for (auto &R : Result)
+      R.first = ConstantExpr::getCast(CI->getOpcode(), R.first, CI->getType());
 
-    return !Result.empty();
+    return true;
   }
 
   if (FreezeInst *FI = dyn_cast<FreezeInst>(I)) {
@@ -731,6 +726,7 @@ bool JumpThreadingPass::computeValueKnownInPredecessorsImpl(
     if (Preference != WantInteger)
       return false;
     if (ConstantInt *CI = dyn_cast<ConstantInt>(BO->getOperand(1))) {
+      const DataLayout &DL = BO->getModule()->getDataLayout();
       PredValueInfoTy LHSVals;
       computeValueKnownInPredecessorsImpl(BO->getOperand(0), BB, LHSVals,
                                           WantInteger, RecursionSet, CxtI);
@@ -761,10 +757,7 @@ bool JumpThreadingPass::computeValueKnownInPredecessorsImpl(
     PHINode *PN = dyn_cast<PHINode>(CmpLHS);
     if (!PN)
       PN = dyn_cast<PHINode>(CmpRHS);
-    // Do not perform phi translation across a loop header phi, because this
-    // may result in comparison of values from two different loop iterations.
-    // FIXME: This check is broken if LoopHeaders is not populated.
-    if (PN && PN->getParent() == BB && !LoopHeaders.contains(BB)) {
+    if (PN && PN->getParent() == BB) {
       const DataLayout &DL = PN->getModule()->getDataLayout();
       // We can do this simplification if any comparisons fold to true or false.
       // See if any do.
@@ -1980,9 +1973,11 @@ void JumpThreadingPass::updateSSA(
 
     // Find debug values outside of the block
     findDbgValues(DbgValues, &I);
-    llvm::erase_if(DbgValues, [&](const DbgValueInst *DbgVal) {
-      return DbgVal->getParent() == BB;
-    });
+    DbgValues.erase(remove_if(DbgValues,
+                              [&](const DbgValueInst *DbgVal) {
+                                return DbgVal->getParent() == BB;
+                              }),
+                    DbgValues.end());
 
     // If there are no uses outside the block, we're done with this instruction.
     if (UsesToRename.empty() && DbgValues.empty())
@@ -2252,7 +2247,7 @@ void JumpThreadingPass::threadThroughTwoBasicBlocks(BasicBlock *PredPredBB,
     assert(BPI && "It's expected BPI to exist along with BFI");
     auto NewBBFreq = BFI->getBlockFreq(PredPredBB) *
                      BPI->getEdgeProbability(PredPredBB, PredBB);
-    BFI->setBlockFreq(NewBB, NewBBFreq);
+    BFI->setBlockFreq(NewBB, NewBBFreq.getFrequency());
   }
 
   // We are going to have to map operands from the original BB block to the new
@@ -2378,7 +2373,7 @@ void JumpThreadingPass::threadEdge(BasicBlock *BB,
     assert(BPI && "It's expected BPI to exist along with BFI");
     auto NewBBFreq =
         BFI->getBlockFreq(PredBB) * BPI->getEdgeProbability(PredBB, BB);
-    BFI->setBlockFreq(NewBB, NewBBFreq);
+    BFI->setBlockFreq(NewBB, NewBBFreq.getFrequency());
   }
 
   // Copy all the instructions from BB to NewBB except the terminator.
@@ -2463,7 +2458,7 @@ BasicBlock *JumpThreadingPass::splitBlockPreds(BasicBlock *BB,
         NewBBFreq += FreqMap.lookup(Pred);
     }
     if (BFI) // Apply the summed frequency to NewBB.
-      BFI->setBlockFreq(NewBB, NewBBFreq);
+      BFI->setBlockFreq(NewBB, NewBBFreq.getFrequency());
   }
 
   DTU->applyUpdatesPermissive(Updates);
@@ -2503,7 +2498,7 @@ void JumpThreadingPass::updateBlockFreqAndEdgeWeight(BasicBlock *PredBB,
   auto NewBBFreq = BFI->getBlockFreq(NewBB);
   auto BB2SuccBBFreq = BBOrigFreq * BPI->getEdgeProbability(BB, SuccBB);
   auto BBNewFreq = BBOrigFreq - NewBBFreq;
-  BFI->setBlockFreq(BB, BBNewFreq);
+  BFI->setBlockFreq(BB, BBNewFreq.getFrequency());
 
   // Collect updated outgoing edges' frequencies from BB and use them to update
   // edge probabilities.
@@ -2761,7 +2756,7 @@ void JumpThreadingPass::unfoldSelectInstr(BasicBlock *Pred, BasicBlock *BB,
     BranchProbability PredToNewBBProb = BranchProbability::getBranchProbability(
         TrueWeight, TrueWeight + FalseWeight);
     auto NewBBFreq = BFI->getBlockFreq(Pred) * PredToNewBBProb;
-    BFI->setBlockFreq(NewBB, NewBBFreq);
+    BFI->setBlockFreq(NewBB, NewBBFreq.getFrequency());
   }
 
   // The select is now dead.
@@ -2931,9 +2926,7 @@ bool JumpThreadingPass::tryToUnfoldSelectInCurrBB(BasicBlock *BB) {
     Value *Cond = SI->getCondition();
     if (!isGuaranteedNotToBeUndefOrPoison(Cond, nullptr, SI))
       Cond = new FreezeInst(Cond, "cond.fr", SI);
-    MDNode *BranchWeights = getBranchWeightMDNode(*SI);
-    Instruction *Term =
-        SplitBlockAndInsertIfThen(Cond, SI, false, BranchWeights);
+    Instruction *Term = SplitBlockAndInsertIfThen(Cond, SI, false);
     BasicBlock *SplitBB = SI->getParent();
     BasicBlock *NewBB = Term->getParent();
     PHINode *NewPN = PHINode::Create(SI->getType(), 2, "", SI);

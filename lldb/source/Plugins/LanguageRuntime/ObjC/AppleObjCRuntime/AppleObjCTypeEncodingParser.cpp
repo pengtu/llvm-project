@@ -81,13 +81,13 @@ AppleObjCTypeEncodingParser::ReadStructElement(TypeSystemClang &ast_ctx,
 clang::QualType AppleObjCTypeEncodingParser::BuildStruct(
     TypeSystemClang &ast_ctx, StringLexer &type, bool for_expression) {
   return BuildAggregate(ast_ctx, type, for_expression, _C_STRUCT_B, _C_STRUCT_E,
-                        llvm::to_underlying(clang::TagTypeKind::Struct));
+                        clang::TTK_Struct);
 }
 
 clang::QualType AppleObjCTypeEncodingParser::BuildUnion(
     TypeSystemClang &ast_ctx, StringLexer &type, bool for_expression) {
   return BuildAggregate(ast_ctx, type, for_expression, _C_UNION_B, _C_UNION_E,
-                        llvm::to_underlying(clang::TagTypeKind::Union));
+                        clang::TTK_Union);
 }
 
 clang::QualType AppleObjCTypeEncodingParser::BuildAggregate(

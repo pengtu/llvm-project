@@ -4,13 +4,11 @@
 
 # LLVM libc unittest library.
 
-load("//libc:libc_build_rules.bzl", "libc_support_library")
-
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-libc_support_library(
+cc_library(
     name = "test_logger",
     srcs = ["TestLogger.cpp"],
     hdrs = ["TestLogger.h"],
@@ -19,10 +17,11 @@ libc_support_library(
         "//libc:__support_cpp_string_view",
         "//libc:__support_osutil_io",
         "//libc:__support_uint128",
+        "//libc:libc_root",
     ],
 )
 
-libc_support_library(
+cc_library(
     name = "LibcUnitTest",
     srcs = [
         "BazelFilePath.cpp",
@@ -53,11 +52,12 @@ libc_support_library(
         "//libc:__support_stringutil",
         "//libc:__support_uint128",
         "//libc:errno",
+        "//libc:libc_root",
         "//llvm:Support",
     ],
 )
 
-libc_support_library(
+cc_library(
     name = "fp_test_helpers",
     srcs = [
         "FPExceptMatcher.cpp",
@@ -79,10 +79,11 @@ libc_support_library(
         "//libc:__support_fputil_fp_bits",
         "//libc:__support_fputil_fpbits_str",
         "//libc:__support_fputil_rounding_mode",
+        "//libc:libc_root",
     ],
 )
 
-libc_support_library(
+cc_library(
     name = "memory_matcher",
     srcs = [
         "MemoryMatcher.cpp",
@@ -99,7 +100,7 @@ libc_support_library(
     ],
 )
 
-libc_support_library(
+cc_library(
     name = "printf_matcher",
     srcs = [
         "PrintfMatcher.cpp",
@@ -115,7 +116,7 @@ libc_support_library(
     ],
 )
 
-libc_support_library(
+cc_library(
     name = "string_utils",
     hdrs = [
         "StringUtils.h",

@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 
 using namespace llvm;
+using object::SectionedAddress;
 
 TEST(DWARFLocationExpression, Equality) {
   EXPECT_EQ((DWARFLocationExpression{std::nullopt, {}}),

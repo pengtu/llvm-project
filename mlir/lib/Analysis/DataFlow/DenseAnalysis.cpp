@@ -8,19 +8,8 @@
 
 #include "mlir/Analysis/DataFlow/DenseAnalysis.h"
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
-#include "mlir/Analysis/DataFlowFramework.h"
-#include "mlir/IR/Block.h"
-#include "mlir/IR/OpDefinition.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/Region.h"
 #include "mlir/Interfaces/CallInterfaces.h"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
-#include "mlir/Support/LLVM.h"
-#include "mlir/Support/LogicalResult.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/Support/Casting.h"
-#include <cassert>
-#include <optional>
 
 using namespace mlir;
 using namespace mlir::dataflow;
@@ -210,6 +199,8 @@ void AbstractDenseForwardDataFlowAnalysis::visitRegionBranchOperation(
         op == branch ? std::optional<unsigned>()
                      : op->getBlock()->getParent()->getRegionNumber();
     if (auto *toBlock = point.dyn_cast<Block *>()) {
+      assert(op == branch ||
+             toBlock->getParent() != op->getBlock()->getParent());
       unsigned regionTo = toBlock->getParent()->getRegionNumber();
       visitRegionBranchControlFlowTransfer(branch, regionFrom, regionTo,
                                            *before, after);

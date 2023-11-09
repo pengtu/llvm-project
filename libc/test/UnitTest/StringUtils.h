@@ -12,7 +12,7 @@
 #include "src/__support/CPP/string.h"
 #include "src/__support/CPP/type_traits.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // Return the first N hex digits of an integer as a string in upper case.
 template <typename T>
@@ -31,6 +31,6 @@ int_to_hex(T value, size_t length = sizeof(T) * 2) {
   return "0x" + s;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_UTILS_UNITTEST_SIMPLE_STRING_CONV_H

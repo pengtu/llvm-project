@@ -490,7 +490,7 @@ BitVector Merger::simplifyCond(LatSetId s0, LatPointId p0) {
     if (simple[b] && !isSparseLvlWithNonTrivialIdxExp(b)) {
       const auto dlt = getLvlType(b);
       if (!isCompressedDLT(dlt) && !isSingletonDLT(dlt) &&
-          !isLooseCompressedDLT(dlt)) {
+          !isCompressedWithHiDLT(dlt)) {
         if (reset)
           simple.reset(b);
         reset = true;
@@ -671,7 +671,7 @@ bool Merger::hasAnySparse(const BitVector &bits) const {
   for (TensorLoopId b : bits.set_bits()) {
     const auto dlt = getLvlType(b);
     if (isCompressedDLT(dlt) || isSingletonDLT(dlt) ||
-        isLooseCompressedDLT(dlt))
+        isCompressedWithHiDLT(dlt))
       return true;
   }
   return hasSparseIdxReduction(bits);
@@ -1101,7 +1101,7 @@ LatSetId Merger::buildLattices(ExprId e, LoopId i) {
     }
   case TensorExp::Kind::kCmpF:
   case TensorExp::Kind::kCmpI:
-    // A comparison operation needs to be performed
+    // An comparison operation needs to be performed
     // for the disjunction of sparse iteration spaces.
     //
     //   x < y |  !y   |   y   |
@@ -1118,7 +1118,7 @@ LatSetId Merger::buildLattices(ExprId e, LoopId i) {
   case TensorExp::Kind::kShlI:
     // A shift operation by an invariant amount (viz. tensor expressions
     // can only occur at the left-hand-side of the operator) can be handled
-    // with the conjunction rule.
+    // with the conjuction rule.
     {
       const ExprId e0 = expr.children.e0;
       const ExprId e1 = expr.children.e1;

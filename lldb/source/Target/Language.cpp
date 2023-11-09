@@ -374,7 +374,6 @@ LanguageType Language::GetPrimaryLanguage(LanguageType language) {
   case eLanguageTypeJulia:
   case eLanguageTypeDylan:
   case eLanguageTypeMipsAssembler:
-  case eLanguageTypeMojo:
   case eLanguageTypeUnknown:
   default:
     return language;

@@ -1403,8 +1403,6 @@ CursorKind.TYPE_ALIAS_TEMPLATE_DECL = CursorKind(601)
 CursorKind.STATIC_ASSERT = CursorKind(602)
 # A friend declaration
 CursorKind.FRIEND_DECL = CursorKind(603)
-# A concept declaration
-CursorKind.CONCEPT_DECL = CursorKind(604)
 
 # A code completion overload candidate.
 CursorKind.OVERLOAD_CANDIDATE = CursorKind(700)

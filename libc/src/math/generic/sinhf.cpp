@@ -12,7 +12,7 @@
 #include "src/__support/macros/optimization.h" // LIBC_UNLIKELY
 #include "src/math/generic/explogxf.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, sinhf, (float x)) {
   using FPBits = typename fputil::FPBits<float>;
@@ -67,11 +67,11 @@ LLVM_LIBC_FUNCTION(float, sinhf, (float x)) {
     fputil::set_errno_if_required(ERANGE);
     fputil::raise_except_if_required(FE_OVERFLOW);
 
-    return x + FPBits::inf(sign);
+    return x + FPBits::inf(sign).get_val();
   }
 
   // sinh(x) = (e^x - e^(-x)) / 2.
   return static_cast<float>(exp_pm_eval</*is_sinh*/ true>(x));
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -11,10 +11,10 @@
 
 #include "common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(double, fdim, (double x, double y)) {
   return internal::fdim(x, y);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

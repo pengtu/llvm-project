@@ -90,11 +90,6 @@ public:
   /// \returns True on success, false on failure.
   virtual bool EmitCodeEnd(const MCSubtargetInfo &STI) { return true; }
 
-  /// \returns True on success, false on failure.
-  virtual bool EmitKernargPreloadHeader(const MCSubtargetInfo &STI) {
-    return true;
-  }
-
   virtual void EmitAmdhsaKernelDescriptor(
       const MCSubtargetInfo &STI, StringRef KernelName,
       const amdhsa::kernel_descriptor_t &KernelDescriptor, uint64_t NextVGPR,
@@ -159,9 +154,6 @@ public:
   /// \returns True on success, false on failure.
   bool EmitCodeEnd(const MCSubtargetInfo &STI) override;
 
-  /// \returns True on success, false on failure.
-  bool EmitKernargPreloadHeader(const MCSubtargetInfo &STI) override;
-
   void EmitAmdhsaKernelDescriptor(
       const MCSubtargetInfo &STI, StringRef KernelName,
       const amdhsa::kernel_descriptor_t &KernelDescriptor, uint64_t NextVGPR,
@@ -222,9 +214,6 @@ public:
 
   /// \returns True on success, false on failure.
   bool EmitCodeEnd(const MCSubtargetInfo &STI) override;
-
-  /// \returns True on success, false on failure.
-  bool EmitKernargPreloadHeader(const MCSubtargetInfo &STI) override;
 
   void EmitAmdhsaKernelDescriptor(
       const MCSubtargetInfo &STI, StringRef KernelName,

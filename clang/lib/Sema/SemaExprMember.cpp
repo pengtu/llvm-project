@@ -46,7 +46,7 @@ enum IMAKind {
 
   /// The reference may be to an instance member, but it might be invalid if
   /// so, because the context is not an instance method.
-  IMA_Mixed_StaticOrExplicitContext,
+  IMA_Mixed_StaticContext,
 
   /// The reference may be to an instance member, but it is invalid if
   /// so, because the context is from an unrelated class.
@@ -63,7 +63,7 @@ enum IMAKind {
 
   /// The reference may be to an unresolved using declaration and the
   /// context is not an instance method.
-  IMA_Unresolved_StaticOrExplicitContext,
+  IMA_Unresolved_StaticContext,
 
   // The reference refers to a field which is not a member of the containing
   // class, which is allowed because we're in C++11 mode and the context is
@@ -72,7 +72,7 @@ enum IMAKind {
 
   /// All possible referrents are instance members and the current
   /// context is not an instance method.
-  IMA_Error_StaticOrExplicitContext,
+  IMA_Error_StaticContext,
 
   /// All possible referrents are instance members of an unrelated
   /// class.
@@ -91,14 +91,11 @@ static IMAKind ClassifyImplicitMemberAccess(Sema &SemaRef,
 
   DeclContext *DC = SemaRef.getFunctionLevelDeclContext();
 
-  bool isStaticOrExplicitContext =
-      SemaRef.CXXThisTypeOverride.isNull() &&
-      (!isa<CXXMethodDecl>(DC) || cast<CXXMethodDecl>(DC)->isStatic() ||
-       cast<CXXMethodDecl>(DC)->isExplicitObjectMemberFunction());
+  bool isStaticContext = SemaRef.CXXThisTypeOverride.isNull() &&
+    (!isa<CXXMethodDecl>(DC) || cast<CXXMethodDecl>(DC)->isStatic());
 
   if (R.isUnresolvableResult())
-    return isStaticOrExplicitContext ? IMA_Unresolved_StaticOrExplicitContext
-                                     : IMA_Unresolved;
+    return isStaticContext ? IMA_Unresolved_StaticContext : IMA_Unresolved;
 
   // Collect all the declaring classes of instance members we find.
   bool hasNonInstance = false;
@@ -155,12 +152,12 @@ static IMAKind ClassifyImplicitMemberAccess(Sema &SemaRef,
 
   // If the current context is not an instance method, it can't be
   // an implicit member reference.
-  if (isStaticOrExplicitContext) {
+  if (isStaticContext) {
     if (hasNonInstance)
-      return IMA_Mixed_StaticOrExplicitContext;
+      return IMA_Mixed_StaticContext;
 
     return AbstractInstanceResult ? AbstractInstanceResult
-                                  : IMA_Error_StaticOrExplicitContext;
+                                  : IMA_Error_StaticContext;
   }
 
   CXXRecordDecl *contextClass;
@@ -170,7 +167,7 @@ static IMAKind ClassifyImplicitMemberAccess(Sema &SemaRef,
     contextClass = RD;
   else
     return AbstractInstanceResult ? AbstractInstanceResult
-                                  : IMA_Error_StaticOrExplicitContext;
+                                  : IMA_Error_StaticContext;
 
   // [class.mfct.non-static]p3:
   // ...is used in the body of a non-static member function of class X,
@@ -217,31 +214,14 @@ static void diagnoseInstanceReference(Sema &SemaRef,
   CXXRecordDecl *RepClass = dyn_cast<CXXRecordDecl>(Rep->getDeclContext());
 
   bool InStaticMethod = Method && Method->isStatic();
-  bool InExplicitObjectMethod =
-      Method && Method->isExplicitObjectMemberFunction();
   bool IsField = isa<FieldDecl>(Rep) || isa<IndirectFieldDecl>(Rep);
 
-  std::string Replacement;
-  if (InExplicitObjectMethod) {
-    DeclarationName N = Method->getParamDecl(0)->getDeclName();
-    if (!N.isEmpty()) {
-      Replacement.append(N.getAsString());
-      Replacement.append(".");
-    }
-  }
   if (IsField && InStaticMethod)
     // "invalid use of member 'x' in static member function"
-    SemaRef.Diag(Loc, diag::err_invalid_member_use_in_method)
-        << Range << nameInfo.getName() << /*static*/ 0;
-  else if (IsField && InExplicitObjectMethod) {
-    auto Diag = SemaRef.Diag(Loc, diag::err_invalid_member_use_in_method)
-                << Range << nameInfo.getName() << /*explicit*/ 1;
-    if (!Replacement.empty())
-      Diag << FixItHint::CreateInsertion(Loc, Replacement);
-  } else if (ContextClass && RepClass && SS.isEmpty() &&
-             !InExplicitObjectMethod && !InStaticMethod &&
-             !RepClass->Equals(ContextClass) &&
-             RepClass->Encloses(ContextClass))
+    SemaRef.Diag(Loc, diag::err_invalid_member_use_in_static_method)
+        << Range << nameInfo.getName();
+  else if (ContextClass && RepClass && SS.isEmpty() && !InStaticMethod &&
+           !RepClass->Equals(ContextClass) && RepClass->Encloses(ContextClass))
     // Unqualified lookup in a non-static member function found a member of an
     // enclosing class.
     SemaRef.Diag(Loc, diag::err_nested_non_static_member_use)
@@ -249,16 +229,9 @@ static void diagnoseInstanceReference(Sema &SemaRef,
   else if (IsField)
     SemaRef.Diag(Loc, diag::err_invalid_non_static_member_use)
       << nameInfo.getName() << Range;
-  else if (!InExplicitObjectMethod)
+  else
     SemaRef.Diag(Loc, diag::err_member_call_without_object)
-        << Range << /*static*/ 0;
-  else {
-    const auto *Callee = dyn_cast<CXXMethodDecl>(Rep);
-    auto Diag = SemaRef.Diag(Loc, diag::err_member_call_without_object)
-                << Range << Callee->isExplicitObjectMemberFunction();
-    if (!Replacement.empty())
-      Diag << FixItHint::CreateInsertion(Loc, Replacement);
-  }
+      << Range;
 }
 
 /// Builds an expression which might be an implicit member expression.
@@ -282,13 +255,13 @@ ExprResult Sema::BuildPossibleImplicitMemberExpr(
     [[fallthrough]];
   case IMA_Static:
   case IMA_Abstract:
-  case IMA_Mixed_StaticOrExplicitContext:
-  case IMA_Unresolved_StaticOrExplicitContext:
+  case IMA_Mixed_StaticContext:
+  case IMA_Unresolved_StaticContext:
     if (TemplateArgs || TemplateKWLoc.isValid())
       return BuildTemplateIdExpr(SS, TemplateKWLoc, R, false, TemplateArgs);
     return AsULE ? AsULE : BuildDeclarationNameExpr(SS, R, false);
 
-  case IMA_Error_StaticOrExplicitContext:
+  case IMA_Error_StaticContext:
   case IMA_Error_Unrelated:
     diagnoseInstanceReference(*this, SS, R.getRepresentativeDecl(),
                               R.getLookupNameInfo());

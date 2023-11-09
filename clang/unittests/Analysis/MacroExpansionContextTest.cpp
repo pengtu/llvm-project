@@ -73,7 +73,12 @@ protected:
     // Lex source text.
     PP.EnterMainSourceFile();
 
-    PP.LexTokensUntilEOF();
+    while (true) {
+      Token Tok;
+      PP.Lex(Tok);
+      if (Tok.is(tok::eof))
+        break;
+    }
 
     // Callbacks have been executed at this point.
     return Ctx;

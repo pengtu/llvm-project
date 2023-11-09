@@ -80,7 +80,6 @@
 %include "./interface/SBValueListDocstrings.i"
 %include "./interface/SBVariablesOptionsDocstrings.i"
 %include "./interface/SBWatchpointDocstrings.i"
-%include "./interface/SBWatchpointOptionsDocstrings.i"
 
 /* API headers */
 %include "lldb/API/SBAddress.h"
@@ -122,7 +121,6 @@
 %include "lldb/API/SBPlatform.h"
 %include "lldb/API/SBProcess.h"
 %include "lldb/API/SBProcessInfo.h"
-%include "lldb/API/SBProcessInfoList.h"
 %include "lldb/API/SBQueue.h"
 %include "lldb/API/SBQueueItem.h"
 %include "lldb/API/SBReproducer.h"
@@ -154,7 +152,6 @@
 %include "lldb/API/SBValueList.h"
 %include "lldb/API/SBVariablesOptions.h"
 %include "lldb/API/SBWatchpoint.h"
-%include "lldb/API/SBWatchpointOptions.h"
 
 /* Extensions for SB classes */
 %include "./interface/SBAddressExtensions.i"
@@ -185,7 +182,6 @@
 %include "./interface/SBModuleSpecExtensions.i"
 %include "./interface/SBModuleSpecListExtensions.i"
 %include "./interface/SBProcessExtensions.i"
-%include "./interface/SBProcessInfoListExtensions.i"
 %include "./interface/SBQueueItemExtensions.i"
 %include "./interface/SBScriptObjectExtensions.i"
 %include "./interface/SBSectionExtensions.i"

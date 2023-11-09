@@ -98,14 +98,12 @@ void MapExtDefNamesConsumer::addIfInMain(const DeclaratorDecl *DD,
   }
 
   switch (DD->getLinkageInternal()) {
-  case Linkage::External:
-  case Linkage::VisibleNone:
-  case Linkage::UniqueExternal:
+  case ExternalLinkage:
+  case VisibleNoLinkage:
+  case UniqueExternalLinkage:
     if (SM.isInMainFile(defStart))
       Index[*LookupName] = CurrentFileName;
     break;
-  case Linkage::Invalid:
-    llvm_unreachable("Linkage has not been computed!");
   default:
     break;
   }

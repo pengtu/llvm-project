@@ -4978,7 +4978,7 @@ void ARMBaseInstrInfo::expandLoadStackGuardBase(MachineBasicBlock::iterator MI,
         TargetFlags |= ARMII::MO_DLLIMPORT;
       else if (IsIndirect)
         TargetFlags |= ARMII::MO_COFFSTUB;
-    } else if (IsIndirect) {
+    } else if (Subtarget.isGVInGOT(GV)) {
       TargetFlags |= ARMII::MO_GOT;
     }
 

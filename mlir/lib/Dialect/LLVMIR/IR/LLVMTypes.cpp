@@ -76,6 +76,40 @@ static void printFunctionTypes(AsmPrinter &p, ArrayRef<Type> params,
 }
 
 //===----------------------------------------------------------------------===//
+// custom<Pointer>
+//===----------------------------------------------------------------------===//
+
+static ParseResult parsePointer(AsmParser &p, Type &elementType,
+                                unsigned &addressSpace) {
+  // `<` addressSpace `>`
+  OptionalParseResult result = p.parseOptionalInteger(addressSpace);
+  if (result.has_value()) {
+    if (failed(result.value()))
+      return failure();
+    elementType = Type();
+    return success();
+  }
+
+  if (parsePrettyLLVMType(p, elementType))
+    return failure();
+  if (succeeded(p.parseOptionalComma()))
+    return p.parseInteger(addressSpace);
+
+  return success();
+}
+
+static void printPointer(AsmPrinter &p, Type elementType,
+                         unsigned addressSpace) {
+  if (elementType)
+    printPrettyLLVMType(p, elementType);
+  if (addressSpace != 0) {
+    if (elementType)
+      p << ", ";
+    p << addressSpace;
+  }
+}
+
+//===----------------------------------------------------------------------===//
 // custom<ExtTypeParams>
 //===----------------------------------------------------------------------===//
 
@@ -252,6 +286,33 @@ LLVMFunctionType::verify(function_ref<InFlightDiagnostic()> emitError,
 }
 
 //===----------------------------------------------------------------------===//
+// LLVMPointerType
+//===----------------------------------------------------------------------===//
+
+bool LLVMPointerType::isValidElementType(Type type) {
+  if (!type)
+    return true;
+  return isCompatibleOuterType(type)
+             ? !llvm::isa<LLVMVoidType, LLVMTokenType, LLVMMetadataType,
+                          LLVMLabelType>(type)
+             : llvm::isa<PointerElementTypeInterface>(type);
+}
+
+LLVMPointerType LLVMPointerType::get(Type pointee, unsigned addressSpace) {
+  assert(pointee && "expected non-null subtype, pass the context instead if "
+                    "the opaque pointer type is desired");
+  return Base::get(pointee.getContext(), pointee, addressSpace);
+}
+
+LogicalResult
+LLVMPointerType::verify(function_ref<InFlightDiagnostic()> emitError,
+                        Type pointee, unsigned) {
+  if (!isValidElementType(pointee))
+    return emitError() << "invalid pointer element type: " << pointee;
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // DataLayoutTypeInterface
 
 constexpr const static unsigned kDefaultPointerSizeBits = 64;
@@ -308,7 +369,9 @@ LLVMPointerType::getTypeSizeInBits(const DataLayout &dataLayout,
 
   // For other memory spaces, use the size of the pointer to the default memory
   // space.
-  return dataLayout.getTypeSizeInBits(get(getContext()));
+  if (isOpaque())
+    return dataLayout.getTypeSizeInBits(get(getContext()));
+  return dataLayout.getTypeSizeInBits(get(getElementType()));
 }
 
 unsigned LLVMPointerType::getABIAlignment(const DataLayout &dataLayout,
@@ -317,7 +380,9 @@ unsigned LLVMPointerType::getABIAlignment(const DataLayout &dataLayout,
           getPointerDataLayoutEntry(params, *this, PtrDLEntryPos::Abi))
     return *alignment;
 
-  return dataLayout.getTypeABIAlignment(get(getContext()));
+  if (isOpaque())
+    return dataLayout.getTypeABIAlignment(get(getContext()));
+  return dataLayout.getTypeABIAlignment(get(getElementType()));
 }
 
 unsigned
@@ -327,7 +392,9 @@ LLVMPointerType::getPreferredAlignment(const DataLayout &dataLayout,
           getPointerDataLayoutEntry(params, *this, PtrDLEntryPos::Preferred))
     return *alignment;
 
-  return dataLayout.getTypePreferredAlignment(get(getContext()));
+  if (isOpaque())
+    return dataLayout.getTypePreferredAlignment(get(getContext()));
+  return dataLayout.getTypePreferredAlignment(get(getElementType()));
 }
 
 bool LLVMPointerType::areCompatible(DataLayoutEntryListRef oldLayout,
@@ -373,12 +440,17 @@ LogicalResult LLVMPointerType::verifyEntries(DataLayoutEntryListRef entries,
   for (DataLayoutEntryInterface entry : entries) {
     if (!entry.isTypeEntry())
       continue;
+    auto key = llvm::cast<LLVMPointerType>(entry.getKey().get<Type>());
     auto values = llvm::dyn_cast<DenseIntElementsAttr>(entry.getValue());
     if (!values || (values.size() != 3 && values.size() != 4)) {
       return emitError(loc)
              << "expected layout attribute for " << entry.getKey().get<Type>()
              << " to be a dense integer elements attribute with 3 or 4 "
                 "elements";
+    }
+    if (key.getElementType() && !key.getElementType().isInteger(8)) {
+      return emitError(loc) << "unexpected layout attribute for pointer to "
+                            << key.getElementType();
     }
     if (extractPointerSpecValue(values, PtrDLEntryPos::Abi) >
         extractPointerSpecValue(values, PtrDLEntryPos::Preferred)) {
@@ -797,7 +869,11 @@ static bool isCompatibleImpl(Type type, DenseSet<Type> &compatibleTypes) {
             return vecType.getRank() == 1 &&
                    isCompatible(vecType.getElementType());
           })
-          .Case<LLVMPointerType>([&](auto pointerType) { return true; })
+          .Case<LLVMPointerType>([&](auto pointerType) {
+            if (pointerType.isOpaque())
+              return true;
+            return isCompatible(pointerType.getElementType());
+          })
           .Case<LLVMTargetExtType>([&](auto extType) {
             return llvm::all_of(extType.getTypeParams(), isCompatible);
           })

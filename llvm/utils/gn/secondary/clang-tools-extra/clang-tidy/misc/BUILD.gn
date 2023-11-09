@@ -34,7 +34,6 @@ static_library("misc") {
   sources = [
     "ConfusableIdentifierCheck.cpp",
     "ConstCorrectnessCheck.cpp",
-    "CoroutineHostileRAIICheck.cpp",
     "DefinitionsInHeadersCheck.cpp",
     "HeaderIncludeCycleCheck.cpp",
     "IncludeCleanerCheck.cpp",

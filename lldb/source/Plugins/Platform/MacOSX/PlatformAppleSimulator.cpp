@@ -335,7 +335,8 @@ PlatformSP PlatformAppleSimulator::CreateInstance(
 
   bool create = force;
   if (!create && arch && arch->IsValid()) {
-    if (llvm::is_contained(supported_arch, arch->GetMachine())) {
+    if (std::count(supported_arch.begin(), supported_arch.end(),
+                   arch->GetMachine())) {
       const llvm::Triple &triple = arch->GetTriple();
       switch (triple.getVendor()) {
       case llvm::Triple::Apple:

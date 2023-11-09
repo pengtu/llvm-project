@@ -30,8 +30,7 @@ class XtensaMCAsmBackend : public MCAsmBackend {
 
 public:
   XtensaMCAsmBackend(uint8_t osABI, bool isLE)
-      : MCAsmBackend(llvm::endianness::little), OSABI(osABI),
-        IsLittleEndian(isLE) {}
+      : MCAsmBackend(support::little), OSABI(osABI), IsLittleEndian(isLE) {}
 
   unsigned getNumFixupKinds() const override {
     return Xtensa::NumTargetFixupKinds;

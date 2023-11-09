@@ -452,8 +452,6 @@ public:
     return VT != MVT::f64;
   }
   bool hasInlineStackProbe(const MachineFunction &MF) const override;
-  AtomicExpansionKind
-  shouldExpandAtomicRMWInIR(AtomicRMWInst *RMW) const override;
   bool isLegalICmpImmediate(int64_t Imm) const override;
   bool isLegalAddImmediate(int64_t Imm) const override;
   bool isLegalAddressingMode(const DataLayout &DL, const AddrMode &AM, Type *Ty,
@@ -489,39 +487,39 @@ public:
   TargetLowering::ConstraintWeight
     getSingleConstraintMatchWeight(AsmOperandInfo &info,
                                    const char *constraint) const override;
-  void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+  void LowerAsmOperandForConstraint(SDValue Op,
+                                    std::string &Constraint,
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
 
-  InlineAsm::ConstraintCode
-  getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
+  unsigned getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
     if (ConstraintCode.size() == 1) {
       switch(ConstraintCode[0]) {
       default:
         break;
       case 'o':
-        return InlineAsm::ConstraintCode::o;
+        return InlineAsm::Constraint_o;
       case 'Q':
-        return InlineAsm::ConstraintCode::Q;
+        return InlineAsm::Constraint_Q;
       case 'R':
-        return InlineAsm::ConstraintCode::R;
+        return InlineAsm::Constraint_R;
       case 'S':
-        return InlineAsm::ConstraintCode::S;
+        return InlineAsm::Constraint_S;
       case 'T':
-        return InlineAsm::ConstraintCode::T;
+        return InlineAsm::Constraint_T;
       }
     } else if (ConstraintCode.size() == 2 && ConstraintCode[0] == 'Z') {
       switch (ConstraintCode[1]) {
       default:
         break;
       case 'Q':
-        return InlineAsm::ConstraintCode::ZQ;
+        return InlineAsm::Constraint_ZQ;
       case 'R':
-        return InlineAsm::ConstraintCode::ZR;
+        return InlineAsm::Constraint_ZR;
       case 'S':
-        return InlineAsm::ConstraintCode::ZS;
+        return InlineAsm::Constraint_ZS;
       case 'T':
-        return InlineAsm::ConstraintCode::ZT;
+        return InlineAsm::Constraint_ZT;
       }
     }
     return TargetLowering::getInlineAsmMemConstraint(ConstraintCode);

@@ -138,11 +138,8 @@ public:
 
   // Either generate a new OpTypeXXX instruction or return an existing one
   // corresponding to the given string containing the name of the builtin type.
-  SPIRVType *getOrCreateSPIRVTypeByName(
-      StringRef TypeStr, MachineIRBuilder &MIRBuilder,
-      SPIRV::StorageClass::StorageClass SC = SPIRV::StorageClass::Function,
-      SPIRV::AccessQualifier::AccessQualifier AQ =
-          SPIRV::AccessQualifier::ReadWrite);
+  SPIRVType *getOrCreateSPIRVTypeByName(StringRef TypeStr,
+                                        MachineIRBuilder &MIRBuilder);
 
   // Return the SPIR-V type instruction corresponding to the given VReg, or
   // nullptr if no such type instruction exists.

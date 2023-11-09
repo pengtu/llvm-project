@@ -11,9 +11,6 @@
 
 // XFAIL: availability-fp_to_chars-missing
 
-// The error exception has no system error string.
-// XFAIL: LIBCXX-ANDROID-FIXME
-
 // <print>
 
 // template<class... Args>

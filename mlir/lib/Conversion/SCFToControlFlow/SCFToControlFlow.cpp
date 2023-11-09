@@ -361,7 +361,8 @@ LogicalResult ForLowering::matchAndRewrite(ForOp forOp,
   // of the loop operation.
   SmallVector<Value, 8> destOperands;
   destOperands.push_back(lowerBound);
-  llvm::append_range(destOperands, forOp.getInitArgs());
+  auto iterOperands = forOp.getIterOperands();
+  destOperands.append(iterOperands.begin(), iterOperands.end());
   rewriter.create<cf::BranchOp>(loc, conditionBlock, destOperands);
 
   // With the body block done, we can fill in the condition block.

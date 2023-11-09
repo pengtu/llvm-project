@@ -31,5 +31,5 @@ entry:
 }
 
 ; Check that a noinline function is specialized, even if it's small.
-; CHECK: @f.specialized.1
-; CHECK: @f.specialized.2
+; CHECK: @f.1
+; CHECK: @f.2

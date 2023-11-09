@@ -1201,7 +1201,7 @@ void StmtPrinter::VisitUnresolvedLookupExpr(UnresolvedLookupExpr *Node) {
 static bool isImplicitSelf(const Expr *E) {
   if (const auto *DRE = dyn_cast<DeclRefExpr>(E)) {
     if (const auto *PD = dyn_cast<ImplicitParamDecl>(DRE->getDecl())) {
-      if (PD->getParameterKind() == ImplicitParamKind::ObjCSelf &&
+      if (PD->getParameterKind() == ImplicitParamDecl::ObjCSelf &&
           DRE->getBeginLoc().isInvalid())
         return true;
     }
@@ -2298,10 +2298,9 @@ void StmtPrinter::VisitCXXNewExpr(CXXNewExpr *E) {
   if (E->isParenTypeId())
     OS << ")";
 
-  CXXNewInitializationStyle InitStyle = E->getInitializationStyle();
-  if (InitStyle != CXXNewInitializationStyle::None &&
-      InitStyle != CXXNewInitializationStyle::Implicit) {
-    bool Bare = InitStyle == CXXNewInitializationStyle::Call &&
+  CXXNewExpr::InitializationStyle InitStyle = E->getInitializationStyle();
+  if (InitStyle != CXXNewExpr::NoInit) {
+    bool Bare = InitStyle == CXXNewExpr::CallInit &&
                 !isa<ParenListExpr>(E->getInitializer());
     if (Bare)
       OS << "(";

@@ -367,12 +367,39 @@ template <> struct ScalarTraits<Target> {
   static void output(const Target &Value, void *, raw_ostream &OS) {
     OS << Value.Arch << "-";
     switch (Value.Platform) {
-#define PLATFORM(platform, id, name, build_name, target, tapi_target,          \
-                 marketing)                                                    \
-  case PLATFORM_##platform:                                                    \
-    OS << #tapi_target;                                                        \
-    break;
-#include "llvm/BinaryFormat/MachO.def"
+    default:
+      OS << "unknown";
+      break;
+    case PLATFORM_MACOS:
+      OS << "macos";
+      break;
+    case PLATFORM_IOS:
+      OS << "ios";
+      break;
+    case PLATFORM_TVOS:
+      OS << "tvos";
+      break;
+    case PLATFORM_WATCHOS:
+      OS << "watchos";
+      break;
+    case PLATFORM_BRIDGEOS:
+      OS << "bridgeos";
+      break;
+    case PLATFORM_MACCATALYST:
+      OS << "maccatalyst";
+      break;
+    case PLATFORM_IOSSIMULATOR:
+      OS << "ios-simulator";
+      break;
+    case PLATFORM_TVOSSIMULATOR:
+      OS << "tvos-simulator";
+      break;
+    case PLATFORM_WATCHOSSIMULATOR:
+      OS << "watchos-simulator";
+      break;
+    case PLATFORM_DRIVERKIT:
+      OS << "driverkit";
+      break;
     }
   }
 
@@ -593,11 +620,6 @@ template <> struct MappingTraits<const InterfaceFile *> {
             !(Flags & TBDFlags::NotApplicationExtensionSafe));
       }
 
-      // For older file formats, the segment where the symbol
-      // comes from is unknown, treat all symbols as Data
-      // in these cases.
-      const auto Flags = SymbolFlags::Data;
-
       for (const auto &Section : Exports) {
         const auto Targets =
             synthesizeTargets(Section.Architectures, Platforms);
@@ -612,34 +634,33 @@ template <> struct MappingTraits<const InterfaceFile *> {
 
         for (const auto &Symbol : Section.Symbols) {
           if (Ctx->FileKind != FileType::TBD_V3 &&
-              Symbol.value.startswith(ObjC2EHTypePrefix))
+              Symbol.value.startswith("_OBJC_EHTYPE_$_"))
             File->addSymbol(SymbolKind::ObjectiveCClassEHType,
-                            Symbol.value.drop_front(15), Targets, Flags);
+                            Symbol.value.drop_front(15), Targets);
           else
-            File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets, Flags);
+            File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets);
         }
         for (auto &Symbol : Section.Classes) {
           auto Name = Symbol.value;
           if (Ctx->FileKind != FileType::TBD_V3)
             Name = Name.drop_front();
-          File->addSymbol(SymbolKind::ObjectiveCClass, Name, Targets, Flags);
+          File->addSymbol(SymbolKind::ObjectiveCClass, Name, Targets);
         }
         for (auto &Symbol : Section.ClassEHs)
-          File->addSymbol(SymbolKind::ObjectiveCClassEHType, Symbol, Targets,
-                          Flags);
+          File->addSymbol(SymbolKind::ObjectiveCClassEHType, Symbol, Targets);
         for (auto &Symbol : Section.IVars) {
           auto Name = Symbol.value;
           if (Ctx->FileKind != FileType::TBD_V3)
             Name = Name.drop_front();
-          File->addSymbol(SymbolKind::ObjectiveCInstanceVariable, Name, Targets,
-                          Flags);
+          File->addSymbol(SymbolKind::ObjectiveCInstanceVariable, Name,
+                          Targets);
         }
         for (auto &Symbol : Section.WeakDefSymbols)
           File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets,
-                          SymbolFlags::WeakDefined | Flags);
+                          SymbolFlags::WeakDefined);
         for (auto &Symbol : Section.TLVSymbols)
           File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets,
-                          SymbolFlags::ThreadLocalValue | Flags);
+                          SymbolFlags::ThreadLocalValue);
       }
 
       for (const auto &Section : Undefineds) {
@@ -647,35 +668,34 @@ template <> struct MappingTraits<const InterfaceFile *> {
             synthesizeTargets(Section.Architectures, Platforms);
         for (auto &Symbol : Section.Symbols) {
           if (Ctx->FileKind != FileType::TBD_V3 &&
-              Symbol.value.startswith(ObjC2EHTypePrefix))
+              Symbol.value.startswith("_OBJC_EHTYPE_$_"))
             File->addSymbol(SymbolKind::ObjectiveCClassEHType,
                             Symbol.value.drop_front(15), Targets,
-                            SymbolFlags::Undefined | Flags);
+                            SymbolFlags::Undefined);
           else
             File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets,
-                            SymbolFlags::Undefined | Flags);
+                            SymbolFlags::Undefined);
         }
         for (auto &Symbol : Section.Classes) {
           auto Name = Symbol.value;
           if (Ctx->FileKind != FileType::TBD_V3)
             Name = Name.drop_front();
           File->addSymbol(SymbolKind::ObjectiveCClass, Name, Targets,
-                          SymbolFlags::Undefined | Flags);
+                          SymbolFlags::Undefined);
         }
         for (auto &Symbol : Section.ClassEHs)
           File->addSymbol(SymbolKind::ObjectiveCClassEHType, Symbol, Targets,
-                          SymbolFlags::Undefined | Flags);
+                          SymbolFlags::Undefined);
         for (auto &Symbol : Section.IVars) {
           auto Name = Symbol.value;
           if (Ctx->FileKind != FileType::TBD_V3)
             Name = Name.drop_front();
           File->addSymbol(SymbolKind::ObjectiveCInstanceVariable, Name, Targets,
-                          SymbolFlags::Undefined | Flags);
+                          SymbolFlags::Undefined);
         }
         for (auto &Symbol : Section.WeakRefSymbols)
           File->addSymbol(SymbolKind::GlobalSymbol, Symbol, Targets,
-                          SymbolFlags::Undefined | SymbolFlags::WeakReferenced |
-                              Flags);
+                          SymbolFlags::Undefined | SymbolFlags::WeakReferenced);
       }
 
       return File;
@@ -886,12 +906,7 @@ template <> struct MappingTraits<const InterfaceFile *> {
       }
 
       auto handleSymbols = [File](const SectionList &CurrentSections,
-                                  SymbolFlags InputFlag = SymbolFlags::None) {
-        // For older file formats, the segment where the symbol
-        // comes from is unknown, treat all symbols as Data
-        // in these cases.
-        const SymbolFlags Flag = InputFlag | SymbolFlags::Data;
-
+                                  SymbolFlags Flag = SymbolFlags::None) {
         for (const auto &CurrentSection : CurrentSections) {
           for (auto &sym : CurrentSection.Symbols)
             File->addSymbol(SymbolKind::GlobalSymbol, sym,
@@ -909,10 +924,9 @@ template <> struct MappingTraits<const InterfaceFile *> {
             File->addSymbol(SymbolKind::ObjectiveCInstanceVariable, sym,
                             CurrentSection.Targets, Flag);
 
-          SymbolFlags SymFlag =
-              ((Flag & SymbolFlags::Undefined) == SymbolFlags::Undefined)
-                  ? SymbolFlags::WeakReferenced
-                  : SymbolFlags::WeakDefined;
+          SymbolFlags SymFlag = (Flag == SymbolFlags::Undefined)
+                                    ? SymbolFlags::WeakReferenced
+                                    : SymbolFlags::WeakDefined;
           for (auto &sym : CurrentSection.WeakSymbols) {
             File->addSymbol(SymbolKind::GlobalSymbol, sym,
                             CurrentSection.Targets, Flag | SymFlag);
@@ -1064,7 +1078,9 @@ static void DiagHandler(const SMDiagnostic &Diag, void *Context) {
   File->ErrorMessage = ("malformed file\n" + Message).str();
 }
 
-Expected<FileType> TextAPIReader::canRead(MemoryBufferRef InputBuffer) {
+namespace {
+
+Expected<FileType> canReadFileType(MemoryBufferRef InputBuffer) {
   auto TAPIFile = InputBuffer.getBuffer().trim();
   if (TAPIFile.startswith("{") && TAPIFile.endswith("}"))
     return FileType::TBD_V5;
@@ -1087,12 +1103,13 @@ Expected<FileType> TextAPIReader::canRead(MemoryBufferRef InputBuffer) {
 
   return createStringError(std::errc::not_supported, "unsupported file type");
 }
+} // namespace
 
 Expected<std::unique_ptr<InterfaceFile>>
 TextAPIReader::get(MemoryBufferRef InputBuffer) {
   TextAPIContext Ctx;
   Ctx.Path = std::string(InputBuffer.getBufferIdentifier());
-  if (auto FTOrErr = canRead(InputBuffer))
+  if (auto FTOrErr = canReadFileType(InputBuffer))
     Ctx.FileKind = *FTOrErr;
   else
     return FTOrErr.takeError();
@@ -1128,18 +1145,14 @@ TextAPIReader::get(MemoryBufferRef InputBuffer) {
 }
 
 Error TextAPIWriter::writeToStream(raw_ostream &OS, const InterfaceFile &File,
-                                   const FileType FileKind, bool Compact) {
+                                   bool Compact) {
   TextAPIContext Ctx;
   Ctx.Path = std::string(File.getPath());
-
-  // Prefer parameter for format if passed, otherwise fallback to the File
-  // FileType.
-  Ctx.FileKind =
-      (FileKind == FileType::Invalid) ? File.getFileType() : FileKind;
+  Ctx.FileKind = File.getFileType();
 
   // Write out in JSON format.
   if (Ctx.FileKind >= FileType::TBD_V5) {
-    return serializeInterfaceFileToJSON(OS, File, Ctx.FileKind, Compact);
+    return serializeInterfaceFileToJSON(OS, File, Compact);
   }
 
   llvm::yaml::Output YAMLOut(OS, &Ctx, /*WrapColumn=*/80);
@@ -1147,7 +1160,7 @@ Error TextAPIWriter::writeToStream(raw_ostream &OS, const InterfaceFile &File,
   std::vector<const InterfaceFile *> Files;
   Files.emplace_back(&File);
 
-  for (const auto &Document : File.documents())
+  for (auto Document : File.documents())
     Files.emplace_back(Document.get());
 
   // Stream out yaml.

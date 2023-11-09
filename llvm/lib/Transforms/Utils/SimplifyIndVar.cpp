@@ -539,8 +539,7 @@ bool SimplifyIndvar::eliminateTrunc(TruncInst *TI) {
   for (auto *ICI : ICmpUsers) {
     bool IsSwapped = L->isLoopInvariant(ICI->getOperand(0));
     auto *Op1 = IsSwapped ? ICI->getOperand(0) : ICI->getOperand(1);
-    IRBuilder<> Builder(ICI);
-    Value *Ext = nullptr;
+    Instruction *Ext = nullptr;
     // For signed/unsigned predicate, replace the old comparison with comparison
     // of immediate IV against sext/zext of the invariant argument. If we can
     // use either sext or zext (i.e. we are dealing with equality predicate),
@@ -551,18 +550,18 @@ bool SimplifyIndvar::eliminateTrunc(TruncInst *TI) {
     if (IsSwapped) Pred = ICmpInst::getSwappedPredicate(Pred);
     if (CanUseZExt(ICI)) {
       assert(DoesZExtCollapse && "Unprofitable zext?");
-      Ext = Builder.CreateZExt(Op1, IVTy, "zext");
+      Ext = new ZExtInst(Op1, IVTy, "zext", ICI);
       Pred = ICmpInst::getUnsignedPredicate(Pred);
     } else {
       assert(DoesSExtCollapse && "Unprofitable sext?");
-      Ext = Builder.CreateSExt(Op1, IVTy, "sext");
+      Ext = new SExtInst(Op1, IVTy, "sext", ICI);
       assert(Pred == ICmpInst::getSignedPredicate(Pred) && "Must be signed!");
     }
     bool Changed;
     L->makeLoopInvariant(Ext, Changed);
     (void)Changed;
-    auto *NewCmp = Builder.CreateICmp(Pred, IV, Ext);
-    ICI->replaceAllUsesWith(NewCmp);
+    ICmpInst *NewICI = new ICmpInst(ICI, Pred, IV, Ext);
+    ICI->replaceAllUsesWith(NewICI);
     DeadInsts.emplace_back(ICI);
   }
 
@@ -660,12 +659,12 @@ bool SimplifyIndvar::replaceFloatIVWithIntegerIV(Instruction *UseInst) {
   Instruction *IVOperand = cast<Instruction>(UseInst->getOperand(0));
   // Get the symbolic expression for this instruction.
   const SCEV *IV = SE->getSCEV(IVOperand);
-  int MaskBits;
+  unsigned MaskBits;
   if (UseInst->getOpcode() == CastInst::SIToFP)
-    MaskBits = (int)SE->getSignedRange(IV).getMinSignedBits();
+    MaskBits = SE->getSignedRange(IV).getMinSignedBits();
   else
-    MaskBits = (int)SE->getUnsignedRange(IV).getActiveBits();
-  int DestNumSigBits = UseInst->getType()->getFPMantissaWidth();
+    MaskBits = SE->getUnsignedRange(IV).getActiveBits();
+  unsigned DestNumSigBits = UseInst->getType()->getFPMantissaWidth();
   if (MaskBits <= DestNumSigBits) {
     for (User *U : UseInst->users()) {
       // Match for fptosi/fptoui of sitofp and with same type.
@@ -1374,32 +1373,16 @@ WidenIV::getExtendedOperandRecurrence(WidenIV::NarrowIVDefUse DU) {
       DU.NarrowUse->getOperand(0) == DU.NarrowDef ? 1 : 0;
   assert(DU.NarrowUse->getOperand(1-ExtendOperIdx) == DU.NarrowDef && "bad DU");
 
+  const SCEV *ExtendOperExpr = nullptr;
   const OverflowingBinaryOperator *OBO =
     cast<OverflowingBinaryOperator>(DU.NarrowUse);
   ExtendKind ExtKind = getExtendKind(DU.NarrowDef);
-  if (!(ExtKind == ExtendKind::Sign && OBO->hasNoSignedWrap()) &&
-      !(ExtKind == ExtendKind::Zero && OBO->hasNoUnsignedWrap())) {
-    ExtKind = ExtendKind::Unknown;
-
-    // For a non-negative NarrowDef, we can choose either type of
-    // extension.  We want to use the current extend kind if legal
-    // (see above), and we only hit this code if we need to check
-    // the opposite case.
-    if (DU.NeverNegative) {
-      if (OBO->hasNoSignedWrap()) {
-        ExtKind = ExtendKind::Sign;
-      } else if (OBO->hasNoUnsignedWrap()) {
-        ExtKind = ExtendKind::Zero;
-      }
-    }
-  }
-
-  const SCEV *ExtendOperExpr =
-      SE->getSCEV(DU.NarrowUse->getOperand(ExtendOperIdx));
-  if (ExtKind == ExtendKind::Sign)
-    ExtendOperExpr = SE->getSignExtendExpr(ExtendOperExpr, WideType);
-  else if (ExtKind == ExtendKind::Zero)
-    ExtendOperExpr = SE->getZeroExtendExpr(ExtendOperExpr, WideType);
+  if (ExtKind == ExtendKind::Sign && OBO->hasNoSignedWrap())
+    ExtendOperExpr = SE->getSignExtendExpr(
+      SE->getSCEV(DU.NarrowUse->getOperand(ExtendOperIdx)), WideType);
+  else if (ExtKind == ExtendKind::Zero && OBO->hasNoUnsignedWrap())
+    ExtendOperExpr = SE->getZeroExtendExpr(
+      SE->getSCEV(DU.NarrowUse->getOperand(ExtendOperIdx)), WideType);
   else
     return {nullptr, ExtendKind::Unknown};
 
@@ -1690,8 +1673,7 @@ bool WidenIV::widenWithVariantUse(WidenIV::NarrowIVDefUse DU) {
     assert(LoopExitingBlock && L->contains(LoopExitingBlock) &&
            "Not a LCSSA Phi?");
     WidePN->addIncoming(WideBO, LoopExitingBlock);
-    Builder.SetInsertPoint(User->getParent(),
-                           User->getParent()->getFirstInsertionPt());
+    Builder.SetInsertPoint(&*User->getParent()->getFirstInsertionPt());
     auto *TruncPN = Builder.CreateTrunc(WidePN, User->getType());
     User->replaceAllUsesWith(TruncPN);
     DeadInsts.emplace_back(User);
@@ -1744,8 +1726,7 @@ Instruction *WidenIV::widenIVUse(WidenIV::NarrowIVDefUse DU, SCEVExpander &Rewri
           PHINode::Create(DU.WideDef->getType(), 1, UsePhi->getName() + ".wide",
                           UsePhi);
         WidePhi->addIncoming(DU.WideDef, UsePhi->getIncomingBlock(0));
-        BasicBlock *WidePhiBB = WidePhi->getParent();
-        IRBuilder<> Builder(WidePhiBB, WidePhiBB->getFirstInsertionPt());
+        IRBuilder<> Builder(&*WidePhi->getParent()->getFirstInsertionPt());
         Value *Trunc = Builder.CreateTrunc(WidePhi, DU.NarrowDef->getType());
         UsePhi->replaceAllUsesWith(Trunc);
         DeadInsts.emplace_back(UsePhi);

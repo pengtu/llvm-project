@@ -431,16 +431,14 @@ bool CXIndexDataConsumer::isFunctionLocalDecl(const Decl *D) {
 
   if (const NamedDecl *ND = dyn_cast<NamedDecl>(D)) {
     switch (ND->getFormalLinkage()) {
-    case Linkage::Invalid:
-      llvm_unreachable("Linkage hasn't been computed!");
-    case Linkage::None:
-    case Linkage::Internal:
+    case NoLinkage:
+    case InternalLinkage:
       return true;
-    case Linkage::VisibleNone:
-    case Linkage::UniqueExternal:
+    case VisibleNoLinkage:
+    case UniqueExternalLinkage:
       llvm_unreachable("Not a sema linkage");
-    case Linkage::Module:
-    case Linkage::External:
+    case ModuleLinkage:
+    case ExternalLinkage:
       return false;
     }
   }

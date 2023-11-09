@@ -21,7 +21,7 @@
 #include "clang/Analysis/FlowSensitive/DataflowEnvironment.h"
 #include "clang/Analysis/FlowSensitive/NoopLattice.h"
 #include "clang/Basic/SourceLocation.h"
-#include "llvm/ADT/SmallVector.h"
+#include <vector>
 
 namespace clang {
 namespace dataflow {
@@ -74,14 +74,14 @@ public:
   UncheckedOptionalAccessDiagnoser(
       UncheckedOptionalAccessModelOptions Options = {});
 
-  llvm::SmallVector<SourceLocation>
+  std::vector<SourceLocation>
   operator()(const CFGElement &Elt, ASTContext &Ctx,
              const TransferStateForDiagnostics<NoopLattice> &State) {
     return DiagnoseMatchSwitch(Elt, Ctx, State.Env);
   }
 
 private:
-  CFGMatchSwitch<const Environment, llvm::SmallVector<SourceLocation>>
+  CFGMatchSwitch<const Environment, std::vector<SourceLocation>>
       DiagnoseMatchSwitch;
 };
 

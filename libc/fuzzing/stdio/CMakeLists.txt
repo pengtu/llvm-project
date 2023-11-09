@@ -3,7 +3,9 @@ add_libc_fuzzer(
   SRCS
     printf_parser_fuzz.cpp
   DEPENDS
-    libc.src.stdio.printf_core.parser
+    libc.src.stdio.printf_core.mock_parser
+  COMPILE_OPTIONS
+    -DLIBC_COPT_MOCK_ARG_LIST
 )
 
 add_libc_fuzzer(

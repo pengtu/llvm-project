@@ -117,15 +117,13 @@ static bool RequirementContainsError(concepts::Requirement *R) {
 }
 
 RequiresExpr::RequiresExpr(ASTContext &C, SourceLocation RequiresKWLoc,
-                           RequiresExprBodyDecl *Body, SourceLocation LParenLoc,
+                           RequiresExprBodyDecl *Body,
                            ArrayRef<ParmVarDecl *> LocalParameters,
-                           SourceLocation RParenLoc,
                            ArrayRef<concepts::Requirement *> Requirements,
                            SourceLocation RBraceLoc)
     : Expr(RequiresExprClass, C.BoolTy, VK_PRValue, OK_Ordinary),
       NumLocalParameters(LocalParameters.size()),
-      NumRequirements(Requirements.size()), Body(Body), LParenLoc(LParenLoc),
-      RParenLoc(RParenLoc), RBraceLoc(RBraceLoc) {
+      NumRequirements(Requirements.size()), Body(Body), RBraceLoc(RBraceLoc) {
   RequiresExprBits.IsSatisfied = false;
   RequiresExprBits.RequiresKWLoc = RequiresKWLoc;
   bool Dependent = false;
@@ -170,18 +168,18 @@ RequiresExpr::RequiresExpr(ASTContext &C, EmptyShell Empty,
   : Expr(RequiresExprClass, Empty), NumLocalParameters(NumLocalParameters),
     NumRequirements(NumRequirements) { }
 
-RequiresExpr *RequiresExpr::Create(
-    ASTContext &C, SourceLocation RequiresKWLoc, RequiresExprBodyDecl *Body,
-    SourceLocation LParenLoc, ArrayRef<ParmVarDecl *> LocalParameters,
-    SourceLocation RParenLoc, ArrayRef<concepts::Requirement *> Requirements,
-    SourceLocation RBraceLoc) {
+RequiresExpr *
+RequiresExpr::Create(ASTContext &C, SourceLocation RequiresKWLoc,
+                     RequiresExprBodyDecl *Body,
+                     ArrayRef<ParmVarDecl *> LocalParameters,
+                     ArrayRef<concepts::Requirement *> Requirements,
+                     SourceLocation RBraceLoc) {
   void *Mem =
       C.Allocate(totalSizeToAlloc<ParmVarDecl *, concepts::Requirement *>(
                      LocalParameters.size(), Requirements.size()),
                  alignof(RequiresExpr));
-  return new (Mem)
-      RequiresExpr(C, RequiresKWLoc, Body, LParenLoc, LocalParameters,
-                   RParenLoc, Requirements, RBraceLoc);
+  return new (Mem) RequiresExpr(C, RequiresKWLoc, Body, LocalParameters,
+                                Requirements, RBraceLoc);
 }
 
 RequiresExpr *

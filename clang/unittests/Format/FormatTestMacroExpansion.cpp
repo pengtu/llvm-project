@@ -47,19 +47,20 @@ TEST_F(FormatTestMacroExpansion, UnexpandConfiguredMacros) {
     { ID(a *b); });
 )",
                Style);
-  verifyIncompleteFormat("ID3({, ID(a *b),\n"
-                         "  ;\n"
-                         "  });",
+  verifyIncompleteFormat(R"(ID3({, ID(a *b),
+  ;
+  });
+)",
                          Style);
 
   verifyFormat("ID(CALL(CALL(return a * b;)));", Style);
 
   verifyFormat("ASSIGN_OR_RETURN(MySomewhatLongType *variable,\n"
-               "                 MySomewhatLongFunction(SomethingElse()));",
+               "                 MySomewhatLongFunction(SomethingElse()));\n",
                Style);
   verifyFormat("ASSIGN_OR_RETURN(MySomewhatLongType *variable,\n"
                "                 MySomewhatLongFunction(SomethingElse()), "
-               "ReturnMe());",
+               "ReturnMe());\n",
                Style);
 
   verifyFormat(R"(

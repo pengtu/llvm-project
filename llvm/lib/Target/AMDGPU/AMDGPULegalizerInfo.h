@@ -68,10 +68,6 @@ public:
                                const GlobalValue *GV, int64_t Offset,
                                unsigned GAFlags = SIInstrInfo::MO_NONE) const;
 
-  void buildAbsGlobalAddress(Register DstReg, LLT PtrTy, MachineIRBuilder &B,
-                             const GlobalValue *GV,
-                             MachineRegisterInfo &MRI) const;
-
   bool legalizeGlobalValue(MachineInstr &MI, MachineRegisterInfo &MRI,
                            MachineIRBuilder &B) const;
   bool legalizeLoad(LegalizerHelper &Helper, MachineInstr &MI) const;
@@ -161,12 +157,6 @@ public:
   bool legalizeFDIVFastIntrin(MachineInstr &MI, MachineRegisterInfo &MRI,
                               MachineIRBuilder &B) const;
 
-  bool legalizeFSQRTF16(MachineInstr &MI, MachineRegisterInfo &MRI,
-                        MachineIRBuilder &B) const;
-  bool legalizeFSQRTF32(MachineInstr &MI, MachineRegisterInfo &MRI,
-                        MachineIRBuilder &B) const;
-  bool legalizeFSQRTF64(MachineInstr &MI, MachineRegisterInfo &MRI,
-                        MachineIRBuilder &B) const;
   bool legalizeFSQRT(MachineInstr &MI, MachineRegisterInfo &MRI,
                      MachineIRBuilder &B) const;
 

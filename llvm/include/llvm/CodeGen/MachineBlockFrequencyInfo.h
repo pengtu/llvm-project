@@ -65,16 +65,14 @@ public:
 
   /// Compute the frequency of the block, relative to the entry block.
   /// This API assumes getEntryFreq() is non-zero.
-  double getBlockFreqRelativeToEntryBlock(const MachineBasicBlock *MBB) const {
-    assert(getEntryFreq() != BlockFrequency(0) &&
-           "getEntryFreq() should not return 0 here!");
-    return static_cast<double>(getBlockFreq(MBB).getFrequency()) /
-           static_cast<double>(getEntryFreq().getFrequency());
+  float getBlockFreqRelativeToEntryBlock(const MachineBasicBlock *MBB) const {
+    assert(getEntryFreq() != 0 && "getEntryFreq() should not return 0 here!");
+    return getBlockFreq(MBB).getFrequency() * (1.0f / getEntryFreq());
   }
 
   std::optional<uint64_t>
   getBlockProfileCount(const MachineBasicBlock *MBB) const;
-  std::optional<uint64_t> getProfileCountFromFreq(BlockFrequency Freq) const;
+  std::optional<uint64_t> getProfileCountFromFreq(uint64_t Freq) const;
 
   bool isIrrLoopHeader(const MachineBasicBlock *MBB) const;
 
@@ -91,21 +89,19 @@ public:
   /// rendered using dot.
   void view(const Twine &Name, bool isSimple = true) const;
 
+  // Print the block frequency Freq to OS using the current functions entry
+  // frequency to convert freq into a relative decimal form.
+  raw_ostream &printBlockFreq(raw_ostream &OS, const BlockFrequency Freq) const;
+
+  // Convenience method that attempts to look up the frequency associated with
+  // BB and print it to OS.
+  raw_ostream &printBlockFreq(raw_ostream &OS,
+                              const MachineBasicBlock *MBB) const;
+
   /// Divide a block's BlockFrequency::getFrequency() value by this value to
   /// obtain the entry block - relative frequency of said block.
-  BlockFrequency getEntryFreq() const;
+  uint64_t getEntryFreq() const;
 };
-
-/// Print the block frequency @p Freq relative to the current functions entry
-/// frequency. Returns a Printable object that can be piped via `<<` to a
-/// `raw_ostream`.
-Printable printBlockFreq(const MachineBlockFrequencyInfo &MBFI,
-                         BlockFrequency Freq);
-
-/// Convenience function equivalent to calling
-/// `printBlockFreq(MBFI, MBFI.getBlockFreq(&MBB))`.
-Printable printBlockFreq(const MachineBlockFrequencyInfo &MBFI,
-                         const MachineBasicBlock &MBB);
 
 } // end namespace llvm
 

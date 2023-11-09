@@ -61,7 +61,8 @@ end subroutine
 subroutine call_character_scalar()
   ! CHECK: %[[addr:.*]] = fir.alloca !fir.char<1,10>
   character(10) :: x
-  ! CHECK: %[[x:.*]] = fir.emboxchar %[[addr]], {{.*}}
+  ! CHECK: %[[addrCast:.*]] = fir.convert %[[addr]]
+  ! CHECK: %[[x:.*]] = fir.emboxchar %[[addrCast]], {{.*}}
   ! CHECK: fir.call @_QMoptPcharacter_scalar(%[[x]]) {{.*}}: (!fir.boxchar<1>) -> ()
   call character_scalar(x)
   ! CHECK: %[[absent:.*]] = fir.absent !fir.boxchar<1>

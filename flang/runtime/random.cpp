@@ -20,10 +20,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
 #include <limits>
 #include <memory>
 #include <random>
-#include <time.h>
 
 namespace Fortran::runtime {
 
@@ -100,13 +100,7 @@ void RTNAME(RandomInit)(bool repeatable, bool /*image_distinct*/) {
     if (repeatable) {
       generator.seed(0);
     } else {
-#ifdef CLOCK_REALTIME
-      timespec ts;
-      clock_gettime(CLOCK_REALTIME, &ts);
-      generator.seed(ts.tv_sec & ts.tv_nsec);
-#else
-      generator.seed(time(nullptr));
-#endif
+      generator.seed(std::time(nullptr));
     }
   }
 }

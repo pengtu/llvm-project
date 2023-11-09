@@ -42,32 +42,39 @@ public:
   FailureOr<DimLvlMap> parseDimLvlMap();
 
 private:
-  /// Client code should prefer using `parseVarUsage`
-  /// and `parseVarBinding` rather than calling this method directly.
+  /// The core code for parsing `Var`.  This method abstracts out a lot
+  /// of complex details to avoid code duplication; however, client code
+  /// should prefer using `parseVarUsage` and `parseVarBinding` rather than
+  /// calling this method directly.
   OptionalParseResult parseVar(VarKind vk, bool isOptional,
                                Policy creationPolicy, VarInfo::ID &id,
                                bool &didCreate);
 
-  /// Parses a variable occurence which is a *use* of that variable.
-  /// When a valid variable name is currently unused, if
-  /// `requireKnown=true`, an error is raised; if `requireKnown=false`,
+  /// Parse a variable occurence which is a *use* of that variable.
+  /// The `requireKnown` parameter specifies how to handle the case of
+  /// encountering a valid variable name which is currently unused: when
+  /// `requireKnown=true`, an error is raised; when `requireKnown=false`,
   /// a new unbound variable will be created.
+  ///
+  /// NOTE: Just because a variable is *known* (i.e., the name has been
+  /// associated with an `VarInfo::ID`), does not mean that the variable
+  /// is actually *in scope*.
   FailureOr<VarInfo::ID> parseVarUsage(VarKind vk, bool requireKnown);
 
-  /// Parses a variable occurence which is a *binding* of that variable.
+  /// Parse a variable occurence which is a *binding* of that variable.
   /// The `requireKnown` parameter is for handling the binding of
   /// forward-declared variables.
   FailureOr<VarInfo::ID> parseVarBinding(VarKind vk, bool requireKnown = false);
 
-  /// Parses an optional variable binding. When the next token is
+  /// Parse an optional variable binding.  When the next token is
   /// not a valid variable name, this will bind a new unnamed variable.
   /// The returned `bool` indicates whether a variable name was parsed.
   FailureOr<std::pair<Var, bool>>
   parseOptionalVarBinding(VarKind vk, bool requireKnown = false);
 
   /// Binds the given variable: both updating the `VarEnv` itself, and
-  /// the `{dims,lvls}AndSymbols` lists (which will be passed
-  /// to `AsmParser::parseAffineExpr`). This method is already called by the
+  /// also updating the `{dims,lvls}AndSymbols` lists (which will be passed
+  /// to `AsmParser::parseAffineExpr`).  This method is already called by the
   /// `parseVarBinding`/`parseOptionalVarBinding` methods, therefore should
   /// not need to be called elsewhere.
   Var bindVar(llvm::SMLoc loc, VarInfo::ID id);

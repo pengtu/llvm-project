@@ -1,7 +1,5 @@
 // REQUIRES: riscv-registered-target
-// RUN: %clang_cc1 -triple riscv64 %s -target-feature +v -fsyntax-only -verify
-
-#include <riscv_vector.h>
+// RUN: %clang_cc1 -triple riscv64 %s -fsyntax-only -verify
 
 void test_zvk_features() {
   // zvbb

@@ -6,13 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_CPP_CSTDDEF_H
-#define LLVM_LIBC_SRC___SUPPORT_CPP_CSTDDEF_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_CPP_BYTE_H
+#define LLVM_LIBC_SRC_SUPPORT_CPP_BYTE_H
 
 #include "src/__support/macros/attributes.h"
 #include "type_traits.h" // For enable_if_t, is_integral_v.
 
-namespace LIBC_NAMESPACE::cpp {
+namespace __llvm_libc::cpp {
 
 enum class byte : unsigned char {};
 
@@ -66,6 +66,6 @@ to_integer(byte b) noexcept {
   return static_cast<IntegerType>(b);
 }
 
-} // namespace LIBC_NAMESPACE::cpp
+} // namespace __llvm_libc::cpp
 
-#endif // LLVM_LIBC_SRC___SUPPORT_CPP_CSTDDEF_H
+#endif // LLVM_LIBC_SRC_SUPPORT_CPP_BYTE_H

@@ -73,8 +73,7 @@ class ProcessAttachTestCase(TestBase):
         popen = self.spawnSubprocess(exe)
 
         os.chdir(newdir)
-        sourcedir = self.getSourceDir()
-        self.addTearDownHook(lambda: os.chdir(sourcedir))
+        self.addTearDownHook(lambda: os.chdir(testdir))
         self.runCmd("process attach -p " + str(popen.pid))
 
         target = self.dbg.GetSelectedTarget()
@@ -128,4 +127,3 @@ class ProcessAttachTestCase(TestBase):
 
         # Call super's tearDown().
         TestBase.tearDown(self)
-

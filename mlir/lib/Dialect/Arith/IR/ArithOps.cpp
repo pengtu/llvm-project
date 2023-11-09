@@ -39,26 +39,26 @@ using namespace mlir::arith;
 static IntegerAttr
 applyToIntegerAttrs(PatternRewriter &builder, Value res, Attribute lhs,
                     Attribute rhs,
-                    function_ref<APInt(const APInt &, const APInt &)> binFn) {
-  APInt lhsVal = llvm::cast<IntegerAttr>(lhs).getValue();
-  APInt rhsVal = llvm::cast<IntegerAttr>(rhs).getValue();
-  APInt value = binFn(lhsVal, rhsVal);
-  return IntegerAttr::get(res.getType(), value);
+                    function_ref<int64_t(int64_t, int64_t)> binFn) {
+  return builder.getIntegerAttr(res.getType(),
+                                binFn(llvm::cast<IntegerAttr>(lhs).getInt(),
+                                      llvm::cast<IntegerAttr>(rhs).getInt()));
 }
 
 static IntegerAttr addIntegerAttrs(PatternRewriter &builder, Value res,
                                    Attribute lhs, Attribute rhs) {
-  return applyToIntegerAttrs(builder, res, lhs, rhs, std::plus<APInt>());
+  return applyToIntegerAttrs(builder, res, lhs, rhs, std::plus<int64_t>());
 }
 
 static IntegerAttr subIntegerAttrs(PatternRewriter &builder, Value res,
                                    Attribute lhs, Attribute rhs) {
-  return applyToIntegerAttrs(builder, res, lhs, rhs, std::minus<APInt>());
+  return applyToIntegerAttrs(builder, res, lhs, rhs, std::minus<int64_t>());
 }
 
 static IntegerAttr mulIntegerAttrs(PatternRewriter &builder, Value res,
                                    Attribute lhs, Attribute rhs) {
-  return applyToIntegerAttrs(builder, res, lhs, rhs, std::multiplies<APInt>());
+  return applyToIntegerAttrs(builder, res, lhs, rhs,
+                             std::multiplies<int64_t>());
 }
 
 /// Invert an integer comparison predicate.
@@ -111,14 +111,6 @@ static FailureOr<APInt> getIntOrSplatIntValue(Attribute attr) {
     return value;
 
   return failure();
-}
-
-static Attribute getBoolAttribute(Type type, bool value) {
-  auto boolAttr = BoolAttr::get(type.getContext(), value);
-  ShapedType shapedType = llvm::dyn_cast_or_null<ShapedType>(type);
-  if (!shapedType)
-    return boolAttr;
-  return DenseElementsAttr::get(shapedType, boolAttr);
 }
 
 //===----------------------------------------------------------------------===//
@@ -931,15 +923,15 @@ OpFoldResult arith::SubFOp::fold(FoldAdaptor adaptor) {
 }
 
 //===----------------------------------------------------------------------===//
-// MaximumFOp
+// MaxFOp
 //===----------------------------------------------------------------------===//
 
-OpFoldResult arith::MaximumFOp::fold(FoldAdaptor adaptor) {
-  // maximumf(x,x) -> x
+OpFoldResult arith::MaxFOp::fold(FoldAdaptor adaptor) {
+  // maxf(x,x) -> x
   if (getLhs() == getRhs())
     return getRhs();
 
-  // maximumf(x, -inf) -> x
+  // maxf(x, -inf) -> x
   if (matchPattern(adaptor.getRhs(), m_NegInfFloat()))
     return getLhs();
 
@@ -947,25 +939,6 @@ OpFoldResult arith::MaximumFOp::fold(FoldAdaptor adaptor) {
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return llvm::maximum(a, b); });
 }
-
-//===----------------------------------------------------------------------===//
-// MaxNumFOp
-//===----------------------------------------------------------------------===//
-
-OpFoldResult arith::MaxNumFOp::fold(FoldAdaptor adaptor) {
-  // maxnumf(x,x) -> x
-  if (getLhs() == getRhs())
-    return getRhs();
-
-  // maxnumf(x, -inf) -> x
-  if (matchPattern(adaptor.getRhs(), m_NegInfFloat()))
-    return getLhs();
-
-  return constFoldBinaryOp<FloatAttr>(
-      adaptor.getOperands(),
-      [](const APFloat &a, const APFloat &b) { return llvm::maximum(a, b); });
-}
-
 
 //===----------------------------------------------------------------------===//
 // MaxSIOp
@@ -1018,39 +991,21 @@ OpFoldResult MaxUIOp::fold(FoldAdaptor adaptor) {
 }
 
 //===----------------------------------------------------------------------===//
-// MinimumFOp
+// MinFOp
 //===----------------------------------------------------------------------===//
 
-OpFoldResult arith::MinimumFOp::fold(FoldAdaptor adaptor) {
-  // minimumf(x,x) -> x
+OpFoldResult arith::MinFOp::fold(FoldAdaptor adaptor) {
+  // minf(x,x) -> x
   if (getLhs() == getRhs())
     return getRhs();
 
-  // minimumf(x, +inf) -> x
+  // minf(x, +inf) -> x
   if (matchPattern(adaptor.getRhs(), m_PosInfFloat()))
     return getLhs();
 
   return constFoldBinaryOp<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return llvm::minimum(a, b); });
-}
-
-//===----------------------------------------------------------------------===//
-// MinNumFOp
-//===----------------------------------------------------------------------===//
-
-OpFoldResult arith::MinNumFOp::fold(FoldAdaptor adaptor) {
-  // minnumf(x,x) -> x
-  if (getLhs() == getRhs())
-    return getRhs();
-
-  // minnumf(x, +inf) -> x
-  if (matchPattern(adaptor.getRhs(), m_PosInfFloat()))
-    return getLhs();
-
-  return constFoldBinaryOp<FloatAttr>(
-      adaptor.getOperands(),
-      [](const APFloat &a, const APFloat &b) { return llvm::minnum(a, b); });
 }
 
 //===----------------------------------------------------------------------===//
@@ -1704,6 +1659,14 @@ static bool applyCmpPredicateToEqualOperands(arith::CmpIPredicate predicate) {
   llvm_unreachable("unknown cmpi predicate kind");
 }
 
+static Attribute getBoolAttribute(Type type, MLIRContext *ctx, bool value) {
+  auto boolAttr = BoolAttr::get(ctx, value);
+  ShapedType shapedType = llvm::dyn_cast_or_null<ShapedType>(type);
+  if (!shapedType)
+    return boolAttr;
+  return DenseElementsAttr::get(shapedType, boolAttr);
+}
+
 static std::optional<int64_t> getIntegerWidth(Type t) {
   if (auto intType = llvm::dyn_cast<IntegerType>(t)) {
     return intType.getWidth();
@@ -1718,7 +1681,7 @@ OpFoldResult arith::CmpIOp::fold(FoldAdaptor adaptor) {
   // cmpi(pred, x, x)
   if (getLhs() == getRhs()) {
     auto val = applyCmpPredicateToEqualOperands(getPredicate());
-    return getBoolAttribute(getType(), val);
+    return getBoolAttribute(getType(), getContext(), val);
   }
 
   if (matchPattern(adaptor.getRhs(), m_Zero())) {
@@ -2212,9 +2175,7 @@ struct SelectToExtUI : public OpRewritePattern<arith::SelectOp> {
 
 void arith::SelectOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                   MLIRContext *context) {
-  results.add<RedundantSelectFalse, RedundantSelectTrue, SelectI1Simplify,
-              SelectAndCond, SelectAndNotCond, SelectOrCond, SelectOrNotCond,
-              SelectNotCond, SelectToExtUI>(context);
+  results.add<SelectI1Simplify, SelectToExtUI>(context);
 }
 
 OpFoldResult arith::SelectOp::fold(FoldAdaptor adaptor) {
@@ -2408,11 +2369,11 @@ TypedAttr mlir::arith::getIdentityValueAttr(AtomicRMWKind kind, Type resultType,
                                             OpBuilder &builder, Location loc,
                                             bool useOnlyFiniteValue) {
   switch (kind) {
-  case AtomicRMWKind::maximumf: {
+  case AtomicRMWKind::maxf: {
     const llvm::fltSemantics &semantic =
         llvm::cast<FloatType>(resultType).getFloatSemantics();
     APFloat identity = useOnlyFiniteValue
-                           ? APFloat::getLargest(semantic, /*Negative=*/true)
+                           ? APFloat::getSmallest(semantic, /*Negative=*/true)
                            : APFloat::getInf(semantic, /*Negative=*/true);
     return builder.getFloatAttr(resultType, identity);
   }
@@ -2429,7 +2390,7 @@ TypedAttr mlir::arith::getIdentityValueAttr(AtomicRMWKind kind, Type resultType,
     return builder.getIntegerAttr(
         resultType, APInt::getSignedMinValue(
                         llvm::cast<IntegerType>(resultType).getWidth()));
-  case AtomicRMWKind::minimumf: {
+  case AtomicRMWKind::minf: {
     const llvm::fltSemantics &semantic =
         llvm::cast<FloatType>(resultType).getFloatSemantics();
     APFloat identity = useOnlyFiniteValue
@@ -2465,8 +2426,8 @@ std::optional<TypedAttr> mlir::arith::getNeutralElement(Operation *op) {
           // Floating-point operations.
           .Case([](arith::AddFOp op) { return AtomicRMWKind::addf; })
           .Case([](arith::MulFOp op) { return AtomicRMWKind::mulf; })
-          .Case([](arith::MaximumFOp op) { return AtomicRMWKind::maximumf; })
-          .Case([](arith::MinimumFOp op) { return AtomicRMWKind::minimumf; })
+          .Case([](arith::MaxFOp op) { return AtomicRMWKind::maxf; })
+          .Case([](arith::MinFOp op) { return AtomicRMWKind::minf; })
           // Integer operations.
           .Case([](arith::AddIOp op) { return AtomicRMWKind::addi; })
           .Case([](arith::OrIOp op) { return AtomicRMWKind::ori; })
@@ -2521,14 +2482,10 @@ Value mlir::arith::getReductionOp(AtomicRMWKind op, OpBuilder &builder,
     return builder.create<arith::MulFOp>(loc, lhs, rhs);
   case AtomicRMWKind::muli:
     return builder.create<arith::MulIOp>(loc, lhs, rhs);
-  case AtomicRMWKind::maximumf:
-    return builder.create<arith::MaximumFOp>(loc, lhs, rhs);
-  case AtomicRMWKind::minimumf:
-    return builder.create<arith::MinimumFOp>(loc, lhs, rhs);
-   case AtomicRMWKind::maxnumf:
-    return builder.create<arith::MaxNumFOp>(loc, lhs, rhs);
-  case AtomicRMWKind::minnumf:
-    return builder.create<arith::MinNumFOp>(loc, lhs, rhs);
+  case AtomicRMWKind::maxf:
+    return builder.create<arith::MaxFOp>(loc, lhs, rhs);
+  case AtomicRMWKind::minf:
+    return builder.create<arith::MinFOp>(loc, lhs, rhs);
   case AtomicRMWKind::maxs:
     return builder.create<arith::MaxSIOp>(loc, lhs, rhs);
   case AtomicRMWKind::mins:

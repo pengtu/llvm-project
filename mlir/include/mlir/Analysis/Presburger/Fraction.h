@@ -30,17 +30,15 @@ struct Fraction {
   Fraction() = default;
 
   /// Construct a Fraction from a numerator and denominator.
-  Fraction(const MPInt &oNum, const MPInt &oDen = MPInt(1))
-      : num(oNum), den(oDen) {
+  Fraction(const MPInt &oNum, const MPInt &oDen = MPInt(1)) : num(oNum), den(oDen) {
     if (den < 0) {
       num = -num;
       den = -den;
     }
   }
   /// Overloads for passing literals.
-  Fraction(const MPInt &num, int64_t den) : Fraction(num, MPInt(den)) {}
-  Fraction(int64_t num, const MPInt &den = MPInt(1))
-      : Fraction(MPInt(num), den) {}
+  Fraction(const MPInt &num, int64_t den = 1) : Fraction(num, MPInt(den)) {}
+  Fraction(int64_t num, const MPInt &den = MPInt(1)) : Fraction(MPInt(num), den) {}
   Fraction(int64_t num, int64_t den) : Fraction(MPInt(num), MPInt(den)) {}
 
   // Return the value of the fraction as an integer. This should only be called
@@ -104,7 +102,7 @@ inline bool operator>=(const Fraction &x, const Fraction &y) {
 inline Fraction reduce(const Fraction &f) {
   if (f == Fraction(0))
     return Fraction(0, 1);
-  MPInt g = gcd(abs(f.num), abs(f.den));
+  MPInt g = gcd(f.num, f.den);
   return Fraction(f.num / g, f.den / g);
 }
 
@@ -124,22 +122,22 @@ inline Fraction operator-(const Fraction &x, const Fraction &y) {
   return reduce(Fraction(x.num * y.den - x.den * y.num, x.den * y.den));
 }
 
-inline Fraction &operator+=(Fraction &x, const Fraction &y) {
+inline Fraction& operator+=(Fraction &x, const Fraction &y) {
   x = x + y;
   return x;
 }
 
-inline Fraction &operator-=(Fraction &x, const Fraction &y) {
+inline Fraction& operator-=(Fraction &x, const Fraction &y) {
   x = x - y;
   return x;
 }
 
-inline Fraction &operator/=(Fraction &x, const Fraction &y) {
+inline Fraction& operator/=(Fraction &x, const Fraction &y) {
   x = x / y;
   return x;
 }
 
-inline Fraction &operator*=(Fraction &x, const Fraction &y) {
+inline Fraction& operator*=(Fraction &x, const Fraction &y) {
   x = x * y;
   return x;
 }

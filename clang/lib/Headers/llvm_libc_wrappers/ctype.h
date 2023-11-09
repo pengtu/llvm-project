@@ -26,7 +26,6 @@
 
 #pragma push_macro("isalnum")
 #pragma push_macro("isalpha")
-#pragma push_macro("isascii")
 #pragma push_macro("isblank")
 #pragma push_macro("iscntrl")
 #pragma push_macro("isdigit")
@@ -37,13 +36,11 @@
 #pragma push_macro("isspace")
 #pragma push_macro("isupper")
 #pragma push_macro("isxdigit")
-#pragma push_macro("toascii")
 #pragma push_macro("tolower")
 #pragma push_macro("toupper")
 
 #undef isalnum
 #undef isalpha
-#undef isascii
 #undef iscntrl
 #undef isdigit
 #undef islower
@@ -54,7 +51,6 @@
 #undef isupper
 #undef isblank
 #undef isxdigit
-#undef toascii
 #undef tolower
 #undef toupper
 
@@ -68,7 +64,6 @@
 #if !defined(__NVPTX__) && !defined(__AMDGPU__)
 #pragma pop_macro("isalnum")
 #pragma pop_macro("isalpha")
-#pragma pop_macro("isascii")
 #pragma pop_macro("isblank")
 #pragma pop_macro("iscntrl")
 #pragma pop_macro("isdigit")
@@ -79,7 +74,6 @@
 #pragma pop_macro("isspace")
 #pragma pop_macro("isupper")
 #pragma pop_macro("isxdigit")
-#pragma pop_macro("toascii")
 #pragma pop_macro("tolower")
 #pragma pop_macro("toupper")
 #endif

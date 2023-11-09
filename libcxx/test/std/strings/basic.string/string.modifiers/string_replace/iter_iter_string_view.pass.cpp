@@ -265,25 +265,37 @@ TEST_CONSTEXPR_CXX20 bool test2() {
   return true;
 }
 
-template <class CharT, template <class> class Alloc>
 TEST_CONSTEXPR_CXX20 void test() {
-  using S  = std::basic_string<CharT, std::char_traits<CharT>, Alloc<CharT> >;
-  using SV = std::basic_string_view<CharT, std::char_traits<CharT> >;
-  test0<S, SV>();
-  test1<S, SV>();
-  test2<S, SV>();
+  {
+    typedef std::string S;
+    typedef std::string_view SV;
+    test0<S, SV>();
+    test1<S, SV>();
+    test2<S, SV>();
 #if TEST_STD_VER > 17
-  static_assert(test0<S, SV>());
-  static_assert(test1<S, SV>());
-  static_assert(test2<S, SV>());
+    static_assert(test0<S, SV>());
+    static_assert(test1<S, SV>());
+    static_assert(test2<S, SV>());
+#endif
+  }
+#if TEST_STD_VER >= 11
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    typedef std::string_view SV;
+    test0<S, SV>();
+    test1<S, SV>();
+    test2<S, SV>();
+#  if TEST_STD_VER > 17
+    static_assert(test0<S, SV>());
+    static_assert(test1<S, SV>());
+    static_assert(test2<S, SV>());
+#  endif
+  }
 #endif
 }
 
 int main(int, char**) {
-  test<char, std::allocator>();
-#if TEST_STD_VER >= 11
-  test<char, min_allocator>();
-#endif
+  test();
 
   return 0;
 }

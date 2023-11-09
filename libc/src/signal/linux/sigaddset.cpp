@@ -13,7 +13,7 @@
 
 #include <signal.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, sigaddset, (sigset_t * set, int signum)) {
   if (set != nullptr && add_signal(*set, signum))
@@ -22,4 +22,4 @@ LLVM_LIBC_FUNCTION(int, sigaddset, (sigset_t * set, int signum)) {
   return -1;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

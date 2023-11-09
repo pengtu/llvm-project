@@ -44,7 +44,7 @@ Module::Module(StringRef Name, SourceLocation DefinitionLoc, Module *Parent,
       InferSubmodules(false), InferExplicitSubmodules(false),
       InferExportWildcard(false), ConfigMacrosExhaustive(false),
       NoUndeclaredIncludes(false), ModuleMapIsPrivate(false),
-      NamedModuleHasInit(true), NameVisibility(Hidden) {
+      NameVisibility(Hidden) {
   if (Parent) {
     IsAvailable = Parent->isAvailable();
     IsUnimportable = Parent->isUnimportable();
@@ -161,10 +161,9 @@ bool Module::isForBuilding(const LangOptions &LangOpts) const {
   StringRef TopLevelName = getTopLevelModuleName();
   StringRef CurrentModule = LangOpts.CurrentModule;
 
-  // When building the implementation of framework Foo, we want to make sure
-  // that Foo *and* Foo_Private are textually included and no modules are built
-  // for either.
-  if (!LangOpts.isCompilingModule() && getTopLevelModule()->IsFramework &&
+  // When building framework Foo, we want to make sure that Foo *and*
+  // Foo_Private are textually included and no modules are built for both.
+  if (getTopLevelModule()->IsFramework &&
       CurrentModule == LangOpts.ModuleName &&
       !CurrentModule.endswith("_Private") && TopLevelName.endswith("_Private"))
     TopLevelName = TopLevelName.drop_back(8);
@@ -266,10 +265,10 @@ bool Module::fullModuleNameIs(ArrayRef<StringRef> nameParts) const {
 }
 
 OptionalDirectoryEntryRef Module::getEffectiveUmbrellaDir() const {
-  if (const auto *Hdr = std::get_if<FileEntryRef>(&Umbrella))
-    return Hdr->getDir();
-  if (const auto *Dir = std::get_if<DirectoryEntryRef>(&Umbrella))
-    return *Dir;
+  if (Umbrella && Umbrella.is<FileEntryRef>())
+    return Umbrella.get<FileEntryRef>().getDir();
+  if (Umbrella && Umbrella.is<DirectoryEntryRef>())
+    return Umbrella.get<DirectoryEntryRef>();
   return std::nullopt;
 }
 
@@ -300,10 +299,8 @@ bool Module::directlyUses(const Module *Requested) {
     if (Requested->isSubModuleOf(Use))
       return true;
 
-  // Anyone is allowed to use our builtin stdarg.h and stddef.h and their
-  // accompanying modules.
-  if (Requested->getTopLevelModuleName() == "_Builtin_stdarg" ||
-      Requested->getTopLevelModuleName() == "_Builtin_stddef")
+  // Anyone is allowed to use our builtin stddef.h and its accompanying module.
+  if (!Requested->Parent && Requested->Name == "_Builtin_stddef_max_align_t")
     return true;
 
   if (NoUndeclaredIncludes)
@@ -371,28 +368,6 @@ Module *Module::findOrInferSubmodule(StringRef Name) {
   if (Result->InferExportWildcard)
     Result->Exports.push_back(Module::ExportDecl(nullptr, true));
   return Result;
-}
-
-Module *Module::getGlobalModuleFragment() const {
-  assert(isNamedModuleUnit() && "We should only query the global module "
-                                "fragment from the C++ 20 Named modules");
-
-  for (auto *SubModule : SubModules)
-    if (SubModule->isExplicitGlobalModule())
-      return SubModule;
-
-  return nullptr;
-}
-
-Module *Module::getPrivateModuleFragment() const {
-  assert(isNamedModuleUnit() && "We should only query the private module "
-                                "fragment from the C++ 20 Named modules");
-
-  for (auto *SubModule : SubModules)
-    if (SubModule->isPrivateModule())
-      return SubModule;
-
-  return nullptr;
 }
 
 void Module::getExportedModules(SmallVectorImpl<Module *> &Exported) const {

@@ -275,7 +275,7 @@ bool RISCVInitUndef::processBasicBlock(MachineFunction &MF,
       Changed |= handleSubReg(MF, MI, DLD);
     if (MI.isImplicitDef()) {
       auto DstReg = MI.getOperand(0).getReg();
-      if (DstReg.isVirtual() && isVectorRegClass(DstReg))
+      if (isVectorRegClass(DstReg))
         Changed |= handleImplicitDef(MBB, I);
     }
   }

@@ -528,7 +528,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_dummy_options.m_use_dummy);
 
     // The following are the various types of breakpoints that could be set:
@@ -577,12 +577,12 @@ protected:
       if (num_files == 0) {
         if (!GetDefaultFile(target, file, result)) {
           result.AppendError("No file supplied and no default file available.");
-          return;
+          return false;
         }
       } else if (num_files > 1) {
         result.AppendError("Only one file at a time is allowed for file and "
                            "line breakpoints.");
-        return;
+        return false;
       } else
         file = m_options.m_filenames.GetFileSpecAtIndex(0);
 
@@ -603,8 +603,8 @@ protected:
       //  will track the load location of the library.
       size_t num_modules_specified = m_options.m_modules.GetSize();
       if (num_modules_specified == 1) {
-        const FileSpec &file_spec =
-            m_options.m_modules.GetFileSpecAtIndex(0);
+        const FileSpec *file_spec =
+            m_options.m_modules.GetFileSpecPointerAtIndex(0);
         bp_sp = target.CreateAddressInModuleBreakpoint(
             m_options.m_load_addr, internal, file_spec, m_options.m_hardware);
       } else if (num_modules_specified == 0) {
@@ -613,7 +613,7 @@ protected:
       } else {
         result.AppendError("Only one shared library can be specified for "
                            "address breakpoints.");
-        return;
+        return false;
       }
       break;
     }
@@ -647,7 +647,7 @@ protected:
             result.AppendWarning(
                 "Function name regex does not accept glob patterns.");
         }
-        return;
+        return false;
       }
 
       bp_sp = target.CreateFuncRegexBreakpoint(
@@ -664,7 +664,7 @@ protected:
         if (!GetDefaultFile(target, file, result)) {
           result.AppendError(
               "No files provided and could not find default file.");
-          return;
+          return false;
         } else {
           m_options.m_filenames.Append(file);
         }
@@ -675,7 +675,7 @@ protected:
         result.AppendErrorWithFormat(
             "Source text regular expression could not be compiled: \"%s\"",
             llvm::toString(std::move(err)).c_str());
-        return;
+        return false;
       }
       bp_sp = target.CreateSourceRegexBreakpoint(
           &(m_options.m_modules), &(m_options.m_filenames),
@@ -693,7 +693,7 @@ protected:
             "Error setting extra exception arguments: %s",
             precond_error.AsCString());
         target.RemoveBreakpointByID(bp_sp->GetID());
-        return;
+        return false;
       }
     } break;
     case eSetTypeScripted: {
@@ -707,7 +707,7 @@ protected:
         result.AppendErrorWithFormat(
             "Error setting extra exception arguments: %s", error.AsCString());
         target.RemoveBreakpointByID(bp_sp->GetID());
-        return;
+        return false;
       }
     } break;
     default:
@@ -726,7 +726,7 @@ protected:
             result.AppendErrorWithFormat("Invalid breakpoint name: %s",
                                          name.c_str());
             target.RemoveBreakpointByID(bp_sp->GetID());
-            return;
+            return false;
           }
         }
       }
@@ -753,6 +753,8 @@ protected:
     } else if (!bp_sp) {
       result.AppendError("Breakpoint creation failed: No breakpoint created.");
     }
+
+    return result.Succeeded();
   }
 
 private:
@@ -833,7 +835,7 @@ public:
   Options *GetOptions() override { return &m_options; }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_dummy_opts.m_use_dummy);
 
     std::unique_lock<std::recursive_mutex> lock;
@@ -866,6 +868,8 @@ protected:
         }
       }
     }
+
+    return result.Succeeded();
   }
 
 private:
@@ -902,7 +906,7 @@ public:
   }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget();
 
     std::unique_lock<std::recursive_mutex> lock;
@@ -914,7 +918,7 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist to be enabled.");
-      return;
+      return false;
     }
 
     if (command.empty()) {
@@ -959,6 +963,8 @@ protected:
         result.SetStatus(eReturnStatusSuccessFinishNoResult);
       }
     }
+
+    return result.Succeeded();
   }
 };
 
@@ -1014,7 +1020,7 @@ the second re-enables the first location.");
   }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget();
     std::unique_lock<std::recursive_mutex> lock;
     target.GetBreakpointList().GetListMutex(lock);
@@ -1024,7 +1030,7 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist to be disabled.");
-      return;
+      return false;
     }
 
     if (command.empty()) {
@@ -1070,6 +1076,8 @@ protected:
         result.SetStatus(eReturnStatusSuccessFinishNoResult);
       }
     }
+
+    return result.Succeeded();
   }
 };
 
@@ -1160,7 +1168,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_options.m_use_dummy);
 
     const BreakpointList &breakpoints =
@@ -1173,7 +1181,7 @@ protected:
     if (num_breakpoints == 0) {
       result.AppendMessage("No breakpoints currently set.");
       result.SetStatus(eReturnStatusSuccessFinishNoResult);
-      return;
+      return true;
     }
 
     Stream &output_stream = result.GetOutputStream();
@@ -1208,6 +1216,8 @@ protected:
         result.AppendError("Invalid breakpoint ID.");
       }
     }
+
+    return result.Succeeded();
   }
 
 private:
@@ -1279,7 +1289,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget();
 
     // The following are the various types of breakpoints that could be
@@ -1300,7 +1310,7 @@ protected:
     // Early return if there's no breakpoint at all.
     if (num_breakpoints == 0) {
       result.AppendError("Breakpoint clear: No breakpoint cleared.");
-      return;
+      return result.Succeeded();
     }
 
     // Find matching breakpoints and delete them.
@@ -1347,6 +1357,8 @@ protected:
     } else {
       result.AppendError("Breakpoint clear: No breakpoint cleared.");
     }
+
+    return result.Succeeded();
   }
 
 private:
@@ -1433,7 +1445,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget(m_options.m_use_dummy);
     result.Clear();
     
@@ -1446,7 +1458,7 @@ protected:
 
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints exist to be deleted.");
-      return;
+      return false;
     }
 
     // Handle the delete all breakpoints case:
@@ -1463,7 +1475,7 @@ protected:
             (uint64_t)num_breakpoints, num_breakpoints > 1 ? "s" : "");
       }
       result.SetStatus(eReturnStatusSuccessFinishNoResult);
-      return;
+      return result.Succeeded();
     }
  
     // Either we have some kind of breakpoint specification(s),
@@ -1479,7 +1491,7 @@ protected:
             command, &target, result, &excluded_bp_ids,
             BreakpointName::Permissions::PermissionKinds::deletePerm);
         if (!result.Succeeded())
-          return;
+          return false;
       }
 
       for (auto breakpoint_sp : breakpoints.Breakpoints()) {
@@ -1492,14 +1504,14 @@ protected:
       }
       if (valid_bp_ids.GetSize() == 0) {
         result.AppendError("No disabled breakpoints.");
-        return;
+        return false;
       }
     } else {
       CommandObjectMultiwordBreakpoint::VerifyBreakpointOrLocationIDs(
           command, &target, result, &valid_bp_ids,
           BreakpointName::Permissions::PermissionKinds::deletePerm);
       if (!result.Succeeded())
-        return;
+        return false;
     }
     
     int delete_count = 0;
@@ -1530,6 +1542,7 @@ protected:
         "%d breakpoints deleted; %d breakpoint locations disabled.\n",
         delete_count, disable_count);
     result.SetStatus(eReturnStatusSuccessFinishNoResult);
+    return result.Succeeded();
   }
 
 private:
@@ -1696,12 +1709,12 @@ public:
   Options *GetOptions() override { return &m_option_group; }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
 
     const size_t argc = command.GetArgumentCount();
     if (argc == 0) {
       result.AppendError("No names provided.");
-      return;
+      return false;
     }
 
     Target &target = GetSelectedOrDummyTarget(false);
@@ -1715,7 +1728,7 @@ protected:
       if (!BreakpointID::StringIsBreakpointName(entry.ref(), error)) {
         result.AppendErrorWithFormat("Invalid breakpoint name: %s - %s",
                                      entry.c_str(), error.AsCString());
-        return;
+        return false;
       }
     }
     // Now configure them, we already pre-checked the names so we don't need to
@@ -1728,7 +1741,7 @@ protected:
       if (!bp_sp) {
         result.AppendErrorWithFormatv("Could not find specified breakpoint {0}",
                                       bp_id);
-        return;
+        return false;
       }
     }
 
@@ -1752,6 +1765,7 @@ protected:
                                        m_bp_opts.GetBreakpointOptions(),
                                        m_access_options.GetPermissions());
     }
+    return true;
   }
 
 private:
@@ -1792,10 +1806,10 @@ public:
   Options *GetOptions() override { return &m_option_group; }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     if (!m_name_options.m_name.OptionWasSet()) {
       result.AppendError("No name option provided.");
-      return;
+      return false;
     }
 
     Target &target =
@@ -1809,7 +1823,7 @@ protected:
     size_t num_breakpoints = breakpoints.GetSize();
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints, cannot add names.");
-      return;
+      return false;
     }
 
     // Particular breakpoint selected; disable that breakpoint.
@@ -1821,7 +1835,7 @@ protected:
     if (result.Succeeded()) {
       if (valid_bp_ids.GetSize() == 0) {
         result.AppendError("No breakpoints specified, cannot add names.");
-        return;
+        return false;
       }
       size_t num_valid_ids = valid_bp_ids.GetSize();
       const char *bp_name = m_name_options.m_name.GetCurrentValue();
@@ -1834,6 +1848,8 @@ protected:
         target.AddNameToBreakpoint(bp_sp, bp_name, error);
       }
     }
+
+    return true;
   }
 
 private:
@@ -1873,10 +1889,10 @@ public:
   Options *GetOptions() override { return &m_option_group; }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     if (!m_name_options.m_name.OptionWasSet()) {
       result.AppendError("No name option provided.");
-      return;
+      return false;
     }
 
     Target &target =
@@ -1890,7 +1906,7 @@ protected:
     size_t num_breakpoints = breakpoints.GetSize();
     if (num_breakpoints == 0) {
       result.AppendError("No breakpoints, cannot delete names.");
-      return;
+      return false;
     }
 
     // Particular breakpoint selected; disable that breakpoint.
@@ -1902,7 +1918,7 @@ protected:
     if (result.Succeeded()) {
       if (valid_bp_ids.GetSize() == 0) {
         result.AppendError("No breakpoints specified, cannot delete names.");
-        return;
+        return false;
       }
       ConstString bp_name(m_name_options.m_name.GetCurrentValue());
       size_t num_valid_ids = valid_bp_ids.GetSize();
@@ -1913,6 +1929,8 @@ protected:
         target.RemoveNameFromBreakpoint(bp_sp, bp_name);
       }
     }
+
+    return true;
   }
 
 private:
@@ -1937,7 +1955,7 @@ public:
   Options *GetOptions() override { return &m_option_group; }
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target =
         GetSelectedOrDummyTarget(m_name_options.m_use_dummy.GetCurrentValue());
 
@@ -1987,6 +2005,7 @@ protected:
         }
       }
     }
+    return true;
   }
 
 private:
@@ -2248,7 +2267,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget();
 
     std::unique_lock<std::recursive_mutex> lock;
@@ -2262,7 +2281,7 @@ protected:
 
     if (!error.Success()) {
       result.AppendError(error.AsCString());
-      return;
+      return false;
     }
 
     Stream &output_stream = result.GetOutputStream();
@@ -2283,6 +2302,7 @@ protected:
                              false);
       }
     }
+    return result.Succeeded();
   }
 
 private:
@@ -2363,7 +2383,7 @@ public:
   };
 
 protected:
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     Target &target = GetSelectedOrDummyTarget();
 
     std::unique_lock<std::recursive_mutex> lock;
@@ -2377,7 +2397,7 @@ protected:
 
       if (!result.Succeeded()) {
         result.SetStatus(eReturnStatusFailed);
-        return;
+        return false;
       }
     }
     FileSpec file_spec(m_options.m_filename);
@@ -2388,6 +2408,7 @@ protected:
       result.AppendErrorWithFormat("error serializing breakpoints: %s.",
                                    error.AsCString());
     }
+    return result.Succeeded();
   }
 
 private:

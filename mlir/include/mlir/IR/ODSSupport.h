@@ -14,8 +14,6 @@
 #define MLIR_IR_ODSSUPPORT_H
 
 #include "mlir/IR/Attributes.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/Support/LLVM.h"
 
 namespace mlir {
 
@@ -26,9 +24,8 @@ namespace mlir {
 /// Convert an IntegerAttr attribute to an int64_t, or return an error if the
 /// attribute isn't an IntegerAttr. If the optional diagnostic is provided an
 /// error message is also emitted.
-LogicalResult
-convertFromAttribute(int64_t &storage, Attribute attr,
-                     function_ref<InFlightDiagnostic()> emitError);
+LogicalResult convertFromAttribute(int64_t &storage, Attribute attr,
+                                   InFlightDiagnostic *diag);
 
 /// Convert the provided int64_t to an IntegerAttr attribute.
 Attribute convertToAttribute(MLIRContext *ctx, int64_t storage);
@@ -37,17 +34,15 @@ Attribute convertToAttribute(MLIRContext *ctx, int64_t storage);
 /// storage has the same size as the array. An error is returned if the
 /// attribute isn't a DenseI64ArrayAttr or it does not have the same size. If
 /// the optional diagnostic is provided an error message is also emitted.
-LogicalResult
-convertFromAttribute(MutableArrayRef<int64_t> storage, Attribute attr,
-                     function_ref<InFlightDiagnostic()> emitError);
+LogicalResult convertFromAttribute(MutableArrayRef<int64_t> storage,
+                                   Attribute attr, InFlightDiagnostic *diag);
 
 /// Convert a DenseI32ArrayAttr to the provided storage. It is expected that the
 /// storage has the same size as the array. An error is returned if the
 /// attribute isn't a DenseI32ArrayAttr or it does not have the same size. If
 /// the optional diagnostic is provided an error message is also emitted.
-LogicalResult
-convertFromAttribute(MutableArrayRef<int32_t> storage, Attribute attr,
-                     function_ref<InFlightDiagnostic()> emitError);
+LogicalResult convertFromAttribute(MutableArrayRef<int32_t> storage,
+                                   Attribute attr, InFlightDiagnostic *diag);
 
 /// Convert the provided ArrayRef<int64_t> to a DenseI64ArrayAttr attribute.
 Attribute convertToAttribute(MLIRContext *ctx, ArrayRef<int64_t> storage);

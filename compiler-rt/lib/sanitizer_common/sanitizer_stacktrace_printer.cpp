@@ -18,22 +18,7 @@
 
 namespace __sanitizer {
 
-StackTracePrinter *StackTracePrinter::GetOrInit() {
-  static StackTracePrinter *stacktrace_printer;
-  static StaticSpinMutex init_mu;
-  SpinMutexLock l(&init_mu);
-  if (stacktrace_printer)
-    return stacktrace_printer;
-
-  stacktrace_printer =
-      new (GetGlobalLowLevelAllocator()) FormattedStackTracePrinter();
-
-  CHECK(stacktrace_printer);
-  return stacktrace_printer;
-}
-
-const char *FormattedStackTracePrinter::StripFunctionName(
-    const char *function) {
+const char *StripFunctionName(const char *function) {
   if (!common_flags()->demangle)
     return function;
   if (!function)
@@ -145,23 +130,20 @@ static void MaybeBuildIdToBuffer(const AddressInfo &info, bool PrefixSpace,
                                  InternalScopedString *buffer) {
   if (info.uuid_size) {
     if (PrefixSpace)
-      buffer->AppendF(" ");
-    buffer->AppendF("(BuildId: ");
+      buffer->append(" ");
+    buffer->append("(BuildId: ");
     for (uptr i = 0; i < info.uuid_size; ++i) {
-      buffer->AppendF("%02x", info.uuid[i]);
+      buffer->append("%02x", info.uuid[i]);
     }
-    buffer->AppendF(")");
+    buffer->append(")");
   }
 }
 
 static const char kDefaultFormat[] = "    #%n %p %F %L";
 
-void FormattedStackTracePrinter::RenderFrame(InternalScopedString *buffer,
-                                             const char *format, int frame_no,
-                                             uptr address,
-                                             const AddressInfo *info,
-                                             bool vs_style,
-                                             const char *strip_path_prefix) {
+void RenderFrame(InternalScopedString *buffer, const char *format, int frame_no,
+                 uptr address, const AddressInfo *info, bool vs_style,
+                 const char *strip_path_prefix) {
   // info will be null in the case where symbolization is not needed for the
   // given format. This ensures that the code below will get a hard failure
   // rather than print incorrect information in case RenderNeedsSymbolization
@@ -172,56 +154,56 @@ void FormattedStackTracePrinter::RenderFrame(InternalScopedString *buffer,
     format = kDefaultFormat;
   for (const char *p = format; *p != '\0'; p++) {
     if (*p != '%') {
-      buffer->AppendF("%c", *p);
+      buffer->append("%c", *p);
       continue;
     }
     p++;
     switch (*p) {
     case '%':
-      buffer->Append("%");
+      buffer->append("%%");
       break;
     // Frame number and all fields of AddressInfo structure.
     case 'n':
-      buffer->AppendF("%u", frame_no);
+      buffer->append("%u", frame_no);
       break;
     case 'p':
-      buffer->AppendF("0x%zx", address);
+      buffer->append("0x%zx", address);
       break;
     case 'm':
-      buffer->AppendF("%s", StripPathPrefix(info->module, strip_path_prefix));
+      buffer->append("%s", StripPathPrefix(info->module, strip_path_prefix));
       break;
     case 'o':
-      buffer->AppendF("0x%zx", info->module_offset);
+      buffer->append("0x%zx", info->module_offset);
       break;
     case 'b':
       MaybeBuildIdToBuffer(*info, /*PrefixSpace=*/false, buffer);
       break;
     case 'f':
-      buffer->AppendF("%s",
-                      DemangleFunctionName(StripFunctionName(info->function)));
+      buffer->append("%s",
+                     DemangleFunctionName(StripFunctionName(info->function)));
       break;
     case 'q':
-      buffer->AppendF("0x%zx", info->function_offset != AddressInfo::kUnknown
-                                   ? info->function_offset
-                                   : 0x0);
+      buffer->append("0x%zx", info->function_offset != AddressInfo::kUnknown
+                                  ? info->function_offset
+                                  : 0x0);
       break;
     case 's':
-      buffer->AppendF("%s", StripPathPrefix(info->file, strip_path_prefix));
+      buffer->append("%s", StripPathPrefix(info->file, strip_path_prefix));
       break;
     case 'l':
-      buffer->AppendF("%d", info->line);
+      buffer->append("%d", info->line);
       break;
     case 'c':
-      buffer->AppendF("%d", info->column);
+      buffer->append("%d", info->column);
       break;
     // Smarter special cases.
     case 'F':
       // Function name and offset, if file is unknown.
       if (info->function) {
-        buffer->AppendF(
-            "in %s", DemangleFunctionName(StripFunctionName(info->function)));
+        buffer->append("in %s",
+                       DemangleFunctionName(StripFunctionName(info->function)));
         if (!info->file && info->function_offset != AddressInfo::kUnknown)
-          buffer->AppendF("+0x%zx", info->function_offset);
+          buffer->append("+0x%zx", info->function_offset);
       }
       break;
     case 'S':
@@ -242,7 +224,7 @@ void FormattedStackTracePrinter::RenderFrame(InternalScopedString *buffer,
         MaybeBuildIdToBuffer(*info, /*PrefixSpace=*/true, buffer);
 #endif
       } else {
-        buffer->AppendF("(<unknown module>)");
+        buffer->append("(<unknown module>)");
       }
       break;
     case 'M':
@@ -257,7 +239,7 @@ void FormattedStackTracePrinter::RenderFrame(InternalScopedString *buffer,
         MaybeBuildIdToBuffer(*info, /*PrefixSpace=*/true, buffer);
 #endif
       } else {
-        buffer->AppendF("(%p)", (void *)address);
+        buffer->append("(%p)", (void *)address);
       }
       break;
     default:
@@ -268,7 +250,7 @@ void FormattedStackTracePrinter::RenderFrame(InternalScopedString *buffer,
   }
 }
 
-bool FormattedStackTracePrinter::RenderNeedsSymbolization(const char *format) {
+bool RenderNeedsSymbolization(const char *format) {
   if (0 == internal_strcmp(format, "DEFAULT"))
     format = kDefaultFormat;
   for (const char *p = format; *p != '\0'; p++) {
@@ -291,28 +273,26 @@ bool FormattedStackTracePrinter::RenderNeedsSymbolization(const char *format) {
   return false;
 }
 
-void FormattedStackTracePrinter::RenderData(InternalScopedString *buffer,
-                                            const char *format,
-                                            const DataInfo *DI,
-                                            const char *strip_path_prefix) {
+void RenderData(InternalScopedString *buffer, const char *format,
+                const DataInfo *DI, const char *strip_path_prefix) {
   for (const char *p = format; *p != '\0'; p++) {
     if (*p != '%') {
-      buffer->AppendF("%c", *p);
+      buffer->append("%c", *p);
       continue;
     }
     p++;
     switch (*p) {
       case '%':
-        buffer->Append("%");
+        buffer->append("%%");
         break;
       case 's':
-        buffer->AppendF("%s", StripPathPrefix(DI->file, strip_path_prefix));
+        buffer->append("%s", StripPathPrefix(DI->file, strip_path_prefix));
         break;
       case 'l':
-        buffer->AppendF("%zu", DI->line);
+        buffer->append("%zu", DI->line);
         break;
       case 'g':
-        buffer->AppendF("%s", DI->name);
+        buffer->append("%s", DI->name);
         break;
       default:
         Report("Unsupported specifier in stack frame format: %c (%p)!\n", *p,
@@ -324,33 +304,33 @@ void FormattedStackTracePrinter::RenderData(InternalScopedString *buffer,
 
 #endif  // !SANITIZER_SYMBOLIZER_MARKUP
 
-void FormattedStackTracePrinter::RenderSourceLocation(
-    InternalScopedString *buffer, const char *file, int line, int column,
-    bool vs_style, const char *strip_path_prefix) {
+void RenderSourceLocation(InternalScopedString *buffer, const char *file,
+                          int line, int column, bool vs_style,
+                          const char *strip_path_prefix) {
   if (vs_style && line > 0) {
-    buffer->AppendF("%s(%d", StripPathPrefix(file, strip_path_prefix), line);
+    buffer->append("%s(%d", StripPathPrefix(file, strip_path_prefix), line);
     if (column > 0)
-      buffer->AppendF(",%d", column);
-    buffer->AppendF(")");
+      buffer->append(",%d", column);
+    buffer->append(")");
     return;
   }
 
-  buffer->AppendF("%s", StripPathPrefix(file, strip_path_prefix));
+  buffer->append("%s", StripPathPrefix(file, strip_path_prefix));
   if (line > 0) {
-    buffer->AppendF(":%d", line);
+    buffer->append(":%d", line);
     if (column > 0)
-      buffer->AppendF(":%d", column);
+      buffer->append(":%d", column);
   }
 }
 
-void FormattedStackTracePrinter::RenderModuleLocation(
-    InternalScopedString *buffer, const char *module, uptr offset,
-    ModuleArch arch, const char *strip_path_prefix) {
-  buffer->AppendF("(%s", StripPathPrefix(module, strip_path_prefix));
+void RenderModuleLocation(InternalScopedString *buffer, const char *module,
+                          uptr offset, ModuleArch arch,
+                          const char *strip_path_prefix) {
+  buffer->append("(%s", StripPathPrefix(module, strip_path_prefix));
   if (arch != kModuleArchUnknown) {
-    buffer->AppendF(":%s", ModuleArchToString(arch));
+    buffer->append(":%s", ModuleArchToString(arch));
   }
-  buffer->AppendF("+0x%zx)", offset);
+  buffer->append("+0x%zx)", offset);
 }
 
 } // namespace __sanitizer

@@ -292,6 +292,9 @@ public:
   /// AST file.
   const uint32_t *SLocEntryOffsets = nullptr;
 
+  /// SLocEntries that we're going to preload.
+  SmallVector<uint64_t, 4> PreloadSLocEntries;
+
   /// Remapping table for source locations in this module.
   ContinuousRangeMap<SourceLocation::UIntTy, SourceLocation::IntTy, 2>
       SLocRemap;

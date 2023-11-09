@@ -47,10 +47,6 @@ void transform::BufferLoopHoistingOp::getEffects(
 LogicalResult transform::OneShotBufferizeOp::verify() {
   if (getMemcpyOp() != "memref.copy" && getMemcpyOp() != "linalg.copy")
     return emitOpError() << "unsupported memcpy op";
-  if (getPrintConflicts() && !getTestAnalysisOnly())
-    return emitOpError() << "'print_conflicts' requires 'test_analysis_only'";
-  if (getDumpAliasSets() && !getTestAnalysisOnly())
-    return emitOpError() << "'dump_alias_sets' requires 'test_analysis_only'";
   return success();
 }
 
@@ -59,10 +55,10 @@ transform::OneShotBufferizeOp::apply(transform::TransformRewriter &rewriter,
                                      TransformResults &transformResults,
                                      TransformState &state) {
   OneShotBufferizationOptions options;
-  options.allowReturnAllocsFromLoops = getAllowReturnAllocsFromLoops();
+  options.allowReturnAllocs = getAllowReturnAllocs();
   options.allowUnknownOps = getAllowUnknownOps();
   options.bufferizeFunctionBoundaries = getBufferizeFunctionBoundaries();
-  options.dumpAliasSets = getDumpAliasSets();
+  options.createDeallocs = getCreateDeallocs();
   options.testAnalysisOnly = getTestAnalysisOnly();
   options.printConflicts = getPrintConflicts();
   if (getFunctionBoundaryTypeConversion().has_value())
@@ -117,10 +113,18 @@ void transform::EliminateEmptyTensorsOp::getEffects(
 DiagnosedSilenceableFailure transform::EliminateEmptyTensorsOp::apply(
     transform::TransformRewriter &rewriter, TransformResults &transformResults,
     TransformState &state) {
+  OneShotBufferizationOptions options;
+  options.allowReturnAllocs = true;
+
   for (Operation *target : state.getPayloadOps(getTarget())) {
-    if (failed(bufferization::eliminateEmptyTensors(rewriter, target)))
+    OneShotAnalysisState state(target, options);
+    if (failed(analyzeOp(target, state)))
       return mlir::emitSilenceableFailure(target->getLoc())
-             << "empty tensor elimination failed";
+             << "failed to analyze op";
+    if (failed(bufferization::insertSliceAnchoredEmptyTensorEliminationStep(
+            rewriter, target, state)))
+      return mlir::emitSilenceableFailure(target->getLoc())
+             << "failed to eliminate insert_slice anchored tensor.empty ops";
   }
   return DiagnosedSilenceableFailure::success();
 }
@@ -172,4 +176,5 @@ public:
 void mlir::bufferization::registerTransformDialectExtension(
     DialectRegistry &registry) {
   registry.addExtensions<BufferizationTransformDialectExtension>();
+  bufferization::registerAllocationOpInterfaceExternalModels(registry);
 }

@@ -369,7 +369,7 @@ void StackAddrEscapeChecker::checkEndFunction(const ReturnStmt *RS,
                                   "Stack address stored into global variable");
 
   for (const auto &P : Cb.V) {
-    const MemRegion *Referrer = P.first->getBaseRegion();
+    const MemRegion *Referrer = P.first;
     const MemRegion *Referred = P.second;
 
     // Generate a report for this bug.
@@ -384,8 +384,6 @@ void StackAddrEscapeChecker::checkEndFunction(const ReturnStmt *RS,
           << CommonSuffix;
       auto Report =
           std::make_unique<PathSensitiveBugReport>(*BT_stackleak, Out.str(), N);
-      if (Range.isValid())
-        Report->addRange(Range);
       Ctx.emitReport(std::move(Report));
       return;
     }
@@ -399,14 +397,8 @@ void StackAddrEscapeChecker::checkEndFunction(const ReturnStmt *RS,
       return "stack";
     }(Referrer->getMemorySpace());
 
-    // We should really only have VarRegions here.
-    // Anything else is really surprising, and we should get notified if such
-    // ever happens.
-    const auto *ReferrerVar = dyn_cast<VarRegion>(Referrer);
-    if (!ReferrerVar) {
-      assert(false && "We should have a VarRegion here");
-      continue; // Defensively skip this one.
-    }
+    // This cast supposed to succeed.
+    const VarRegion *ReferrerVar = cast<VarRegion>(Referrer->getBaseRegion());
     const std::string ReferrerVarName =
         ReferrerVar->getDecl()->getDeclName().getAsString();
 

@@ -1,10 +1,16 @@
-// RUN: %clang_cc1 -std=c++20 -Wunsafe-buffer-usage -fdiagnostics-parseable-fixits -fsafe-buffer-usage-suggestions %s 2>&1 | FileCheck %s
+// RUN: %clang_cc1 -std=c++20 -Wunsafe-buffer-usage -fdiagnostics-parseable-fixits -fsafe-buffer-usage-suggestions -include %s %s 2>&1 | FileCheck %s
 
 // We cannot deal with overload conflicts for now so NO fix-it to
 // function parameters will be emitted if there are overloads for that
 // function.
 
-#include "warn-unsafe-buffer-usage-fixits-parm-span-overload.h"
+#ifndef INCLUDE_ME
+#define INCLUDE_ME
+
+void baz();
+
+#else
+
 
 void foo(int *p, int * q);
 
@@ -25,7 +31,7 @@ void bar(int *p) {
 
 void bar();
 
-// an overload declaration of `baz(int)` appears is in the included header
+// an overload declaration of `baz(int)` appears is included
 void baz(int *p) {
   // CHECK-NOT: fix-it:"{{.*}}":{[[@LINE-1]]:
   int tmp;
@@ -101,3 +107,6 @@ void NESTED::INNER::delta(int * p) {
   int tmp;
   tmp = p[5];
 }
+
+
+#endif

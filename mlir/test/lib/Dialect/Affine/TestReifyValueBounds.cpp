@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
-#include "mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h"
 #include "mlir/Dialect/Affine/Transforms/Transforms.h"
 #include "mlir/Dialect/Arith/Transforms/Transforms.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -187,26 +186,14 @@ static LogicalResult testEquality(func::FuncOp funcOp) {
         op->emitOpError("invalid op");
         return WalkResult::skip();
       }
-      if (op->hasAttr("compose")) {
-        FailureOr<int64_t> delta = affine::fullyComposeAndComputeConstantDelta(
-            op->getOperand(0), op->getOperand(1));
-        if (failed(delta)) {
-          op->emitError("could not determine equality");
-        } else if (*delta == 0) {
-          op->emitRemark("equal");
-        } else {
-          op->emitRemark("different");
-        }
+      FailureOr<bool> equal = ValueBoundsConstraintSet::areEqual(
+          op->getOperand(0), op->getOperand(1));
+      if (failed(equal)) {
+        op->emitError("could not determine equality");
+      } else if (*equal) {
+        op->emitRemark("equal");
       } else {
-        FailureOr<bool> equal = ValueBoundsConstraintSet::areEqual(
-            op->getOperand(0), op->getOperand(1));
-        if (failed(equal)) {
-          op->emitError("could not determine equality");
-        } else if (*equal) {
-          op->emitRemark("equal");
-        } else {
-          op->emitRemark("different");
-        }
+        op->emitRemark("different");
       }
     }
     return WalkResult::advance();

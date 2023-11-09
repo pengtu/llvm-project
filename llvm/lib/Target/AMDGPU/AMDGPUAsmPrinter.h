@@ -116,8 +116,6 @@ public:
 
   void emitFunctionBodyEnd() override;
 
-  void emitImplicitDef(const MachineInstr *MI) const override;
-
   void emitFunctionEntryLabel() override;
 
   void emitBasicBlockStart(const MachineBasicBlock &MBB) override;
@@ -127,6 +125,9 @@ public:
   void emitStartOfAsmFile(Module &M) override;
 
   void emitEndOfAsmFile(Module &M) override;
+
+  bool isBlockOnlyReachableByFallthrough(
+    const MachineBasicBlock *MBB) const override;
 
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        const char *ExtraCode, raw_ostream &O) override;

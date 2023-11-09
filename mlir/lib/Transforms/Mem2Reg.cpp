@@ -16,8 +16,6 @@
 #include "mlir/Interfaces/MemorySlotInterfaces.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
-#include "mlir/Transforms/RegionUtils.h"
-#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/GenericIteratedDominanceFrontier.h"
@@ -98,9 +96,6 @@ using namespace mlir;
 
 namespace {
 
-using BlockingUsesMap =
-    llvm::MapVector<Operation *, SmallPtrSet<OpOperand *, 4>>;
-
 /// Information computed during promotion analysis used to perform actual
 /// promotion.
 struct MemorySlotPromotionInfo {
@@ -111,7 +106,7 @@ struct MemorySlotPromotionInfo {
   /// its uses, it is because the defining ops of the blocking uses requested
   /// it. The defining ops therefore must also have blocking uses or be the
   /// starting point of the bloccking uses.
-  BlockingUsesMap userToBlockingUses;
+  DenseMap<Operation *, SmallPtrSet<OpOperand *, 4>> userToBlockingUses;
 };
 
 /// Computes information for basic slot promotion. This will check that direct
@@ -134,7 +129,8 @@ private:
   /// uses (typically, removing its users because it will delete itself to
   /// resolve its own blocking uses). This will fail if one of the transitive
   /// users cannot remove a requested use, and should prevent promotion.
-  LogicalResult computeBlockingUses(BlockingUsesMap &userToBlockingUses);
+  LogicalResult computeBlockingUses(
+      DenseMap<Operation *, SmallPtrSet<OpOperand *, 4>> &userToBlockingUses);
 
   /// Computes in which blocks the value stored in the slot is actually used,
   /// meaning blocks leading to a load. This method uses `definingBlocks`, the
@@ -237,7 +233,7 @@ Value MemorySlotPromoter::getLazyDefaultValue() {
 }
 
 LogicalResult MemorySlotPromotionAnalyzer::computeBlockingUses(
-    BlockingUsesMap &userToBlockingUses) {
+    DenseMap<Operation *, SmallPtrSet<OpOperand *, 4>> &userToBlockingUses) {
   // The promotion of an operation may require the promotion of further
   // operations (typically, removing operations that use an operation that must
   // delete itself). We thus need to start from the use of the slot pointer and
@@ -247,7 +243,7 @@ LogicalResult MemorySlotPromotionAnalyzer::computeBlockingUses(
   // use it.
   for (OpOperand &use : slot.ptr.getUses()) {
     SmallPtrSet<OpOperand *, 4> &blockingUses =
-        userToBlockingUses[use.getOwner()];
+        userToBlockingUses.getOrInsertDefault(use.getOwner());
     blockingUses.insert(&use);
   }
 
@@ -285,7 +281,7 @@ LogicalResult MemorySlotPromotionAnalyzer::computeBlockingUses(
       assert(llvm::is_contained(user->getResults(), blockingUse->get()));
 
       SmallPtrSetImpl<OpOperand *> &newUserBlockingUseSet =
-          userToBlockingUses[blockingUse->getOwner()];
+          userToBlockingUses.getOrInsertDefault(blockingUse->getOwner());
       newUserBlockingUseSet.insert(blockingUse);
     }
   }
@@ -519,37 +515,15 @@ void MemorySlotPromoter::computeReachingDefInRegion(Region *region,
   }
 }
 
-/// Sorts `ops` according to dominance. Relies on the topological order of basic
-/// blocks to get a deterministic ordering.
-static void dominanceSort(SmallVector<Operation *> &ops, Region &region) {
-  // Produce a topological block order and construct a map to lookup the indices
-  // of blocks.
-  DenseMap<Block *, size_t> topoBlockIndices;
-  SetVector<Block *> topologicalOrder = getTopologicallySortedBlocks(region);
-  for (auto [index, block] : llvm::enumerate(topologicalOrder))
-    topoBlockIndices[block] = index;
-
-  // Combining the topological order of the basic blocks together with block
-  // internal operation order guarantees a deterministic, dominance respecting
-  // order.
-  llvm::sort(ops, [&](Operation *lhs, Operation *rhs) {
-    size_t lhsBlockIndex = topoBlockIndices.at(lhs->getBlock());
-    size_t rhsBlockIndex = topoBlockIndices.at(rhs->getBlock());
-    if (lhsBlockIndex == rhsBlockIndex)
-      return lhs->isBeforeInBlock(rhs);
-    return lhsBlockIndex < rhsBlockIndex;
-  });
-}
-
 void MemorySlotPromoter::removeBlockingUses() {
-  llvm::SmallVector<Operation *> usersToRemoveUses(
-      llvm::make_first_range(info.userToBlockingUses));
-
-  // Sort according to dominance.
-  dominanceSort(usersToRemoveUses, *slot.ptr.getParentBlock()->getParent());
+  llvm::SetVector<Operation *> usersToRemoveUses;
+  for (auto &user : llvm::make_first_range(info.userToBlockingUses))
+    usersToRemoveUses.insert(user);
+  SetVector<Operation *> sortedUsersToRemoveUses =
+      mlir::topologicalSort(usersToRemoveUses);
 
   llvm::SmallVector<Operation *> toErase;
-  for (Operation *toPromote : llvm::reverse(usersToRemoveUses)) {
+  for (Operation *toPromote : llvm::reverse(sortedUsersToRemoveUses)) {
     if (auto toPromoteMemOp = dyn_cast<PromotableMemOpInterface>(toPromote)) {
       Value reachingDef = reachingDefs.lookup(toPromoteMemOp);
       // If no reaching definition is known, this use is outside the reach of

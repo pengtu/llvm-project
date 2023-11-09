@@ -25,7 +25,6 @@
 #include "mlir/IR/Dominance.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/Interfaces/DestinationStyleOpInterface.h"
-#include "mlir/Transforms/LoopInvariantCodeMotionUtils.h"
 #include "mlir/Transforms/RegionUtils.h"
 #include "llvm/Support/Debug.h"
 
@@ -293,8 +292,8 @@ void HoistPaddingAnalysis::enableHoistPadding(RewriterBase &rewriter) {
   // enclosing loop, try to apply hoisting on this outermost loop.
   // TODO: we may want finer-grained hoisting of only that particular `sliceOp`.
   if (!outermostEnclosingForOp.isDefinedOutsideOfLoop(sliceOp.getSource())) {
-    outermostEnclosingForOp = cast<scf::ForOp>(
-        hoistLoopInvariantSubsets(rewriter, outermostEnclosingForOp));
+    outermostEnclosingForOp =
+        hoistRedundantSubsetExtractInsert(rewriter, outermostEnclosingForOp);
   }
 }
 
@@ -559,7 +558,7 @@ static FailureOr<PackingResult> buildPackingLoopNestImpl(
       break;
     if (forOp != outerLoop && !outerLoop->isAncestor(forOp))
       break;
-    OpOperand &operand = *forOp.getTiedLoopInit(bbArg);
+    OpOperand &operand = forOp.getOpOperandForRegionIterArg(bbArg);
     bvm.map(bbArg, operand.get());
     bbArg = dyn_cast<BlockArgument>(operand.get());
   }
@@ -811,8 +810,13 @@ padThroughLoopIterArg(RewriterBase &rewriter, Value paddedValueBeforeHoisting,
   OpBuilder::InsertionGuard g(rewriter);
   rewriter.setInsertionPointAfter(hoistedPackedTensor.getDefiningOp());
 
-  unsigned iterArgNumber = forOp.getTiedLoopResult(pUse).getResultNumber();
-  auto yieldingExtractSliceOp = forOp.getYieldedValues()[iterArgNumber]
+  std::optional<unsigned> maybeOperandNumber =
+      forOp.getIterArgNumberForOpOperand(*pUse);
+  assert(maybeOperandNumber.has_value() && "expected a proper iter arg number");
+
+  int64_t operandNumber = maybeOperandNumber.value();
+  auto yieldOp = cast<scf::YieldOp>(forOp.getBody(0)->getTerminator());
+  auto yieldingExtractSliceOp = yieldOp->getOperand(operandNumber)
                                     .getDefiningOp<tensor::ExtractSliceOp>();
   if (!yieldingExtractSliceOp)
     return tensor::ExtractSliceOp();
@@ -825,9 +829,9 @@ padThroughLoopIterArg(RewriterBase &rewriter, Value paddedValueBeforeHoisting,
     return tensor::ExtractSliceOp();
 
   SmallVector<Value> initArgs = forOp.getInitArgs();
-  initArgs[iterArgNumber] = hoistedPackedTensor;
-  SmallVector<Value> yieldOperands = llvm::to_vector(forOp.getYieldedValues());
-  yieldOperands[iterArgNumber] = yieldingExtractSliceOp.getSource();
+  initArgs[operandNumber] = hoistedPackedTensor;
+  SmallVector<Value> yieldOperands = yieldOp.getOperands();
+  yieldOperands[operandNumber] = yieldingExtractSliceOp.getSource();
 
   int64_t numOriginalForOpResults = initArgs.size();
   LLVM_DEBUG(DBGS() << "numOriginalForOpResults: " << numOriginalForOpResults
@@ -840,32 +844,29 @@ padThroughLoopIterArg(RewriterBase &rewriter, Value paddedValueBeforeHoisting,
         hoistedPackedTensor.getLoc(), hoistedPackedTensor,
         outerSliceOp.getMixedOffsets(), outerSliceOp.getMixedSizes(),
         outerSliceOp.getMixedStrides());
-    rewriter.replaceAllUsesWith(forOp.getResult(iterArgNumber), extracted);
+    rewriter.replaceAllUsesWith(forOp.getResult(operandNumber), extracted);
   }
-  scf::ForOp newForOp = cast<scf::ForOp>(*forOp.replaceWithAdditionalYields(
-      rewriter, initArgs, /*replaceInitOperandUsesInLoop=*/true,
-      [&](OpBuilder &b, Location loc, ArrayRef<BlockArgument> newBBArgs) {
-        return yieldOperands;
-      }));
+  scf::ForOp newForOp =
+      replaceLoopWithNewYields(rewriter, forOp, initArgs, yieldOperands);
 
   LLVM_DEBUG(DBGS() << "newForOp results: " << newForOp.getNumResults()
                     << "\n");
   LLVM_DEBUG(DBGS() << "replace source of: " << extracted << "\n");
   LLVM_DEBUG(DBGS() << "with result #"
-                    << numOriginalForOpResults + iterArgNumber
+                    << numOriginalForOpResults + operandNumber
                     << " of forOp, giving us: " << extracted << "\n");
   rewriter.startRootUpdate(extracted);
   extracted.getSourceMutable().assign(
-      newForOp.getResult(numOriginalForOpResults + iterArgNumber));
+      newForOp.getResult(numOriginalForOpResults + operandNumber));
   rewriter.finalizeRootUpdate(extracted);
 
   LLVM_DEBUG(DBGS() << "replace uses of: " << paddedValueBeforeHoisting
                     << "\n");
   LLVM_DEBUG(DBGS() << "with region iter arg #"
-                    << numOriginalForOpResults + iterArgNumber << "\n");
+                    << numOriginalForOpResults + operandNumber << "\n");
   rewriter.replaceAllUsesWith(
       paddedValueBeforeHoisting,
-      newForOp.getRegionIterArg(numOriginalForOpResults + iterArgNumber));
+      newForOp.getRegionIterArg(numOriginalForOpResults + operandNumber));
 
   return extracted;
 }

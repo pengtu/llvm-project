@@ -875,24 +875,9 @@ Error MinimalSymbolDumper::visitKnownRecord(CVSymbol &CVR,
 }
 
 Error MinimalSymbolDumper::visitKnownRecord(CVSymbol &CVR, CallerSym &Caller) {
-  const char *Format;
-  switch (CVR.kind()) {
-  case S_CALLEES:
-    Format = "callee: {0}";
-    break;
-  case S_CALLERS:
-    Format = "caller: {0}";
-    break;
-  case S_INLINEES:
-    Format = "inlinee: {0}";
-    break;
-  default:
-    return llvm::make_error<CodeViewError>(
-        "Unknown CV Record type for a CallerSym object!");
-  }
   AutoIndent Indent(P, 7);
   for (const auto &I : Caller.Indices) {
-    P.formatLine(Format, idIndex(I));
+    P.formatLine("callee: {0}", idIndex(I));
   }
   return Error::success();
 }

@@ -62,15 +62,15 @@ STATISTIC(NumOfStatepoints, "Number of statepoint nodes encountered");
 STATISTIC(StatepointMaxSlotsRequired,
           "Maximum number of stack slots required for a singe statepoint");
 
-static cl::opt<bool> UseRegistersForDeoptValues(
+cl::opt<bool> UseRegistersForDeoptValues(
     "use-registers-for-deopt-values", cl::Hidden, cl::init(false),
     cl::desc("Allow using registers for non pointer deopt args"));
 
-static cl::opt<bool> UseRegistersForGCPointersInLandingPad(
+cl::opt<bool> UseRegistersForGCPointersInLandingPad(
     "use-registers-for-gc-values-in-landing-pad", cl::Hidden, cl::init(false),
     cl::desc("Allow using registers for gc pointer in landing pad"));
 
-static cl::opt<unsigned> MaxRegistersForGCPointers(
+cl::opt<unsigned> MaxRegistersForGCPointers(
     "max-registers-for-gc-values", cl::Hidden, cl::init(0),
     cl::desc("Max number of VRegs allowed to pass GC pointer meta args in"));
 
@@ -1033,16 +1033,10 @@ SelectionDAGBuilder::LowerStatepoint(const GCStatepointInst &I,
     ActualCallee = Callee;
   }
 
-  const auto GCResultLocality = getGCResultLocality(I);
-  AttributeSet retAttrs;
-  if (GCResultLocality.first)
-    retAttrs = GCResultLocality.first->getAttributes().getRetAttrs();
-
   StatepointLoweringInfo SI(DAG);
   populateCallLoweringInfo(SI.CLI, &I, GCStatepointInst::CallArgsBeginPos,
                            I.getNumCallArgs(), ActualCallee,
-                           I.getActualReturnType(), retAttrs,
-                           /*IsPatchPoint=*/false);
+                           I.getActualReturnType(), false /* IsPatchPoint */);
 
   // There may be duplication in the gc.relocate list; such as two copies of
   // each relocation on normal and exceptional path for an invoke.  We only
@@ -1098,6 +1092,8 @@ SelectionDAGBuilder::LowerStatepoint(const GCStatepointInst &I,
   SDValue ReturnValue = LowerAsSTATEPOINT(SI);
 
   // Export the result value if needed
+  const auto GCResultLocality = getGCResultLocality(I);
+
   if (!GCResultLocality.first && !GCResultLocality.second) {
     // The return value is not needed, just generate a poison value.
     // Note: This covers the void return case.
@@ -1142,7 +1138,7 @@ void SelectionDAGBuilder::LowerCallSiteWithDeoptBundleImpl(
   populateCallLoweringInfo(
       SI.CLI, Call, ArgBeginIndex, Call->arg_size(), Callee,
       ForceVoidReturnTy ? Type::getVoidTy(*DAG.getContext()) : Call->getType(),
-      Call->getAttributes().getRetAttrs(), /*IsPatchPoint=*/false);
+      false);
   if (!VarArgDisallowed)
     SI.CLI.IsVarArg = Call->getFunctionType()->isVarArg();
 

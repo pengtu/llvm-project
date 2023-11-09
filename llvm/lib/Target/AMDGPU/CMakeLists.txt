@@ -66,7 +66,6 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPULateCodeGenPrepare.cpp
   AMDGPULegalizerInfo.cpp
   AMDGPULibCalls.cpp
-  AMDGPUImageIntrinsicOptimizer.cpp
   AMDGPULibFunc.cpp
   AMDGPULowerKernelArguments.cpp
   AMDGPULowerKernelAttributes.cpp
@@ -176,7 +175,6 @@ add_llvm_target(AMDGPUCodeGen
   CodeGenTypes
   Core
   GlobalISel
-  HipStdPar
   IPO
   MC
   MIRParser

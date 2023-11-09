@@ -11,7 +11,7 @@
 #include "src/__support/RPC/rpc_client.h"
 #include "test/IntegrationTest/test.h"
 
-using namespace LIBC_NAMESPACE;
+using namespace __llvm_libc;
 
 static void test_add_simple() {
   uint32_t num_additions =

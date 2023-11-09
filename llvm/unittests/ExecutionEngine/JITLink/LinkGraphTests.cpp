@@ -9,6 +9,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ExecutionEngine/JITLink/JITLink.h"
 #include "llvm/ExecutionEngine/Orc/ObjectFileInterface.h"
+#include "llvm/Support/Endian.h"
 #include "llvm/Support/Memory.h"
 
 #include "llvm/Testing/Support/Error.h"
@@ -60,12 +61,12 @@ static ArrayRef<char> BlockContent(BlockContentBytes);
 
 TEST(LinkGraphTest, Construction) {
   // Check that LinkGraph construction works as expected.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   EXPECT_EQ(G.getName(), "foo");
   EXPECT_EQ(G.getTargetTriple().str(), "x86_64-apple-darwin");
   EXPECT_EQ(G.getPointerSize(), 8U);
-  EXPECT_EQ(G.getEndianness(), llvm::endianness::little);
+  EXPECT_EQ(G.getEndianness(), support::little);
   EXPECT_TRUE(G.external_symbols().empty());
   EXPECT_TRUE(G.absolute_symbols().empty());
   EXPECT_TRUE(G.defined_symbols().empty());
@@ -74,7 +75,7 @@ TEST(LinkGraphTest, Construction) {
 
 TEST(LinkGraphTest, AddressAccess) {
   // Check that we can get addresses for blocks, symbols, and edges.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
 
   auto &Sec1 =
@@ -93,7 +94,7 @@ TEST(LinkGraphTest, AddressAccess) {
 
 TEST(LinkGraphTest, SectionEmpty) {
   // Check that Section::empty behaves as expected.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec1 =
       G.createSection("__data.1", orc::MemProt::Read | orc::MemProt::Write);
@@ -111,7 +112,7 @@ TEST(LinkGraphTest, SectionEmpty) {
 
 TEST(LinkGraphTest, BlockAndSymbolIteration) {
   // Check that we can iterate over blocks within Sections and across sections.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec1 =
       G.createSection("__data.1", orc::MemProt::Read | orc::MemProt::Write);
@@ -164,7 +165,7 @@ TEST(LinkGraphTest, BlockAndSymbolIteration) {
 
 TEST(LinkGraphTest, ContentAccessAndUpdate) {
   // Check that we can make a defined symbol external.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -253,7 +254,7 @@ TEST(LinkGraphTest, ContentAccessAndUpdate) {
 
 TEST(LinkGraphTest, MakeExternal) {
   // Check that we can make defined and absolute symbols external.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -323,7 +324,7 @@ TEST(LinkGraphTest, MakeExternal) {
 
 TEST(LinkGraphTest, MakeAbsolute) {
   // Check that we can make defined and external symbols absolute.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -392,7 +393,7 @@ TEST(LinkGraphTest, MakeAbsolute) {
 
 TEST(LinkGraphTest, MakeDefined) {
   // Check that we can make an external symbol defined.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -440,7 +441,7 @@ TEST(LinkGraphTest, MakeDefined) {
 
 TEST(LinkGraphTest, TransferDefinedSymbol) {
   // Check that we can transfer a defined symbol from one block to another.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -475,7 +476,7 @@ TEST(LinkGraphTest, TransferDefinedSymbol) {
 TEST(LinkGraphTest, TransferDefinedSymbolAcrossSections) {
   // Check that we can transfer a defined symbol from an existing block in one
   // section to another.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec1 =
       G.createSection("__data.1", orc::MemProt::Read | orc::MemProt::Write);
@@ -509,7 +510,7 @@ TEST(LinkGraphTest, TransferDefinedSymbolAcrossSections) {
 TEST(LinkGraphTest, TransferBlock) {
   // Check that we can transfer a block (and all associated symbols) from one
   // section to another.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec1 =
       G.createSection("__data.1", orc::MemProt::Read | orc::MemProt::Write);
@@ -557,7 +558,7 @@ TEST(LinkGraphTest, TransferBlock) {
 TEST(LinkGraphTest, MergeSections) {
   // Check that we can transfer a block (and all associated symbols) from one
   // section to another.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec1 =
       G.createSection("__data.1", orc::MemProt::Read | orc::MemProt::Write);
@@ -643,7 +644,7 @@ TEST(LinkGraphTest, MergeSections) {
 
 TEST(LinkGraphTest, SplitBlock) {
   // Check that the LinkGraph::splitBlock test works as expected.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -739,7 +740,7 @@ TEST(LinkGraphTest, SplitBlock) {
 }
 
 TEST(LinkGraphTest, GraphAllocationMethods) {
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
 
   // Test allocation of sized, uninitialized buffer.
@@ -760,7 +761,7 @@ TEST(LinkGraphTest, GraphAllocationMethods) {
 
 TEST(LinkGraphTest, IsCStringBlockTest) {
   // Check that the LinkGraph::splitBlock test works as expected.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
   auto &Sec =
       G.createSection("__data", orc::MemProt::Read | orc::MemProt::Write);
@@ -785,7 +786,7 @@ TEST(LinkGraphTest, IsCStringBlockTest) {
 
 TEST(LinkGraphTest, BasicLayoutHonorsNoAlloc) {
   // Check that BasicLayout honors NoAlloc.
-  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+  LinkGraph G("foo", Triple("x86_64-apple-darwin"), 8, support::little,
               getGenericEdgeKindName);
 
   // Create a regular section and block.
@@ -797,7 +798,7 @@ TEST(LinkGraphTest, BasicLayoutHonorsNoAlloc) {
   // Create a NoAlloc section and block.
   auto &Sec2 =
       G.createSection("__metadata", orc::MemProt::Read | orc::MemProt::Write);
-  Sec2.setMemLifetime(orc::MemLifetime::NoAlloc);
+  Sec2.setMemLifetimePolicy(orc::MemLifetimePolicy::NoAlloc);
   G.createContentBlock(Sec2, BlockContent.slice(0, 8), orc::ExecutorAddr(), 8,
                        0);
 

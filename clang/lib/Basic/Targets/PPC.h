@@ -198,8 +198,6 @@ public:
   void setFeatureEnabled(llvm::StringMap<bool> &Features, StringRef Name,
                          bool Enabled) const override;
 
-  bool supportsTargetAttributeTune() const override { return true; }
-
   ArrayRef<const char *> getGCCRegNames() const override;
 
   ArrayRef<TargetInfo::GCCRegAlias> getGCCRegAliases() const override;

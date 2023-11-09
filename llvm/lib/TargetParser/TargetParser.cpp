@@ -133,7 +133,7 @@ const GPUInfo *getArchEntry(AMDGPU::GPUKind AK, ArrayRef<GPUInfo> Table) {
         return A.Kind < B.Kind;
       });
 
-  if (I == Table.end() || I->Kind != Search.Kind)
+  if (I == Table.end())
     return nullptr;
   return I;
 }

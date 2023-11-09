@@ -48,39 +48,21 @@ enum EdgeKind_aarch32 : Edge::Kind {
   ///
   FirstArmRelocation,
 
-  /// Write immediate value for unconditional PC-relative branch with link.
-  /// We patch the instruction opcode to account for an instruction-set state
-  /// switch: we use the bl instruction to stay in ARM and the blx instruction
-  /// to switch to Thumb.
+  /// TODO: Arm_Call is here only as a placeholder for now.
   Arm_Call = FirstArmRelocation,
 
-  /// Write immediate value for conditional PC-relative branch without link.
-  /// If the branch target is not ARM, we are forced to generate an explicit
-  /// interworking stub.
-  Arm_Jump24,
-
-  /// Write immediate value to the lower halfword of the destination register
-  Arm_MovwAbsNC,
-
-  /// Write immediate value to the top halfword of the destination register
-  Arm_MovtAbs,
-
-  LastArmRelocation = Arm_MovtAbs,
+  LastArmRelocation = Arm_Call,
 
   ///
   /// Relocations of class Thumb16 and Thumb32 (covers Thumb instruction subset)
   ///
   FirstThumbRelocation,
 
-  /// Write immediate value for unconditional PC-relative branch with link.
-  /// We patch the instruction opcode to account for an instruction-set state
-  /// switch: we use the bl instruction to stay in Thumb and the blx instruction
-  /// to switch to ARM.
+  /// Write immediate value for PC-relative branch with link (can bridge between
+  /// Arm and Thumb).
   Thumb_Call = FirstThumbRelocation,
 
-  /// Write immediate value for PC-relative branch without link. The instruction
-  /// can be made conditional by an IT block. If the branch target is not ARM,
-  /// we are forced to generate an explicit interworking stub.
+  /// Write immediate value for (unconditional) PC-relative branch without link.
   Thumb_Jump24,
 
   /// Write immediate value to the lower halfword of the destination register
@@ -165,31 +147,6 @@ struct HalfWords {
 ///   RegMask     - Mask with all bits set that encode the register
 ///
 template <EdgeKind_aarch32 Kind> struct FixupInfo {};
-
-template <> struct FixupInfo<Arm_Jump24> {
-  static constexpr uint32_t Opcode = 0x0a000000;
-  static constexpr uint32_t OpcodeMask = 0x0f000000;
-  static constexpr uint32_t ImmMask = 0x00ffffff;
-  static constexpr uint32_t Unconditional = 0xe0000000;
-  static constexpr uint32_t CondMask = 0xe0000000; // excluding BLX bit
-};
-
-template <> struct FixupInfo<Arm_Call> : public FixupInfo<Arm_Jump24> {
-  static constexpr uint32_t OpcodeMask = 0x0e000000;
-  static constexpr uint32_t BitH = 0x01000000;
-  static constexpr uint32_t BitBlx = 0x10000000;
-};
-
-template <> struct FixupInfo<Arm_MovtAbs> {
-  static constexpr uint32_t Opcode = 0x03400000;
-  static constexpr uint32_t OpcodeMask = 0x0ff00000;
-  static constexpr uint32_t ImmMask = 0x000f0fff;
-  static constexpr uint32_t RegMask = 0x0000f000;
-};
-
-template <> struct FixupInfo<Arm_MovwAbsNC> : public FixupInfo<Arm_MovtAbs> {
-  static constexpr uint32_t Opcode = 0x03000000;
-};
 
 template <> struct FixupInfo<Thumb_Jump24> {
   static constexpr HalfWords Opcode{0xf000, 0x8000};

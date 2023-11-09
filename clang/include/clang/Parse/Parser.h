@@ -663,9 +663,9 @@ private:
     return PrevTokLocation;
   }
 
-  /// When we are consuming a code-completion token without having matched
-  /// specific position in the grammar, provide code-completion results based
-  /// on context.
+  ///\ brief When we are consuming a code-completion token without having
+  /// matched specific position in the grammar, provide code-completion results
+  /// based on context.
   ///
   /// \returns the source location of the code-completion token.
   SourceLocation handleUnexpectedCodeCompletionToken();
@@ -1766,7 +1766,6 @@ public:
   ExprResult ParseConstantExpressionInExprEvalContext(
       TypeCastState isTypeCast = NotTypeCast);
   ExprResult ParseConstantExpression();
-  ExprResult ParseArrayBoundExpression();
   ExprResult ParseCaseExpression(SourceLocation CaseLoc);
   ExprResult ParseConstraintExpression();
   ExprResult
@@ -2894,7 +2893,7 @@ private:
     return false;
   }
 
-  void ParseOpenMPAttributeArgs(const IdentifierInfo *AttrName,
+  void ParseOpenMPAttributeArgs(IdentifierInfo *AttrName,
                                 CachedTokens &OpenMPTokens);
 
   void ParseCXX11AttributeSpecifierInternal(ParsedAttributes &Attrs,

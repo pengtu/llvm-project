@@ -159,7 +159,7 @@ def ACCC_Host : Clause<"host"> {
 
 // 2.5.6
 def ACCC_If : Clause <"if"> {
-  let flangClass = "ScalarExpr";
+  let flangClass = "ScalarLogicalExpr";
 }
 
 // 2.14.4

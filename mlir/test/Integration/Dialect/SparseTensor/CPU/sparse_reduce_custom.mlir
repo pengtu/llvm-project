@@ -32,10 +32,11 @@
 
 // Reduction in this file _are_ supported by the AArch64 SVE backend
 
-#SparseVector = #sparse_tensor.encoding<{map = (d0) -> (d0 : compressed)}>
-#CSR = #sparse_tensor.encoding<{map = (d0, d1) -> (d0 : dense, d1 : compressed)}>
+#SparseVector = #sparse_tensor.encoding<{lvlTypes = ["compressed"]}>
+#CSR = #sparse_tensor.encoding<{lvlTypes = ["dense", "compressed"]}>
 #CSC = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d1 : dense, d0 : compressed)
+  lvlTypes = [ "dense", "compressed" ],
+  dimToLvl = affine_map<(i,j) -> (j,i)>
 }>
 
 //
@@ -59,7 +60,7 @@ module {
     %maxf = arith.constant 1.0e999 : f64
     %d0 = tensor.dim %arga, %c0 : tensor<?x?xf64, #CSR>
     %d1 = tensor.dim %argb, %c1 : tensor<?x?xf64, #CSR>
-    %xm = tensor.empty(%d0, %d1) : tensor<?x?xf64, #CSR>
+    %xm = bufferization.alloc_tensor(%d0, %d1) : tensor<?x?xf64, #CSR>
     %0 = linalg.generic #trait_matmul
        ins(%arga, %argb: tensor<?x?xf64, #CSR>, tensor<?x?xf64, #CSR>)
         outs(%xm: tensor<?x?xf64, #CSR>) {
@@ -90,7 +91,7 @@ module {
     %maxf = arith.constant 1.0e999 : f64
     %d0 = tensor.dim %arga, %c0 : tensor<?x?xf64, #CSR>
     %d1 = tensor.dim %argb, %c1 : tensor<?x?xf64, #CSC>
-    %xm = tensor.empty(%d0, %d1) : tensor<?x?xf64, #CSR>
+    %xm = bufferization.alloc_tensor(%d0, %d1) : tensor<?x?xf64, #CSR>
     %0 = linalg.generic #trait_matmul
        ins(%arga, %argb: tensor<?x?xf64, #CSR>, tensor<?x?xf64, #CSC>)
         outs(%xm: tensor<?x?xf64, #CSR>) {

@@ -142,22 +142,13 @@ ExceptionSpecAnalyzer::analyzeFunctionEST(const FunctionDecl *FuncDecl,
     return State::NotThrowing;
   case CT_Dependent: {
     const Expr *NoexceptExpr = FuncProto->getNoexceptExpr();
-    if (!NoexceptExpr)
-      return State::NotThrowing;
-
-    // We can't resolve value dependence so just return unknown
-    if (NoexceptExpr->isValueDependent())
-      return State::Unknown;
-
-    // Try to evaluate the expression to a boolean value
     bool Result = false;
-    if (NoexceptExpr->EvaluateAsBooleanCondition(
-            Result, FuncDecl->getASTContext(), true))
-      return Result ? State::NotThrowing : State::Throwing;
-
-    // The noexcept expression is not value dependent but we can't evaluate it
-    // as a boolean condition so we have no idea if its throwing or not
-    return State::Unknown;
+    return (NoexceptExpr && !NoexceptExpr->isValueDependent() &&
+            NoexceptExpr->EvaluateAsBooleanCondition(
+                Result, FuncDecl->getASTContext(), true) &&
+            Result)
+               ? State::NotThrowing
+               : State::Throwing;
   }
   default:
     return State::Throwing;

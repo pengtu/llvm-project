@@ -72,7 +72,7 @@ if (MLIR_ENABLE_VULKAN_RUNNER)
     MLIRTransforms
     MLIRTranslateLib
     MLIRVectorDialect
-    MLIRVectorToLLVMPass
+    MLIRVectorToLLVM
     ${Vulkan_LIBRARY}
   )
 

@@ -337,10 +337,10 @@ static bool filterArch(ObjectFile &Obj) {
     return true;
 
   if (auto *MachO = dyn_cast<MachOObjectFile>(&Obj)) {
-    for (const StringRef Arch : ArchFilters) {
+    for (auto Arch : ArchFilters) {
       // Match architecture number.
       unsigned Value;
-      if (!Arch.getAsInteger(0, Value))
+      if (!StringRef(Arch).getAsInteger(0, Value))
         if (Value == getCPUType(*MachO))
           return true;
 
@@ -649,7 +649,7 @@ static bool dumpObjectFile(ObjectFile &Obj, DWARFContext &DICtx,
   // Handle the --name option.
   if (!Name.empty()) {
     StringSet<> Names;
-    for (const auto &name : Name)
+    for (auto name : Name)
       Names.insert((IgnoreCase && !UseRegex) ? StringRef(name).lower() : name);
 
     filterByName(Names, DICtx.normal_units(), OS, GetRegName);
@@ -698,7 +698,7 @@ static bool handleArchive(StringRef Filename, Archive &Arch,
                           HandlerFn HandleObj, raw_ostream &OS) {
   bool Result = true;
   Error Err = Error::success();
-  for (const auto &Child : Arch.children(Err)) {
+  for (auto Child : Arch.children(Err)) {
     auto BuffOrErr = Child.getMemoryBufferRef();
     error(Filename, BuffOrErr.takeError());
     auto NameOrErr = Child.getName();
@@ -848,19 +848,19 @@ int main(int argc, char **argv) {
 
   bool Success = true;
   if (Verify) {
-    for (StringRef Object : Objects)
+    for (auto Object : Objects)
       Success &= handleFile(Object, verifyObjectFile, OutputFile.os());
   } else if (Statistics) {
-    for (StringRef Object : Objects)
+    for (auto Object : Objects)
       Success &= handleFile(Object, collectStatsForObjectFile, OutputFile.os());
   } else if (ShowSectionSizes) {
-    for (StringRef Object : Objects)
+    for (auto Object : Objects)
       Success &= handleFile(Object, collectObjectSectionSizes, OutputFile.os());
   } else if (ShowSources) {
-    for (StringRef Object : Objects)
+    for (auto Object : Objects)
       Success &= handleFile(Object, collectObjectSources, OutputFile.os());
   } else {
-    for (StringRef Object : Objects)
+    for (auto Object : Objects)
       Success &= handleFile(Object, dumpObjectFile, OutputFile.os());
   }
 

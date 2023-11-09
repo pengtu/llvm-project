@@ -64,9 +64,8 @@ private:
   }
   void endAnalysis() override { logText("\nendAnalysis()"); }
 
-  void enterBlock(const CFGBlock &B, bool PostVisit) override {
-    OS << "\nenterBlock(" << B.BlockID << ", " << (PostVisit ? "true" : "false")
-       << ")\n";
+  void enterBlock(const CFGBlock &B) override {
+    OS << "\nenterBlock(" << B.BlockID << ")\n";
   }
   void enterElement(const CFGElement &E) override {
     // we don't want the trailing \n
@@ -115,7 +114,7 @@ TEST(LoggerTest, Sequence) {
 
   EXPECT_EQ(Log, R"(beginAnalysis()
 
-enterBlock(4, false)
+enterBlock(4)
 recordState(Elements=0, Branches=0, Joins=0)
 enterElement(b)
 transfer()
@@ -124,21 +123,21 @@ enterElement(b (ImplicitCastExpr, LValueToRValue, _Bool))
 transfer()
 recordState(Elements=2, Branches=0, Joins=0)
 
-enterBlock(3, false)
+enterBlock(3)
 transferBranch(0)
 recordState(Elements=2, Branches=1, Joins=0)
 enterElement(q)
 transfer()
 recordState(Elements=3, Branches=1, Joins=0)
 
-enterBlock(2, false)
+enterBlock(2)
 transferBranch(1)
 recordState(Elements=2, Branches=1, Joins=0)
 enterElement(p)
 transfer()
 recordState(Elements=3, Branches=1, Joins=0)
 
-enterBlock(1, false)
+enterBlock(1)
 recordState(Elements=6, Branches=2, Joins=1)
 enterElement(b ? p : q)
 transfer()
@@ -150,7 +149,7 @@ enterElement(return b ? p : q;)
 transfer()
 recordState(Elements=9, Branches=2, Joins=1)
 
-enterBlock(0, false)
+enterBlock(0)
 recordState(Elements=9, Branches=2, Joins=1)
 
 endAnalysis()

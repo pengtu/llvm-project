@@ -363,15 +363,14 @@ private:
   // named `Framework`, e.g. `NSObject.h` in framework `Foundation` would
   // give <Foundation/Foundation.h> if the umbrella header exists, otherwise
   // <Foundation/NSObject.h>.
-  std::optional<llvm::StringRef>
-  getFrameworkHeaderIncludeSpelling(FileEntryRef FE, llvm::StringRef Framework,
-                                    HeaderSearch &HS) {
-    auto Res = CachePathToFrameworkSpelling.try_emplace(FE.getName());
+  std::optional<llvm::StringRef> getFrameworkHeaderIncludeSpelling(
+      const FileEntry *FE, llvm::StringRef Framework, HeaderSearch &HS) {
+    auto Res = CachePathToFrameworkSpelling.try_emplace(FE->getName());
     auto *CachedHeaderSpelling = &Res.first->second;
     if (!Res.second)
       return llvm::StringRef(*CachedHeaderSpelling);
 
-    auto HeaderPath = splitFrameworkHeaderPath(FE.getName());
+    auto HeaderPath = splitFrameworkHeaderPath(FE->getName());
     if (!HeaderPath) {
       // Unexpected: must not be a proper framework header, don't cache the
       // failure.
@@ -893,7 +892,7 @@ void SymbolCollector::finish() {
     const Symbol *S = Symbols.find(SID);
     if (!S)
       continue;
-    assert(IncludeFiles.contains(SID));
+    assert(IncludeFiles.find(SID) != IncludeFiles.end());
 
     const auto FID = IncludeFiles.at(SID);
     // Determine if the FID is #include'd or #import'ed.

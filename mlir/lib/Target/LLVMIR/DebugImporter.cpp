@@ -13,7 +13,6 @@
 #include "mlir/IR/Location.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
-#include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Metadata.h"
@@ -25,17 +24,13 @@ using namespace mlir::LLVM;
 using namespace mlir::LLVM::detail;
 
 Location DebugImporter::translateFuncLocation(llvm::Function *func) {
-  llvm::DISubprogram *subprogram = func->getSubprogram();
-  if (!subprogram)
+  if (!func->getSubprogram())
     return UnknownLoc::get(context);
 
   // Add a fused location to link the subprogram information.
-  StringAttr funcName = StringAttr::get(context, subprogram->getName());
-  StringAttr fileName = StringAttr::get(context, subprogram->getFilename());
+  StringAttr name = StringAttr::get(context, func->getSubprogram()->getName());
   return FusedLocWith<DISubprogramAttr>::get(
-      {NameLoc::get(funcName),
-       FileLineColLoc::get(fileName, subprogram->getLine(), /*column=*/0)},
-      translate(subprogram), context);
+      {NameLoc::get(name)}, translate(func->getSubprogram()), context);
 }
 
 //===----------------------------------------------------------------------===//
@@ -70,16 +65,11 @@ DICompositeTypeAttr DebugImporter::translateImpl(llvm::DICompositeType *node) {
   // TODO: Support debug metadata with cyclic dependencies.
   if (llvm::is_contained(elements, nullptr))
     elements.clear();
-  DITypeAttr baseType = translate(node->getBaseType());
-  // Arrays require a base type, otherwise the debug metadata is considered to
-  // be malformed.
-  if (node->getTag() == llvm::dwarf::DW_TAG_array_type && !baseType)
-    return nullptr;
   return DICompositeTypeAttr::get(
       context, node->getTag(), getStringAttrOrNull(node->getRawName()),
       translate(node->getFile()), node->getLine(), translate(node->getScope()),
-      baseType, flags.value_or(DIFlags::Zero), node->getSizeInBits(),
-      node->getAlignInBits(), elements);
+      translate(node->getBaseType()), flags.value_or(DIFlags::Zero),
+      node->getSizeInBits(), node->getAlignInBits(), elements);
 }
 
 DIDerivedTypeAttr DebugImporter::translateImpl(llvm::DIDerivedType *node) {
@@ -169,15 +159,10 @@ DISubrangeAttr DebugImporter::translateImpl(llvm::DISubrange *node) {
                               constInt->getSExtValue());
     return IntegerAttr();
   };
-  IntegerAttr count = getIntegerAttrOrNull(node->getCount());
-  IntegerAttr upperBound = getIntegerAttrOrNull(node->getUpperBound());
-  // Either count or the upper bound needs to be present. Otherwise, the
-  // metadata is invalid. The conversion might fail due to unsupported DI nodes.
-  if (!count && !upperBound)
-    return {};
-  return DISubrangeAttr::get(
-      context, count, getIntegerAttrOrNull(node->getLowerBound()), upperBound,
-      getIntegerAttrOrNull(node->getStride()));
+  return DISubrangeAttr::get(context, getIntegerAttrOrNull(node->getCount()),
+                             getIntegerAttrOrNull(node->getLowerBound()),
+                             getIntegerAttrOrNull(node->getUpperBound()),
+                             getIntegerAttrOrNull(node->getStride()));
 }
 
 DISubroutineTypeAttr

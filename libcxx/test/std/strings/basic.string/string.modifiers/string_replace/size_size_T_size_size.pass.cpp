@@ -6154,10 +6154,8 @@ TEST_CONSTEXPR_CXX20 bool test56() {
   return true;
 }
 
-template <class CharT, template <class> class Alloc>
-void test() {
-  using S  = std::basic_string<CharT, std::char_traits<CharT>, Alloc<CharT> >;
-  using SV = std::basic_string_view<CharT, std::char_traits<CharT> >;
+template <class S, class SV>
+TEST_CONSTEXPR_CXX20 bool test() {
   test0<S, SV>();
   test1<S, SV>();
   test2<S, SV>();
@@ -6273,12 +6271,15 @@ void test() {
   static_assert(test54<S, SV>());
   static_assert(test55<S, SV>());
 #endif
+
+  return true;
 }
 
 int main(int, char**) {
-  test<char, std::allocator>();
+  test<std::string, std::string_view>();
 #if TEST_STD_VER >= 11
-  test<char, min_allocator>();
+  test<std::basic_string<char, std::char_traits<char>, min_allocator<char>>,
+       std::basic_string_view<char, std::char_traits<char>>>();
 #endif
 
   return 0;

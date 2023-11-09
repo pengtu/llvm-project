@@ -16,7 +16,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace printf_core {
 
 LIBC_INLINE uintmax_t apply_length_modifier(uintmax_t num, LengthModifier lm) {
@@ -53,6 +53,6 @@ LIBC_INLINE uintmax_t apply_length_modifier(uintmax_t num, LengthModifier lm) {
   }
 
 } // namespace printf_core
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_PRINTF_CORE_CONVERTER_UTILS_H

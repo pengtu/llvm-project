@@ -190,8 +190,8 @@ static struct cname {
  * other clumsinesses
  */
 struct parse {
-	const char *next;	/* next character in RE */
-	const char *end;	/* end of string (-> NUL normally) */
+	char *next;		/* next character in RE */
+	char *end;		/* end of string (-> NUL normally) */
 	int error;		/* has an error been seen? */
 	sop *strip;		/* malloced strip */
 	sopno ssize;		/* malloced strip size (allocated) */
@@ -329,7 +329,15 @@ llvm_regcomp(llvm_regex_t *preg, const char *pattern, int cflags)
 
 	/* set things up */
 	p->g = g;
-	p->next = pattern;
+	/* suppress warning from the following explicit cast. */
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#endif /* __GNUC__ */
+	p->next = (char *)pattern;	/* convenience; we do not modify it */
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif /* __GNUC__ */
 	p->end = p->next + len;
 	p->error = 0;
 	p->ncsalloc = 0;
@@ -940,7 +948,7 @@ p_b_term(struct parse *p, cset *cs)
 static void
 p_b_cclass(struct parse *p, cset *cs)
 {
-	const char *sp = p->next;
+	char *sp = p->next;
 	struct cclass *cp;
 	size_t len;
 	const char *u;
@@ -1004,7 +1012,7 @@ static char			/* value of collating element */
 p_b_coll_elem(struct parse *p,
     int endc)			/* name ended by endc,']' */
 {
-	const char *sp = p->next;
+	char *sp = p->next;
 	struct cname *cp;
 	size_t len;
 
@@ -1048,8 +1056,8 @@ othercase(int ch)
 static void
 bothcases(struct parse *p, int ch)
 {
-	const char *oldnext = p->next;
-	const char *oldend = p->end;
+	char *oldnext = p->next;
+	char *oldend = p->end;
 	char bracket[3];
 
 	ch = (uch)ch;
@@ -1090,12 +1098,16 @@ ordinary(struct parse *p, int ch)
 static void
 nonnewline(struct parse *p)
 {
-	const char *oldnext = p->next;
-	const char *oldend = p->end;
-	static const char bracket[4] = {'^', '\n', ']', '\0'};
+	char *oldnext = p->next;
+	char *oldend = p->end;
+	char bracket[4];
 
 	p->next = bracket;
 	p->end = bracket+3;
+	bracket[0] = '^';
+	bracket[1] = '\n';
+	bracket[2] = ']';
+	bracket[3] = '\0';
 	p_bracket(p);
 	assert(p->next == bracket+3);
 	p->next = oldnext;

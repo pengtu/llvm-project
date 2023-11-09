@@ -192,6 +192,9 @@ public:
   static constexpr uint64_t COUNT_NO_PROFILE =
       BinaryBasicBlock::COUNT_NO_PROFILE;
 
+  /// We have to use at least 2-byte alignment for functions because of C++ ABI.
+  static constexpr unsigned MinAlign = 2;
+
   static const char TimerGroupName[];
   static const char TimerGroupDesc[];
 
@@ -1717,17 +1720,8 @@ public:
     return *this;
   }
 
-  uint16_t getMinAlignment() const {
-    // Align data in code BFs minimum to CI alignment
-    if (!size() && hasIslandsInfo())
-      return getConstantIslandAlignment();
-    return BC.MIB->getMinFunctionAlignment();
-  }
-
-  Align getMinAlign() const { return Align(getMinAlignment()); }
-
+  Align getAlign() const { return Align(Alignment); }
   uint16_t getAlignment() const { return Alignment; }
-  Align getAlign() const { return Align(getAlignment()); }
 
   BinaryFunction &setMaxAlignmentBytes(uint16_t MaxAlignBytes) {
     MaxAlignmentBytes = MaxAlignBytes;
@@ -2309,10 +2303,15 @@ public:
   /// removed.
   uint64_t translateInputToOutputAddress(uint64_t Address) const;
 
-  /// Translate a contiguous range of addresses in the input binary into a set
-  /// of ranges in the output binary.
-  DebugAddressRangesVector
-  translateInputToOutputRange(DebugAddressRange InRange) const;
+  /// Take address ranges corresponding to the input binary and translate
+  /// them to address ranges in the output binary.
+  DebugAddressRangesVector translateInputToOutputRanges(
+      const DWARFAddressRangesVector &InputRanges) const;
+
+  /// Similar to translateInputToOutputRanges() but operates on location lists
+  /// and moves associated data to output location lists.
+  DebugLocationsVector
+  translateInputToOutputLocationList(const DebugLocationsVector &InputLL) const;
 
   /// Return true if the function is an AArch64 linker inserted veneer
   bool isAArch64Veneer() const;

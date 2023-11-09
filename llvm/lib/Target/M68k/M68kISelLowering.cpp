@@ -204,12 +204,11 @@ M68kTargetLowering::getExceptionSelectorRegister(const Constant *) const {
   return M68k::D1;
 }
 
-InlineAsm::ConstraintCode
+unsigned
 M68kTargetLowering::getInlineAsmMemConstraint(StringRef ConstraintCode) const {
-  return StringSwitch<InlineAsm::ConstraintCode>(ConstraintCode)
-      .Case("Q", InlineAsm::ConstraintCode::Q)
-      // We borrow ConstraintCode::Um for 'U'.
-      .Case("U", InlineAsm::ConstraintCode::Um)
+  return StringSwitch<unsigned>(ConstraintCode)
+      .Case("Q", InlineAsm::Constraint_Q)
+      .Case("U", InlineAsm::Constraint_Um) // We borrow Constraint_Um for 'U'.
       .Default(TargetLowering::getInlineAsmMemConstraint(ConstraintCode));
 }
 
@@ -2897,7 +2896,7 @@ M68kTargetLowering::getConstraintType(StringRef Constraint) const {
 }
 
 void M68kTargetLowering::LowerAsmOperandForConstraint(SDValue Op,
-                                                      StringRef Constraint,
+                                                      std::string &Constraint,
                                                       std::vector<SDValue> &Ops,
                                                       SelectionDAG &DAG) const {
   SDValue Result;
@@ -3050,8 +3049,9 @@ M68kTargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
 
 /// Determines whether the callee is required to pop its own arguments.
 /// Callee pop is necessary to support tail calls.
-bool M68k::isCalleePop(CallingConv::ID CC, bool IsVarArg, bool GuaranteeTCO) {
-  return CC == CallingConv::M68k_RTD && !IsVarArg;
+bool M68k::isCalleePop(CallingConv::ID CallingConv, bool IsVarArg,
+                       bool GuaranteeTCO) {
+  return false;
 }
 
 // Return true if it is OK for this CMOV pseudo-opcode to be cascaded

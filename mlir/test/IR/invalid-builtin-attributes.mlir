@@ -587,5 +587,3 @@ func.func @duplicate_dictionary_attr_key() {
 #attr = distinct[0]<42 : i32>
 // expected-error@below {{referenced attribute does not match previous definition: 42 : i32}}
 #attr1 = distinct[0]<43 : i32>
-
-// -----

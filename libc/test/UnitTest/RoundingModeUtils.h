@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace fputil {
 namespace testing {
 
@@ -32,6 +32,6 @@ template <RoundingMode R> struct ForceRoundingModeTest : ForceRoundingMode {
 
 } // namespace testing
 } // namespace fputil
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_UTILS_TESTUTILS_ROUNDINGMODEUTILS_H

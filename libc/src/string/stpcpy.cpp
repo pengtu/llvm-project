@@ -12,17 +12,17 @@
 
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(char *, stpcpy,
                    (char *__restrict dest, const char *__restrict src)) {
   size_t size = internal::string_length(src) + 1;
   char *result =
-      reinterpret_cast<char *>(LIBC_NAMESPACE::mempcpy(dest, src, size));
+      reinterpret_cast<char *>(__llvm_libc::mempcpy(dest, src, size));
 
   if (result != nullptr)
     return result - 1;
   return nullptr;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

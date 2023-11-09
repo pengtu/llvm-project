@@ -15,9 +15,6 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
-#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
-#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 
 #define DEBUG_TYPE "flang-tbaa-builder"
 
@@ -30,13 +27,6 @@ static llvm::cl::opt<bool> disableTBAA(
                    "to override default Flang behavior"),
     llvm::cl::init(false));
 
-// disabling this will play badly with the FIR TBAA pass, leading to worse
-// performance
-static llvm::cl::opt<bool> perFunctionTBAATrees(
-    "per-function-tbaa-trees",
-    llvm::cl::desc("Give each function an independent TBAA tree (default)"),
-    llvm::cl::init(true), llvm::cl::Hidden);
-
 // tagAttachmentLimit is a debugging option that allows limiting
 // the number of TBAA access tag attributes attached to operations.
 // It is set to kTagAttachmentUnlimited by default denoting "no limit".
@@ -48,12 +38,27 @@ static llvm::cl::opt<unsigned>
 
 namespace fir {
 
-TBAABuilder::TBAABuilder(MLIRContext *context, bool applyTBAA,
-                         bool forceUnifiedTree)
-    : enableTBAA(applyTBAA && !disableTBAA),
-      trees(/*separatePerFunction=*/perFunctionTBAATrees && !forceUnifiedTree) {
+TBAABuilder::TBAABuilder(MLIRContext *context, bool applyTBAA)
+    : enableTBAA(applyTBAA && !disableTBAA) {
   if (!enableTBAA)
     return;
+
+  // Root node.
+  flangTBAARoot =
+      TBAARootAttr::get(context, StringAttr::get(context, flangTBAARootId));
+
+  // Any access node.
+  anyAccessTypeDesc = TBAATypeDescriptorAttr::get(
+      context, anyAccessTypeDescId, TBAAMemberAttr::get(flangTBAARoot, 0));
+
+  // Any data access node.
+  anyDataAccessTypeDesc =
+      TBAATypeDescriptorAttr::get(context, anyDataAccessTypeDescId,
+                                  TBAAMemberAttr::get(anyAccessTypeDesc, 0));
+
+  // Box member access node.
+  boxMemberTypeDesc = TBAATypeDescriptorAttr::get(
+      context, boxMemberTypeDescId, TBAAMemberAttr::get(anyAccessTypeDesc, 0));
 }
 
 TBAATagAttr TBAABuilder::getAccessTag(TBAATypeDescriptorAttr baseTypeDesc,
@@ -68,41 +73,29 @@ TBAATagAttr TBAABuilder::getAccessTag(TBAATypeDescriptorAttr baseTypeDesc,
   return tag;
 }
 
-TBAATagAttr TBAABuilder::getAnyBoxAccessTag(mlir::LLVM::LLVMFuncOp func) {
-  TBAATypeDescriptorAttr boxMemberTypeDesc = trees[func].boxMemberTypeDesc;
+TBAATagAttr TBAABuilder::getAnyBoxAccessTag() {
   return getAccessTag(boxMemberTypeDesc, boxMemberTypeDesc, /*offset=*/0);
 }
 
 TBAATagAttr TBAABuilder::getBoxAccessTag(Type baseFIRType, Type accessFIRType,
-                                         GEPOp gep,
-                                         mlir::LLVM::LLVMFuncOp func) {
-  return getAnyBoxAccessTag(func);
+                                         GEPOp gep) {
+  return getAnyBoxAccessTag();
 }
 
-TBAATagAttr TBAABuilder::getAnyDataAccessTag(mlir::LLVM::LLVMFuncOp func) {
-  TBAATypeDescriptorAttr anyDataAccessTypeDesc = trees[func].anyDataTypeDesc;
+TBAATagAttr TBAABuilder::getAnyDataAccessTag() {
   return getAccessTag(anyDataAccessTypeDesc, anyDataAccessTypeDesc,
                       /*offset=*/0);
 }
 
 TBAATagAttr TBAABuilder::getDataAccessTag(Type baseFIRType, Type accessFIRType,
-                                          GEPOp gep,
-                                          mlir::LLVM::LLVMFuncOp func) {
-  return getAnyDataAccessTag(func);
-}
-
-TBAATagAttr TBAABuilder::getAnyAccessTag(mlir::LLVM::LLVMFuncOp func) {
-  TBAATypeDescriptorAttr anyAccessTypeDesc = trees[func].anyAccessDesc;
-  return getAccessTag(anyAccessTypeDesc, anyAccessTypeDesc, /*offset=*/0);
+                                          GEPOp gep) {
+  return getAnyDataAccessTag();
 }
 
 void TBAABuilder::attachTBAATag(AliasAnalysisOpInterface op, Type baseFIRType,
                                 Type accessFIRType, GEPOp gep) {
   if (!enableTBAA)
     return;
-
-  mlir::LLVM::LLVMFuncOp func = op->getParentOfType<mlir::LLVM::LLVMFuncOp>();
-  assert(func && "func.func should have already been converted to llvm.func");
 
   ++tagAttachmentCounter;
   if (tagAttachmentLimit != kTagAttachmentUnlimited &&
@@ -113,17 +106,10 @@ void TBAABuilder::attachTBAATag(AliasAnalysisOpInterface op, Type baseFIRType,
                           << "\n");
 
   TBAATagAttr tbaaTagSym;
-  if (fir::isRecordWithDescriptorMember(baseFIRType)) {
-    // A memory access that addresses an aggregate that contains
-    // a mix of data members and descriptor members may alias
-    // with both data and descriptor accesses.
-    // Conservatively set any-access tag if there is any descriptor member.
-    tbaaTagSym = getAnyAccessTag(func);
-  } else if (baseFIRType.isa<fir::BaseBoxType>()) {
-    tbaaTagSym = getBoxAccessTag(baseFIRType, accessFIRType, gep, func);
-  } else {
-    tbaaTagSym = getDataAccessTag(baseFIRType, accessFIRType, gep, func);
-  }
+  if (baseFIRType.isa<fir::BaseBoxType>())
+    tbaaTagSym = getBoxAccessTag(baseFIRType, accessFIRType, gep);
+  else
+    tbaaTagSym = getDataAccessTag(baseFIRType, accessFIRType, gep);
 
   if (!tbaaTagSym)
     return;

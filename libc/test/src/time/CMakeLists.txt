@@ -56,9 +56,16 @@ add_libc_unittest(
     libc_time_unittests
   SRCS
     gettimeofday_test.cpp
+  HDRS
+    TmHelper.h
+    TmMatcher.h
+  CXX_STANDARD
+    20
   DEPENDS
     libc.include.time
     libc.src.time.gettimeofday
+    libc.src.time.nanosleep
+    libc.src.errno.errno
 )
 
 add_libc_unittest(

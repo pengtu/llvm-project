@@ -27,6 +27,7 @@
 #include "lldb/Interpreter/OptionGroupString.h"
 #include "lldb/Interpreter/OptionGroupUInt64.h"
 #include "lldb/Interpreter/OptionValueProperties.h"
+#include "lldb/Symbol/LocateSymbolFile.h"
 #include "lldb/Symbol/ObjectFile.h"
 #include "lldb/Target/RegisterContext.h"
 #include "lldb/Target/Target.h"
@@ -277,11 +278,11 @@ Status ProcessKDP::DoConnectRemote(llvm::StringRef remote_url) {
               FileSpecList search_paths =
                   Target::GetDefaultDebugFileSearchPaths();
               module_spec.GetSymbolFileSpec() =
-                  PluginManager::LocateExecutableSymbolFile(module_spec,
-                                                            search_paths);
+                  Symbols::LocateExecutableSymbolFile(module_spec,
+                                                      search_paths);
               if (module_spec.GetSymbolFileSpec()) {
                 ModuleSpec executable_module_spec =
-                    PluginManager::LocateExecutableObjectFile(module_spec);
+                    Symbols::LocateExecutableObjectFile(module_spec);
                 if (FileSystem::Instance().Exists(
                         executable_module_spec.GetFileSpec())) {
                   module_spec.GetFileSpec() =
@@ -291,8 +292,8 @@ Status ProcessKDP::DoConnectRemote(llvm::StringRef remote_url) {
               if (!module_spec.GetSymbolFileSpec() ||
                   !module_spec.GetSymbolFileSpec()) {
                 Status symbl_error;
-                PluginManager::DownloadObjectAndSymbolFile(module_spec,
-                                                           symbl_error, true);
+                Symbols::DownloadObjectAndSymbolFile(module_spec, symbl_error,
+                                                     true);
               }
 
               if (FileSystem::Instance().Exists(module_spec.GetFileSpec())) {
@@ -880,7 +881,7 @@ public:
 
   ~CommandObjectProcessKDPPacketSend() override = default;
 
-  void DoExecute(Args &command, CommandReturnObject &result) override {
+  bool DoExecute(Args &command, CommandReturnObject &result) override {
     if (!m_command_byte.GetOptionValue().OptionWasSet()) {
       result.AppendError(
           "the --command option must be set to a valid command byte");
@@ -906,7 +907,7 @@ public:
                                              "even number of ASCII hex "
                                              "characters: '%s'",
                                              ascii_hex_bytes_cstr);
-                return;
+                return false;
               }
               payload_bytes.resize(ascii_hex_bytes_cstr_len / 2);
               if (extractor.GetHexBytes(payload_bytes, '\xdd') !=
@@ -915,7 +916,7 @@ public:
                                              "ASCII hex characters (no "
                                              "spaces or hex prefixes): '%s'",
                                              ascii_hex_bytes_cstr);
-                return;
+                return false;
               }
             }
             Status error;
@@ -933,7 +934,7 @@ public:
                   endian::InlHostByteOrder(), endian::InlHostByteOrder());
               result.AppendMessage(packet.GetString());
               result.SetStatus(eReturnStatusSuccessFinishResult);
-              return;
+              return true;
             } else {
               const char *error_cstr = error.AsCString();
               if (error_cstr && error_cstr[0])
@@ -941,7 +942,7 @@ public:
               else
                 result.AppendErrorWithFormat("unknown error 0x%8.8x",
                                              error.GetError());
-              return;
+              return false;
             }
           } else {
             result.AppendErrorWithFormat("process must be stopped in order "
@@ -957,6 +958,7 @@ public:
                                      command_byte);
       }
     }
+    return false;
   }
 };
 

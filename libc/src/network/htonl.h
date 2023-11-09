@@ -11,10 +11,10 @@
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 uint32_t htonl(uint32_t hostlong);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_NETWORK_HTONL_H

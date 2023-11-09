@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 class Timer {
@@ -28,6 +28,6 @@ public:
 };
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_UTILS_TESTUTILS_TIMER_H

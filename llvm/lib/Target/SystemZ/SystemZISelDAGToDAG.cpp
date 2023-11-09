@@ -350,7 +350,7 @@ public:
 
   SystemZDAGToDAGISel() = delete;
 
-  SystemZDAGToDAGISel(SystemZTargetMachine &TM, CodeGenOptLevel OptLevel)
+  SystemZDAGToDAGISel(SystemZTargetMachine &TM, CodeGenOpt::Level OptLevel)
       : SelectionDAGISel(ID, TM, OptLevel) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
@@ -368,8 +368,7 @@ public:
 
   // Override SelectionDAGISel.
   void Select(SDNode *Node) override;
-  bool SelectInlineAsmMemoryOperand(const SDValue &Op,
-                                    InlineAsm::ConstraintCode ConstraintID,
+  bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
                                     std::vector<SDValue> &OutOps) override;
   bool IsProfitableToFold(SDValue N, SDNode *U, SDNode *Root) const override;
   void PreprocessISelDAG() override;
@@ -384,7 +383,7 @@ char SystemZDAGToDAGISel::ID = 0;
 INITIALIZE_PASS(SystemZDAGToDAGISel, DEBUG_TYPE, PASS_NAME, false, false)
 
 FunctionPass *llvm::createSystemZISelDag(SystemZTargetMachine &TM,
-                                         CodeGenOptLevel OptLevel) {
+                                         CodeGenOpt::Level OptLevel) {
   return new SystemZDAGToDAGISel(TM, OptLevel);
 }
 
@@ -1678,9 +1677,10 @@ void SystemZDAGToDAGISel::Select(SDNode *Node) {
   SelectCode(Node);
 }
 
-bool SystemZDAGToDAGISel::SelectInlineAsmMemoryOperand(
-    const SDValue &Op, InlineAsm::ConstraintCode ConstraintID,
-    std::vector<SDValue> &OutOps) {
+bool SystemZDAGToDAGISel::
+SelectInlineAsmMemoryOperand(const SDValue &Op,
+                             unsigned ConstraintID,
+                             std::vector<SDValue> &OutOps) {
   SystemZAddressingMode::AddrForm Form;
   SystemZAddressingMode::DispRange DispRange;
   SDValue Base, Disp, Index;
@@ -1688,30 +1688,30 @@ bool SystemZDAGToDAGISel::SelectInlineAsmMemoryOperand(
   switch(ConstraintID) {
   default:
     llvm_unreachable("Unexpected asm memory constraint");
-  case InlineAsm::ConstraintCode::i:
-  case InlineAsm::ConstraintCode::Q:
-  case InlineAsm::ConstraintCode::ZQ:
+  case InlineAsm::Constraint_i:
+  case InlineAsm::Constraint_Q:
+  case InlineAsm::Constraint_ZQ:
     // Accept an address with a short displacement, but no index.
     Form = SystemZAddressingMode::FormBD;
     DispRange = SystemZAddressingMode::Disp12Only;
     break;
-  case InlineAsm::ConstraintCode::R:
-  case InlineAsm::ConstraintCode::ZR:
+  case InlineAsm::Constraint_R:
+  case InlineAsm::Constraint_ZR:
     // Accept an address with a short displacement and an index.
     Form = SystemZAddressingMode::FormBDXNormal;
     DispRange = SystemZAddressingMode::Disp12Only;
     break;
-  case InlineAsm::ConstraintCode::S:
-  case InlineAsm::ConstraintCode::ZS:
+  case InlineAsm::Constraint_S:
+  case InlineAsm::Constraint_ZS:
     // Accept an address with a long displacement, but no index.
     Form = SystemZAddressingMode::FormBD;
     DispRange = SystemZAddressingMode::Disp20Only;
     break;
-  case InlineAsm::ConstraintCode::T:
-  case InlineAsm::ConstraintCode::m:
-  case InlineAsm::ConstraintCode::o:
-  case InlineAsm::ConstraintCode::p:
-  case InlineAsm::ConstraintCode::ZT:
+  case InlineAsm::Constraint_T:
+  case InlineAsm::Constraint_m:
+  case InlineAsm::Constraint_o:
+  case InlineAsm::Constraint_p:
+  case InlineAsm::Constraint_ZT:
     // Accept an address with a long displacement and an index.
     // m works the same as T, as this is the most general case.
     // We don't really have any special handling of "offsettable"

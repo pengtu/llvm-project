@@ -238,20 +238,16 @@ linalg::rewriteAsPaddedOp(RewriterBase &rewriter, LinalgOp opToPad,
              opToPad.getNumDpsInits() &&
          "expected matching number of results");
   for (auto it :
-       llvm::zip(paddedSubtensorResults, opToPad.getDpsInitsMutable())) {
+       llvm::zip(paddedSubtensorResults, opToPad.getDpsInitOperands())) {
     if (options.copyBackOp == LinalgPaddingOptions::CopyBackOp::LinalgCopy) {
       replacements.push_back(rewriter
                                  .create<linalg::CopyOp>(loc, std::get<0>(it),
-                                                         std::get<1>(it).get())
+                                                         std::get<1>(it)->get())
                                  .getResult(0));
     } else if (options.copyBackOp ==
-               LinalgPaddingOptions::CopyBackOp::
-                   BufferizationMaterializeInDestination) {
-      replacements.push_back(
-          rewriter
-              .create<bufferization::MaterializeInDestinationOp>(
-                  loc, std::get<0>(it), std::get<1>(it).get())
-              ->getResult(0));
+               LinalgPaddingOptions::CopyBackOp::BufferizationCopyTensor) {
+      replacements.push_back(rewriter.create<bufferization::CopyTensorOp>(
+          loc, std::get<0>(it), std::get<1>(it)->get()));
     } else {
       llvm_unreachable("unsupported copy back op");
     }

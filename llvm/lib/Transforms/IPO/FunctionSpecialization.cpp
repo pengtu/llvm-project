@@ -202,7 +202,7 @@ Bonus InstCostVisitor::getUserBonus(Instruction *User, Value *Use, Constant *C) 
   CodeSize += TTI.getInstructionCost(User, TargetTransformInfo::TCK_CodeSize);
 
   uint64_t Weight = BFI.getBlockFreq(User->getParent()).getFrequency() /
-                    BFI.getEntryFreq().getFrequency();
+                    BFI.getEntryFreq();
 
   Cost Latency = Weight *
       TTI.getInstructionCost(User, TargetTransformInfo::TCK_Latency);
@@ -487,7 +487,10 @@ void FunctionSpecializer::promoteConstantStackValues(Function *F) {
 
       Value *GV = new GlobalVariable(M, ConstVal->getType(), true,
                                      GlobalValue::InternalLinkage, ConstVal,
-                                     "specialized.arg." + Twine(++NGlobals));
+                                     "funcspec.arg");
+      if (ArgOpType != ConstVal->getType())
+        GV = ConstantExpr::getBitCast(cast<Constant>(GV), ArgOpType);
+
       Call->setArgOperand(Idx, GV);
     }
   }
@@ -716,10 +719,9 @@ void FunctionSpecializer::removeDeadFunctions() {
 
 /// Clone the function \p F and remove the ssa_copy intrinsics added by
 /// the SCCPSolver in the cloned version.
-static Function *cloneCandidateFunction(Function *F, unsigned NSpecs) {
+static Function *cloneCandidateFunction(Function *F) {
   ValueToValueMapTy Mappings;
   Function *Clone = CloneFunction(F, Mappings);
-  Clone->setName(F->getName() + ".specialized." + Twine(NSpecs));
   removeSSACopy(*Clone);
   return Clone;
 }
@@ -877,7 +879,7 @@ bool FunctionSpecializer::isCandidateFunction(Function *F) {
 
 Function *FunctionSpecializer::createSpecialization(Function *F,
                                                     const SpecSig &S) {
-  Function *Clone = cloneCandidateFunction(F, Specializations.size() + 1);
+  Function *Clone = cloneCandidateFunction(F);
 
   // The original function does not neccessarily have internal linkage, but the
   // clone must.

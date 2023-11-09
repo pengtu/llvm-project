@@ -31,14 +31,6 @@ public:
   ///     for I in all mutated/inserted instructions:
   ///       !isPreISelGenericOpcode(I.getOpcode())
   virtual bool select(MachineInstr &I) = 0;
-
-  void setTargetPassConfig(const TargetPassConfig *T) { TPC = T; }
-
-  void setRemarkEmitter(MachineOptimizationRemarkEmitter *M) { MORE = M; }
-
-protected:
-  const TargetPassConfig *TPC = nullptr;
-  MachineOptimizationRemarkEmitter *MORE = nullptr;
 };
 } // namespace llvm
 

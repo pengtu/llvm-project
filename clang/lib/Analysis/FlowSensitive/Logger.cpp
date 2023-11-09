@@ -57,16 +57,12 @@ struct TextualLogger final : Logger {
     llvm::errs() << "=== Finished analysis: " << Blocks << " blocks in "
                  << Steps << " total steps ===\n";
   }
-  virtual void enterBlock(const CFGBlock &Block, bool PostVisit) override {
+  virtual void enterBlock(const CFGBlock &Block) override {
     unsigned Count = ++VisitCount[&Block];
     {
       llvm::WithColor Header(OS, llvm::raw_ostream::Colors::RED, /*Bold=*/true);
-      OS << "=== Entering block B" << Block.getBlockID();
-      if (PostVisit)
-        OS << " (post-visit)";
-      else
-        OS << " (iteration " << Count << ")";
-      OS << " ===\n";
+      OS << "=== Entering block B" << Block.getBlockID() << " (iteration "
+         << Count << ") ===\n";
     }
     Block.print(OS, CurrentCFG, CurrentAnalysis->getASTContext().getLangOpts(),
                 ShowColors);

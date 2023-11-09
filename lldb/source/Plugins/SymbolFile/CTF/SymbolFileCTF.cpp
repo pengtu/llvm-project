@@ -320,12 +320,12 @@ static uint32_t GetBytes(uint32_t bits) { return bits / sizeof(unsigned); }
 static clang::TagTypeKind TranslateRecordKind(CTFType::Kind type) {
   switch (type) {
   case CTFType::Kind::eStruct:
-    return clang::TagTypeKind::Struct;
+    return clang::TTK_Struct;
   case CTFType::Kind::eUnion:
-    return clang::TagTypeKind::Union;
+    return clang::TTK_Union;
   default:
     lldbassert(false && "Invalid record kind!");
-    return clang::TagTypeKind::Struct;
+    return clang::TTK_Struct;
   }
 }
 
@@ -503,9 +503,9 @@ SymbolFileCTF::CreateFunction(const CTFFunction &ctf_function) {
 llvm::Expected<lldb::TypeSP>
 SymbolFileCTF::CreateRecord(const CTFRecord &ctf_record) {
   const clang::TagTypeKind tag_kind = TranslateRecordKind(ctf_record.kind);
-  CompilerType record_type = m_ast->CreateRecordType(
-      nullptr, OptionalClangModuleID(), eAccessPublic, ctf_record.name.data(),
-      llvm::to_underlying(tag_kind), eLanguageTypeC);
+  CompilerType record_type =
+      m_ast->CreateRecordType(nullptr, OptionalClangModuleID(), eAccessPublic,
+                              ctf_record.name.data(), tag_kind, eLanguageTypeC);
   m_compiler_types[record_type.GetOpaqueQualType()] = &ctf_record;
   Declaration decl;
   return MakeType(ctf_record.uid, ConstString(ctf_record.name), ctf_record.size,
@@ -562,7 +562,7 @@ llvm::Expected<lldb::TypeSP>
 SymbolFileCTF::CreateForward(const CTFForward &ctf_forward) {
   CompilerType forward_compiler_type = m_ast->CreateRecordType(
       nullptr, OptionalClangModuleID(), eAccessPublic, ctf_forward.name,
-      llvm::to_underlying(clang::TagTypeKind::Struct), eLanguageTypeC);
+      clang::TTK_Struct, eLanguageTypeC);
   Declaration decl;
   return MakeType(ctf_forward.uid, ConstString(ctf_forward.name), 0, nullptr,
                   LLDB_INVALID_UID, Type::eEncodingIsUID, decl,

@@ -88,12 +88,12 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
     if (genericOp.getNumParallelLoops() != genericOp.getNumLoops())
       return failure();
 
-    auto outputOperands = genericOp.getDpsInitsMutable();
+    auto outputOperands = genericOp.getDpsInitOperands();
     SetVector<OpOperand *> candidates;
-    for (OpOperand &op : outputOperands) {
-      if (genericOp.getMatchingBlockArgument(&op).use_empty())
+    for (OpOperand *op : outputOperands) {
+      if (genericOp.getMatchingBlockArgument(op).use_empty())
         continue;
-      candidates.insert(&op);
+      candidates.insert(op);
     }
 
     if (candidates.empty())
@@ -101,7 +101,7 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
 
     // Compute the modified indexing maps.
     int64_t origNumInput = genericOp.getNumDpsInputs();
-    SmallVector<Value> newInputOperands = genericOp.getDpsInputs();
+    SmallVector<Value> newInputOperands = genericOp.getDpsInputOperands();
     SmallVector<AffineMap> indexingMaps = genericOp.getIndexingMapsArray();
     SmallVector<AffineMap> newIndexingMaps;
     newIndexingMaps.append(indexingMaps.begin(),
@@ -114,8 +114,7 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
                            indexingMaps.end());
 
     Location loc = genericOp.getLoc();
-    SmallVector<Value> newOutputOperands =
-        llvm::to_vector(genericOp.getDpsInits());
+    SmallVector<Value> newOutputOperands = outputOperands;
     for (OpOperand *op : candidates) {
       OpBuilder::InsertionGuard guard(rewriter);
       rewriter.setInsertionPointAfterValue(op->get());
@@ -123,7 +122,7 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
       auto empty = rewriter.create<tensor::EmptyOp>(
           loc, tensor::getMixedSizes(rewriter, loc, op->get()), elemType);
 
-      unsigned start = genericOp.getDpsInits().getBeginOperandIndex();
+      auto [start, end] = genericOp.getDpsInitsPositionRange();
       newOutputOperands[op->getOperandNumber() - start] = empty.getResult();
     }
 
@@ -146,9 +145,9 @@ struct MoveInitOperandsToInput : public OpRewritePattern<GenericOp> {
       mapper.map(bbarg, block->addArgument(bbarg.getType(), loc));
     }
 
-    for (OpOperand &op : outputOperands) {
-      BlockArgument bbarg = genericOp.getMatchingBlockArgument(&op);
-      if (candidates.count(&op))
+    for (OpOperand *op : outputOperands) {
+      BlockArgument bbarg = genericOp.getMatchingBlockArgument(op);
+      if (candidates.count(op))
         block->addArgument(bbarg.getType(), loc);
       else
         mapper.map(bbarg, block->addArgument(bbarg.getType(), loc));

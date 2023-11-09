@@ -231,7 +231,7 @@ class SelectionDAG {
   MachineFunction *MF;
   Pass *SDAGISelPass = nullptr;
   LLVMContext *Context;
-  CodeGenOptLevel OptLevel;
+  CodeGenOpt::Level OptLevel;
 
   UniformityInfo *UA = nullptr;
   FunctionLoweringInfo * FLI = nullptr;
@@ -447,7 +447,7 @@ public:
   // Maximum depth for recursive analysis such as computeKnownBits, etc.
   static constexpr unsigned MaxRecursionDepth = 6;
 
-  explicit SelectionDAG(const TargetMachine &TM, CodeGenOptLevel);
+  explicit SelectionDAG(const TargetMachine &TM, CodeGenOpt::Level);
   SelectionDAG(const SelectionDAG &) = delete;
   SelectionDAG &operator=(const SelectionDAG &) = delete;
   ~SelectionDAG();
@@ -576,7 +576,8 @@ public:
   /// certain types of nodes together, or eliminating superfluous nodes.  The
   /// Level argument controls whether Combine is allowed to produce nodes and
   /// types that are illegal on the target.
-  void Combine(CombineLevel Level, AAResults *AA, CodeGenOptLevel OptLevel);
+  void Combine(CombineLevel Level, AAResults *AA,
+               CodeGenOpt::Level OptLevel);
 
   /// This transforms the SelectionDAG into a SelectionDAG that
   /// only uses types natively supported by the target.
@@ -1919,10 +1920,10 @@ public:
   SDValue FoldConstantArithmetic(unsigned Opcode, const SDLoc &DL, EVT VT,
                                  ArrayRef<SDValue> Ops);
 
-  /// Fold floating-point operations when all operands are constants and/or
-  /// undefined.
+  /// Fold floating-point operations with 2 operands when both operands are
+  /// constants and/or undefined.
   SDValue foldConstantFPMath(unsigned Opcode, const SDLoc &DL, EVT VT,
-                             ArrayRef<SDValue> Ops);
+                             SDValue N1, SDValue N2);
 
   /// Constant fold a setcc to true or false.
   SDValue FoldSetCC(EVT VT, SDValue N1, SDValue N2, ISD::CondCode Cond,

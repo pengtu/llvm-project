@@ -15,6 +15,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
@@ -166,115 +167,43 @@ void CounterMappingContext::dump(const Counter &C, raw_ostream &OS) const {
 }
 
 Expected<int64_t> CounterMappingContext::evaluate(const Counter &C) const {
-  struct StackElem {
-    Counter ICounter;
-    int64_t LHS = 0;
-    enum {
-      KNeverVisited = 0,
-      KVisitedOnce = 1,
-      KVisitedTwice = 2,
-    } VisitCount = KNeverVisited;
-  };
-
-  std::stack<StackElem> CounterStack;
-  CounterStack.push({C});
-
-  int64_t LastPoppedValue;
-
-  while (!CounterStack.empty()) {
-    StackElem &Current = CounterStack.top();
-
-    switch (Current.ICounter.getKind()) {
-    case Counter::Zero:
-      LastPoppedValue = 0;
-      CounterStack.pop();
-      break;
-    case Counter::CounterValueReference:
-      if (Current.ICounter.getCounterID() >= CounterValues.size())
-        return errorCodeToError(errc::argument_out_of_domain);
-      LastPoppedValue = CounterValues[Current.ICounter.getCounterID()];
-      CounterStack.pop();
-      break;
-    case Counter::Expression: {
-      if (Current.ICounter.getExpressionID() >= Expressions.size())
-        return errorCodeToError(errc::argument_out_of_domain);
-      const auto &E = Expressions[Current.ICounter.getExpressionID()];
-      if (Current.VisitCount == StackElem::KNeverVisited) {
-        CounterStack.push(StackElem{E.LHS});
-        Current.VisitCount = StackElem::KVisitedOnce;
-      } else if (Current.VisitCount == StackElem::KVisitedOnce) {
-        Current.LHS = LastPoppedValue;
-        CounterStack.push(StackElem{E.RHS});
-        Current.VisitCount = StackElem::KVisitedTwice;
-      } else {
-        int64_t LHS = Current.LHS;
-        int64_t RHS = LastPoppedValue;
-        LastPoppedValue =
-            E.Kind == CounterExpression::Subtract ? LHS - RHS : LHS + RHS;
-        CounterStack.pop();
-      }
-      break;
-    }
-    }
+  switch (C.getKind()) {
+  case Counter::Zero:
+    return 0;
+  case Counter::CounterValueReference:
+    if (C.getCounterID() >= CounterValues.size())
+      return errorCodeToError(errc::argument_out_of_domain);
+    return CounterValues[C.getCounterID()];
+  case Counter::Expression: {
+    if (C.getExpressionID() >= Expressions.size())
+      return errorCodeToError(errc::argument_out_of_domain);
+    const auto &E = Expressions[C.getExpressionID()];
+    Expected<int64_t> LHS = evaluate(E.LHS);
+    if (!LHS)
+      return LHS;
+    Expected<int64_t> RHS = evaluate(E.RHS);
+    if (!RHS)
+      return RHS;
+    return E.Kind == CounterExpression::Subtract ? *LHS - *RHS : *LHS + *RHS;
   }
-
-  return LastPoppedValue;
+  }
+  llvm_unreachable("Unhandled CounterKind");
 }
 
 unsigned CounterMappingContext::getMaxCounterID(const Counter &C) const {
-  struct StackElem {
-    Counter ICounter;
-    int64_t LHS = 0;
-    enum {
-      KNeverVisited = 0,
-      KVisitedOnce = 1,
-      KVisitedTwice = 2,
-    } VisitCount = KNeverVisited;
-  };
-
-  std::stack<StackElem> CounterStack;
-  CounterStack.push({C});
-
-  int64_t LastPoppedValue;
-
-  while (!CounterStack.empty()) {
-    StackElem &Current = CounterStack.top();
-
-    switch (Current.ICounter.getKind()) {
-    case Counter::Zero:
-      LastPoppedValue = 0;
-      CounterStack.pop();
-      break;
-    case Counter::CounterValueReference:
-      LastPoppedValue = Current.ICounter.getCounterID();
-      CounterStack.pop();
-      break;
-    case Counter::Expression: {
-      if (Current.ICounter.getExpressionID() >= Expressions.size()) {
-        LastPoppedValue = 0;
-        CounterStack.pop();
-      } else {
-        const auto &E = Expressions[Current.ICounter.getExpressionID()];
-        if (Current.VisitCount == StackElem::KNeverVisited) {
-          CounterStack.push(StackElem{E.LHS});
-          Current.VisitCount = StackElem::KVisitedOnce;
-        } else if (Current.VisitCount == StackElem::KVisitedOnce) {
-          Current.LHS = LastPoppedValue;
-          CounterStack.push(StackElem{E.RHS});
-          Current.VisitCount = StackElem::KVisitedTwice;
-        } else {
-          int64_t LHS = Current.LHS;
-          int64_t RHS = LastPoppedValue;
-          LastPoppedValue = std::max(LHS, RHS);
-          CounterStack.pop();
-        }
-      }
-      break;
-    }
-    }
+  switch (C.getKind()) {
+  case Counter::Zero:
+    return 0;
+  case Counter::CounterValueReference:
+    return C.getCounterID();
+  case Counter::Expression: {
+    if (C.getExpressionID() >= Expressions.size())
+      return 0;
+    const auto &E = Expressions[C.getExpressionID()];
+    return std::max(getMaxCounterID(E.LHS), getMaxCounterID(E.RHS));
   }
-
-  return LastPoppedValue;
+  }
+  llvm_unreachable("Unhandled CounterKind");
 }
 
 void FunctionRecordIterator::skipOtherFiles() {
@@ -1002,31 +931,33 @@ static std::string getCoverageMapErrString(coveragemap_error Err,
   std::string Msg;
   raw_string_ostream OS(Msg);
 
-  switch (Err) {
-  case coveragemap_error::success:
+  switch ((uint32_t)Err) {
+  case (uint32_t)coveragemap_error::success:
     OS << "success";
     break;
-  case coveragemap_error::eof:
+  case (uint32_t)coveragemap_error::eof:
     OS << "end of File";
     break;
-  case coveragemap_error::no_data_found:
+  case (uint32_t)coveragemap_error::no_data_found:
     OS << "no coverage data found";
     break;
-  case coveragemap_error::unsupported_version:
+  case (uint32_t)coveragemap_error::unsupported_version:
     OS << "unsupported coverage format version";
     break;
-  case coveragemap_error::truncated:
+  case (uint32_t)coveragemap_error::truncated:
     OS << "truncated coverage data";
     break;
-  case coveragemap_error::malformed:
+  case (uint32_t)coveragemap_error::malformed:
     OS << "malformed coverage data";
     break;
-  case coveragemap_error::decompression_failed:
+  case (uint32_t)coveragemap_error::decompression_failed:
     OS << "failed to decompress coverage data (zlib)";
     break;
-  case coveragemap_error::invalid_or_missing_arch_specifier:
+  case (uint32_t)coveragemap_error::invalid_or_missing_arch_specifier:
     OS << "`-arch` specifier is invalid or missing for universal binary";
     break;
+  default:
+    llvm_unreachable("invalid coverage mapping error.");
   }
 
   // If optional error message is not empty, append it to the message.

@@ -1,4 +1,4 @@
-! RUN: %python %S/test_errors.py %s %flang_fc1 -pedantic
+! RUN: %python %S/test_errors.py %s %flang_fc1
 module m0
   real, pointer, contiguous :: p1(:) ! ok
   real, pointer :: p2(:)
@@ -9,26 +9,26 @@ module m
   contiguous p1
   !ERROR: Cannot change CONTIGUOUS attribute on use-associated 'p2'
   contiguous p2
-  !PORTABILITY: CONTIGUOUS entity 'x' should be an array pointer, assumed-shape, or assumed-rank
+  !ERROR: CONTIGUOUS entity 'x' must be an array pointer, assumed-shape, or assumed-rank
   real, contiguous :: x
-  !PORTABILITY: CONTIGUOUS entity 'scalar' should be an array pointer, assumed-shape, or assumed-rank
+  !ERROR: CONTIGUOUS entity 'scalar' must be an array pointer, assumed-shape, or assumed-rank
   real, contiguous, pointer :: scalar
-  !PORTABILITY: CONTIGUOUS entity 'allocatable' should be an array pointer, assumed-shape, or assumed-rank
+  !ERROR: CONTIGUOUS entity 'allocatable' must be an array pointer, assumed-shape, or assumed-rank
   real, contiguous, allocatable :: allocatable
  contains
-  !PORTABILITY: CONTIGUOUS entity 'func' should be an array pointer, assumed-shape, or assumed-rank
+  !ERROR: CONTIGUOUS entity 'func' must be an array pointer, assumed-shape, or assumed-rank
   function func(ashape,arank) result(r)
     real, contiguous :: ashape(:) ! ok
     real, contiguous :: arank(..) ! ok
-    !PORTABILITY: CONTIGUOUS entity 'r' should be an array pointer, assumed-shape, or assumed-rank
+    !ERROR: CONTIGUOUS entity 'r' must be an array pointer, assumed-shape, or assumed-rank
     real :: r(10)
-    !PORTABILITY: CONTIGUOUS entity 'r2' should be an array pointer, assumed-shape, or assumed-rank
+    !ERROR: CONTIGUOUS entity 'r2' must be an array pointer, assumed-shape, or assumed-rank
     real :: r2(10)
     contiguous func
     contiguous r
     contiguous e
     contiguous r2
-    !PORTABILITY: CONTIGUOUS entity 'e' should be an array pointer, assumed-shape, or assumed-rank
+    !ERROR: CONTIGUOUS entity 'e' must be an array pointer, assumed-shape, or assumed-rank
     entry e() result(r2)
   end
   function fp()

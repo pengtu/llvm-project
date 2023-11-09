@@ -205,20 +205,13 @@ const char *RealOutputEditingBase::FormatExponent(
     } else if (exponent == eEnd) {
       *--exponent = '0'; // Ew.dE0 with zero-valued exponent
     }
-  } else if (edit.variation == 'X') {
-    if (expo == 0) {
-      *--exponent = '0'; // EX without Ee and zero-valued exponent
-    }
-  } else {
-    // Ensure at least two exponent digits unless EX
+  } else { // ensure at least two exponent digits
     while (exponent + 2 > eEnd) {
       *--exponent = '0';
     }
   }
   *--exponent = expo < 0 ? '-' : '+';
-  if (edit.variation == 'X') {
-    *--exponent = 'P';
-  } else if (edit.expoDigits || edit.IsListDirected() || exponent + 3 == eEnd) {
+  if (edit.expoDigits || edit.IsListDirected() || exponent + 3 == eEnd) {
     *--exponent = edit.descriptor == 'D' ? 'D' : 'E'; // not 'G' or 'Q'
   }
   length = eEnd - exponent;
@@ -258,30 +251,17 @@ bool RealOutputEditingBase::EmitSuffix(const DataEdit &edit) {
 }
 
 template <int KIND>
-decimal::ConversionToDecimalResult RealOutputEditing<KIND>::ConvertToDecimal(
+decimal::ConversionToDecimalResult RealOutputEditing<KIND>::Convert(
     int significantDigits, enum decimal::FortranRounding rounding, int flags) {
   auto converted{decimal::ConvertToDecimal<binaryPrecision>(buffer_,
       sizeof buffer_, static_cast<enum decimal::DecimalConversionFlags>(flags),
       significantDigits, rounding, x_)};
   if (!converted.str) { // overflow
     io_.GetIoErrorHandler().Crash(
-        "RealOutputEditing::ConvertToDecimal: buffer size %zd was insufficient",
+        "RealOutputEditing::Convert : buffer size %zd was insufficient",
         sizeof buffer_);
   }
   return converted;
-}
-
-static bool IsInfOrNaN(const char *p, int length) {
-  if (!p || length < 1) {
-    return false;
-  }
-  if (*p == '-' || *p == '+') {
-    if (length == 1) {
-      return false;
-    }
-    ++p;
-  }
-  return *p == 'I' || *p == 'N';
 }
 
 // 13.7.2.3.3 in F'2018
@@ -295,6 +275,7 @@ bool RealOutputEditing<KIND>::EditEorDOutput(const DataEdit &edit) {
   if (edit.modes.editingFlags & signPlus) {
     flags |= decimal::AlwaysSign;
   }
+  bool noLeadingSpaces{editWidth == 0};
   int scale{edit.modes.scale}; // 'kP' value
   if (editWidth == 0) { // "the processor selects the field width"
     if (edit.digits.has_value()) { // E0.d
@@ -338,8 +319,8 @@ bool RealOutputEditing<KIND>::EditEorDOutput(const DataEdit &edit) {
   // In EN editing, multiple attempts may be necessary, so this is a loop.
   while (true) {
     decimal::ConversionToDecimalResult converted{
-        ConvertToDecimal(significantDigits, edit.modes.round, flags)};
-    if (IsInfOrNaN(converted.str, static_cast<int>(converted.length))) {
+        Convert(significantDigits, edit.modes.round, flags)};
+    if (IsInfOrNaN(converted)) {
       return editWidth > 0 &&
               converted.length > static_cast<std::size_t>(editWidth)
           ? EmitRepeated(io_, '*', editWidth)
@@ -399,7 +380,7 @@ bool RealOutputEditing<KIND>::EditEorDOutput(const DataEdit &edit) {
       zeroesBeforePoint = 1;
       ++totalLength;
     }
-    if (totalLength < width && editWidth == 0) {
+    if (totalLength < width && noLeadingSpaces) {
       width = totalLength;
     }
     return EmitPrefix(edit, totalLength, width) &&
@@ -437,8 +418,8 @@ bool RealOutputEditing<KIND>::EditFOutput(const DataEdit &edit) {
   bool canIncrease{true};
   while (true) {
     decimal::ConversionToDecimalResult converted{
-        ConvertToDecimal(extraDigits + fracDigits, rounding, flags)};
-    if (IsInfOrNaN(converted.str, static_cast<int>(converted.length))) {
+        Convert(extraDigits + fracDigits, rounding, flags)};
+    if (IsInfOrNaN(converted)) {
       return editWidth > 0 &&
               converted.length > static_cast<std::size_t>(editWidth)
           ? EmitRepeated(io_, '*', editWidth)
@@ -540,8 +521,8 @@ DataEdit RealOutputEditing<KIND>::EditForGOutput(DataEdit edit) {
     flags |= decimal::AlwaysSign;
   }
   decimal::ConversionToDecimalResult converted{
-      ConvertToDecimal(significantDigits, edit.modes.round, flags)};
-  if (IsInfOrNaN(converted.str, static_cast<int>(converted.length))) {
+      Convert(significantDigits, edit.modes.round, flags)};
+  if (IsInfOrNaN(converted)) {
     return edit; // Inf/Nan -> Ew.d (same as Fw.d)
   }
   int expo{IsZero() ? 1 : converted.decimalExponent}; // 's'
@@ -568,9 +549,8 @@ DataEdit RealOutputEditing<KIND>::EditForGOutput(DataEdit edit) {
 // 13.10.4 in F'2018
 template <int KIND>
 bool RealOutputEditing<KIND>::EditListDirectedOutput(const DataEdit &edit) {
-  decimal::ConversionToDecimalResult converted{
-      ConvertToDecimal(1, edit.modes.round)};
-  if (IsInfOrNaN(converted.str, static_cast<int>(converted.length))) {
+  decimal::ConversionToDecimalResult converted{Convert(1, edit.modes.round)};
+  if (IsInfOrNaN(converted)) {
     return EditEorDOutput(edit);
   }
   int expo{converted.decimalExponent};
@@ -587,120 +567,11 @@ bool RealOutputEditing<KIND>::EditListDirectedOutput(const DataEdit &edit) {
   return EditFOutput(edit);
 }
 
-// 13.7.2.3.6 in F'2023
-// The specification for hexadecimal output, unfortunately for implementors,
-// leaves as "implementation dependent" the choice of how to emit values
-// with multiple hexadecimal output possibilities that are numerically
-// equivalent.  The one working implementation of EX output that I can find
-// apparently chooses to frame the nybbles from most to least significant,
-// rather than trying to minimize the magnitude of the binary exponent.
-// E.g., 2. is edited into 0X8.0P-2 rather than 0X2.0P0.  This implementation
-// follows that precedent so as to avoid a gratuitous incompatibility.
+// 13.7.5.2.6 in F'2018
 template <int KIND>
-auto RealOutputEditing<KIND>::ConvertToHexadecimal(
-    int significantDigits, enum decimal::FortranRounding rounding, int flags)
-    -> ConvertToHexadecimalResult {
-  if (x_.IsNaN() || x_.IsInfinite()) {
-    auto converted{ConvertToDecimal(significantDigits, rounding, flags)};
-    return {converted.str, static_cast<int>(converted.length), 0};
-  }
-  x_.RoundToBits(4 * significantDigits, rounding);
-  if (x_.IsInfinite()) { // rounded away to +/-Inf
-    auto converted{ConvertToDecimal(significantDigits, rounding, flags)};
-    return {converted.str, static_cast<int>(converted.length), 0};
-  }
-  int len{0};
-  if (x_.IsNegative()) {
-    buffer_[len++] = '-';
-  } else if (flags & decimal::AlwaysSign) {
-    buffer_[len++] = '+';
-  }
-  auto fraction{x_.Fraction()};
-  if (fraction == 0) {
-    buffer_[len++] = '0';
-    return {buffer_, len, 0};
-  } else {
-    // Ensure that the MSB is set.
-    int expo{x_.UnbiasedExponent() - 3};
-    while (!(fraction >> (x_.binaryPrecision - 1))) {
-      fraction <<= 1;
-      --expo;
-    }
-    // This is initially the right shift count needed to bring the
-    // most-significant hexadecimal digit's bits into the LSBs.
-    // x_.binaryPrecision is constant, so / can be used for readability.
-    int shift{x_.binaryPrecision - 4};
-    typename BinaryFloatingPoint::RawType one{1};
-    auto remaining{(one << shift) - one};
-    for (int digits{0}; digits < significantDigits; ++digits) {
-      if ((flags & decimal::Minimize) && !(fraction & remaining)) {
-        break;
-      }
-      int hexDigit{0};
-      if (shift >= 0) {
-        hexDigit = int(fraction >> shift) & 0xf;
-      } else if (shift >= -3) {
-        hexDigit = int(fraction << -shift) & 0xf;
-      }
-      if (hexDigit >= 10) {
-        buffer_[len++] = 'A' + hexDigit - 10;
-      } else {
-        buffer_[len++] = '0' + hexDigit;
-      }
-      shift -= 4;
-      remaining >>= 4;
-    }
-    return {buffer_, len, expo};
-  }
-}
-
-template <int KIND>
-bool RealOutputEditing<KIND>::EditEXOutput(const DataEdit &edit) {
-  addSpaceBeforeCharacter(io_);
-  int editDigits{edit.digits.value_or(0)}; // 'd' field
-  int significantDigits{editDigits + 1};
-  int flags{0};
-  if (edit.modes.editingFlags & signPlus) {
-    flags |= decimal::AlwaysSign;
-  }
-  int editWidth{edit.width.value_or(0)}; // 'w' field
-  if (editWidth == 0 && !edit.digits) { // EX0 (no .d)
-    flags |= decimal::Minimize;
-    significantDigits = 28; // enough for 128-bit F.P.
-  }
-  auto converted{
-      ConvertToHexadecimal(significantDigits, edit.modes.round, flags)};
-  if (IsInfOrNaN(converted.str, converted.length)) {
-    return editWidth > 0 && converted.length > editWidth
-        ? EmitRepeated(io_, '*', editWidth)
-        : (editWidth <= converted.length ||
-              EmitRepeated(io_, ' ', editWidth - converted.length)) &&
-            EmitAscii(io_, converted.str, converted.length);
-  }
-  int signLength{converted.length > 0 &&
-              (converted.str[0] == '-' || converted.str[0] == '+')
-          ? 1
-          : 0};
-  int convertedDigits{converted.length - signLength};
-  int expoLength{0};
-  const char *exponent{FormatExponent(converted.exponent, edit, expoLength)};
-  int trailingZeroes{flags & decimal::Minimize
-          ? 0
-          : std::max(0, significantDigits - convertedDigits)};
-  int totalLength{converted.length + trailingZeroes + expoLength + 3 /*0X.*/};
-  int width{editWidth > 0 ? editWidth : totalLength};
-  return totalLength > width || !exponent
-      ? EmitRepeated(io_, '*', width)
-      : EmitRepeated(io_, ' ', width - totalLength) &&
-          EmitAscii(io_, converted.str, signLength) &&
-          EmitAscii(io_, "0X", 2) &&
-          EmitAscii(io_, converted.str + signLength, 1) &&
-          EmitAscii(
-              io_, edit.modes.editingFlags & decimalComma ? "," : ".", 1) &&
-          EmitAscii(io_, converted.str + signLength + 1,
-              converted.length - (signLength + 1)) &&
-          EmitRepeated(io_, '0', trailingZeroes) &&
-          EmitAscii(io_, exponent, expoLength);
+bool RealOutputEditing<KIND>::EditEXOutput(const DataEdit &) {
+  io_.GetIoErrorHandler().Crash(
+      "not yet implemented: EX output editing"); // TODO
 }
 
 template <int KIND> bool RealOutputEditing<KIND>::Edit(const DataEdit &edit) {

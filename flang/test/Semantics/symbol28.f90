@@ -14,7 +14,7 @@ module m1
   end subroutine
  end interface
 contains
- !DEF: /m1/s MODULE (Subroutine) Subprogram
+ !DEF: /m1/s MODULE (Subroutine) SubprogramName
  module subroutine s
  end subroutine
  !REF: /m1/s2

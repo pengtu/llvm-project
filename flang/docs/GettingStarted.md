@@ -8,10 +8,9 @@
 
 # Getting Started
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 ## Building flang
@@ -53,7 +52,6 @@ First, create the root directory and `cd` into it.
 ```bash
 mkdir root
 cd root
-```
 
 Now clone the source:
 ```bash
@@ -142,14 +140,8 @@ code is in good shape.
 
 ### Building flang standalone
 To do the standalone build, start by building flang in tree as described above.
-This build can be used as the  base build for several subsequent standalone
-builds.  Set the environment variable **ROOT_DIR** to the directory that
-contains the subdirectory `build` that was created previously, for example:
-```bash
-export ROOTDIR=/home/user/root
-```
-Start each standalone build the same way by cloning the source for
-llvm-project:
+This build is base build for subsequent standalone builds.  Start each
+standalone build the same way by cloning the source for llvm-project:
 ```bash
 mkdir standalone
 cd standalone
@@ -182,7 +174,7 @@ cmake \
 ninja
 ```
 
-To run the flang tests on this build, execute the command in the `flang/build`
+To run the flang tests on this build, execute the command in the "flang/build"
 directory:
 ```bash
 ninja check-flang
@@ -234,7 +226,6 @@ cmake \
   -DCMAKE_CUDA_COMPILER=nvcc \
   -DCMAKE_CUDA_HOST_COMPILER=clang++ \
   ../runtime/
-
 make -j FortranRuntime
 ```
 
@@ -277,7 +268,7 @@ Normal `make -j check-flang` will work with such CMake configuration.
 ##### OpenMP target offload build
 Only Clang compiler is currently supported.
 
-```bash
+```
 cd llvm-project/flang
 rm -rf build_flang_runtime
 mkdir build_flang_runtime
@@ -289,7 +280,6 @@ cmake \
   -DCMAKE_CXX_COMPILER=clang++ \
   -DFLANG_OMP_DEVICE_ARCHITECTURES="all" \
   ../runtime/
-
 make -j FortranRuntime
 ```
 
@@ -341,7 +331,6 @@ and the GCC library and tools that were used to build clang++.
 
 CXX should include the full path to clang++
 or clang++ should be found on your PATH.
-
 ```bash
 export CXX=clang++
 ```
@@ -454,8 +443,7 @@ system to create HTML pages which would be hosted on the webpage of flang and
 updated periodically.
 
 If you would like to generate and view the HTML locally:
-- Install [Sphinx](http://sphinx-doc.org/), and the required extensions
-  using `pip install --user -r ~/llvm-projects/docs/requirements.txt`
+- Install [Sphinx](http://sphinx-doc.org/), including the [sphinx-markdown-tables](https://pypi.org/project/sphinx-markdown-tables/) extension.
 - Pass `-DLLVM_ENABLE_SPHINX=ON -DSPHINX_WARNINGS_AS_ERRORS=OFF` to the cmake command.
 
 ```bash

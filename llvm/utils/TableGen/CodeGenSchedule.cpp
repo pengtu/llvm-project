@@ -118,7 +118,7 @@ struct InstRegexOp : public SetTheory::Operator {
       // The generic opcodes are unsorted, handle them manually.
       for (auto *Inst : Generics) {
         StringRef InstName = Inst->TheDef->getName();
-        if (InstName.starts_with(Prefix) &&
+        if (InstName.startswith(Prefix) &&
             (!Regexpr || Regexpr->match(InstName.substr(Prefix.size())))) {
           Elts.insert(Inst->TheDef);
           NumMatches++;
@@ -134,7 +134,7 @@ struct InstRegexOp : public SetTheory::Operator {
         }
         bool operator()(StringRef LHS, const CodeGenInstruction *RHS) {
           return LHS < RHS->TheDef->getName() &&
-                 !RHS->TheDef->getName().starts_with(LHS);
+                 !RHS->TheDef->getName().startswith(LHS);
         }
       };
       auto Range1 =

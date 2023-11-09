@@ -12,7 +12,6 @@
 #include "mlir/Debug/DebuggerExecutionContextHook.h"
 #include "mlir/Debug/ExecutionContext.h"
 #include "mlir/Debug/Observers/ActionLogging.h"
-#include "mlir/Debug/Observers/ActionProfiler.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Support/FileUtilities.h"
 #include "llvm/Support/CommandLine.h"
@@ -30,12 +29,6 @@ struct DebugConfigCLOptions : public DebugConfig {
         cl::desc("Log action execution to a file, or stderr if "
                  " '-' is passed"),
         cl::location(logActionsToFlag)};
-
-    static cl::opt<std::string, /*ExternalStorage=*/true> profileActionsTo{
-        "profile-actions-to",
-        cl::desc("Profile action execution to a file, or stderr if "
-                 " '-' is passed"),
-        cl::location(profileActionsToFlag)};
 
     static cl::list<std::string> logActionLocationFilter(
         "log-mlir-actions-filter",
@@ -78,7 +71,6 @@ class InstallDebugHandler::Impl {
 public:
   Impl(MLIRContext &context, const DebugConfig &config) {
     if (config.getLogActionsTo().empty() &&
-        config.getProfileActionsTo().empty() &&
         !config.isDebuggerActionHookEnabled()) {
       if (tracing::DebugCounter::isActivated())
         context.registerActionHandler(tracing::DebugCounter());
@@ -105,24 +97,6 @@ public:
         actionLogger->addBreakpointManager(locationBreakpoint);
       executionContext.registerObserver(actionLogger.get());
     }
-
-    if (!config.getProfileActionsTo().empty()) {
-      std::string errorMessage;
-      profileActionsFile =
-          openOutputFile(config.getProfileActionsTo(), &errorMessage);
-      if (!profileActionsFile) {
-        emitError(UnknownLoc::get(&context),
-                  "Opening file for --profile-actions-to failed: ")
-            << errorMessage << "\n";
-        return;
-      }
-      profileActionsFile->keep();
-      raw_fd_ostream &profileActionsStream = profileActionsFile->os();
-      actionProfiler =
-          std::make_unique<tracing::ActionProfiler>(profileActionsStream);
-      executionContext.registerObserver(actionProfiler.get());
-    }
-
     if (config.isDebuggerActionHookEnabled()) {
       errs() << " (with Debugger hook)";
       setupDebuggerExecutionContextHook(executionContext);
@@ -137,8 +111,6 @@ private:
   std::unique_ptr<tracing::ActionLogger> actionLogger;
   std::vector<std::unique_ptr<tracing::FileLineColLocBreakpoint>>
       locationBreakpoints;
-  std::unique_ptr<ToolOutputFile> profileActionsFile;
-  std::unique_ptr<tracing::ActionProfiler> actionProfiler;
 };
 
 InstallDebugHandler::InstallDebugHandler(MLIRContext &context,

@@ -9,7 +9,7 @@
 #include "src/__support/char_vector.h"
 #include "test/UnitTest/Test.h"
 
-using LIBC_NAMESPACE::CharVector;
+using __llvm_libc::CharVector;
 
 TEST(LlvmLibcCharVectorTest, InitializeCheck) {
   CharVector v;

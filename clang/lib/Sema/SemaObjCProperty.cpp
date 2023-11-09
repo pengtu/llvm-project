@@ -2488,8 +2488,8 @@ void Sema::ProcessPropertyDecl(ObjCPropertyDecl *property) {
         /*isPropertyAccessor=*/true, /*isSynthesizedAccessorStub=*/false,
         /*isImplicitlyDeclared=*/true, /*isDefined=*/false,
         (property->getPropertyImplementation() == ObjCPropertyDecl::Optional)
-            ? ObjCImplementationControl::Optional
-            : ObjCImplementationControl::Required);
+            ? ObjCMethodDecl::Optional
+            : ObjCMethodDecl::Required);
     CD->addDecl(GetterMethod);
 
     AddPropertyAttrs(*this, GetterMethod, property);
@@ -2530,17 +2530,19 @@ void Sema::ProcessPropertyDecl(ObjCPropertyDecl *property) {
       // for this class.
       SourceLocation Loc = property->getLocation();
 
-      SetterMethod = ObjCMethodDecl::Create(
-          Context, Loc, Loc, property->getSetterName(), Context.VoidTy, nullptr,
-          CD, !IsClassProperty,
-          /*isVariadic=*/false,
-          /*isPropertyAccessor=*/true,
-          /*isSynthesizedAccessorStub=*/false,
-          /*isImplicitlyDeclared=*/true,
-          /*isDefined=*/false,
-          (property->getPropertyImplementation() == ObjCPropertyDecl::Optional)
-              ? ObjCImplementationControl::Optional
-              : ObjCImplementationControl::Required);
+      SetterMethod =
+        ObjCMethodDecl::Create(Context, Loc, Loc,
+                               property->getSetterName(), Context.VoidTy,
+                               nullptr, CD, !IsClassProperty,
+                               /*isVariadic=*/false,
+                               /*isPropertyAccessor=*/true,
+                               /*isSynthesizedAccessorStub=*/false,
+                               /*isImplicitlyDeclared=*/true,
+                               /*isDefined=*/false,
+                               (property->getPropertyImplementation() ==
+                                ObjCPropertyDecl::Optional) ?
+                                ObjCMethodDecl::Optional :
+                                ObjCMethodDecl::Required);
 
       // Remove all qualifiers from the setter's parameter type.
       QualType paramTy =

@@ -27,8 +27,10 @@ module __Fortran_ieee_exceptions
     ieee_denorm = ieee_flag_type(32) ! PGI extension
 
   type(ieee_flag_type), parameter :: &
-    ieee_usual(*) = [ ieee_overflow, ieee_divide_by_zero, ieee_invalid ], &
-    ieee_all(*) = [ ieee_usual, ieee_underflow, ieee_inexact ]
+    ieee_usual(*) = [ &
+      ieee_overflow, ieee_divide_by_zero, ieee_invalid ], &
+    ieee_all(*) = [ &
+      ieee_usual, ieee_underflow, ieee_inexact, ieee_denorm ]
 
   type :: ieee_modes_type ! Fortran 2018, 17.7
     private

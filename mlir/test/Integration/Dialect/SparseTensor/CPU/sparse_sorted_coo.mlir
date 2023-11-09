@@ -32,23 +32,24 @@
 // Do the same run, but now with  VLA vectorization.
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | env %{env} %{run_sve} | FileCheck %s %}
 
-!Filename = !llvm.ptr
+!Filename = !llvm.ptr<i8>
 
 #SortedCOO = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ]
 }>
 
 #SortedCOOPermuted = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d1 : compressed(nonunique), d0 : singleton),
+  lvlTypes = [ "compressed_nu", "singleton" ],
+  dimToLvl = affine_map<(i,j) -> (j,i)>
 }>
 
 #SortedCOO3D = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d0 : compressed(nonunique), d1 : singleton(nonunique), d2 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton_nu", "singleton" ]
 }>
 
 #SortedCOO3DPermuted = #sparse_tensor.encoding<{
-  map = (d0, d1, d2) -> (d2 : compressed(nonunique), d0 : singleton(nonunique), d1 : singleton)
-
+  lvlTypes = [ "compressed_nu", "singleton_nu", "singleton" ],
+  dimToLvl = affine_map<(i,j,k) -> (k,i,j)>
 }>
 
 #trait_scale = {

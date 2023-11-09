@@ -129,19 +129,18 @@ public:
     virtual void populateInherentAttrs(Operation *op, NamedAttrList &attrs) = 0;
     virtual LogicalResult
     verifyInherentAttrs(OperationName opName, NamedAttrList &attributes,
-                        function_ref<InFlightDiagnostic()> emitError) = 0;
+                        function_ref<InFlightDiagnostic()> getDiag) = 0;
     virtual int getOpPropertyByteSize() = 0;
     virtual void initProperties(OperationName opName, OpaqueProperties storage,
                                 OpaqueProperties init) = 0;
     virtual void deleteProperties(OpaqueProperties) = 0;
     virtual void populateDefaultProperties(OperationName opName,
                                            OpaqueProperties properties) = 0;
-    virtual LogicalResult
-    setPropertiesFromAttr(OperationName, OpaqueProperties, Attribute,
-                          function_ref<InFlightDiagnostic()> emitError) = 0;
+    virtual LogicalResult setPropertiesFromAttr(OperationName, OpaqueProperties,
+                                                Attribute,
+                                                InFlightDiagnostic *) = 0;
     virtual Attribute getPropertiesAsAttr(Operation *) = 0;
     virtual void copyProperties(OpaqueProperties, OpaqueProperties) = 0;
-    virtual bool compareProperties(OpaqueProperties, OpaqueProperties) = 0;
     virtual llvm::hash_code hashProperties(OpaqueProperties) = 0;
   };
 
@@ -210,19 +209,17 @@ protected:
     void populateInherentAttrs(Operation *op, NamedAttrList &attrs) final;
     LogicalResult
     verifyInherentAttrs(OperationName opName, NamedAttrList &attributes,
-                        function_ref<InFlightDiagnostic()> emitError) final;
+                        function_ref<InFlightDiagnostic()> getDiag) final;
     int getOpPropertyByteSize() final;
     void initProperties(OperationName opName, OpaqueProperties storage,
                         OpaqueProperties init) final;
     void deleteProperties(OpaqueProperties) final;
     void populateDefaultProperties(OperationName opName,
                                    OpaqueProperties properties) final;
-    LogicalResult
-    setPropertiesFromAttr(OperationName, OpaqueProperties, Attribute,
-                          function_ref<InFlightDiagnostic()> emitError) final;
+    LogicalResult setPropertiesFromAttr(OperationName, OpaqueProperties,
+                                        Attribute, InFlightDiagnostic *) final;
     Attribute getPropertiesAsAttr(Operation *) final;
     void copyProperties(OpaqueProperties, OpaqueProperties) final;
-    bool compareProperties(OpaqueProperties, OpaqueProperties) final;
     llvm::hash_code hashProperties(OpaqueProperties) final;
   };
 
@@ -408,8 +405,8 @@ public:
   /// attributes when parsed from the older generic syntax pre-Properties.
   LogicalResult
   verifyInherentAttrs(NamedAttrList &attributes,
-                      function_ref<InFlightDiagnostic()> emitError) const {
-    return getImpl()->verifyInherentAttrs(*this, attributes, emitError);
+                      function_ref<InFlightDiagnostic()> getDiag) const {
+    return getImpl()->verifyInherentAttrs(*this, attributes, getDiag);
   }
   /// This hooks return the number of bytes to allocate for the op properties.
   int getOpPropertyByteSize() const {
@@ -437,19 +434,16 @@ public:
   }
 
   /// Define the op properties from the provided Attribute.
-  LogicalResult setOpPropertiesFromAttribute(
-      OperationName opName, OpaqueProperties properties, Attribute attr,
-      function_ref<InFlightDiagnostic()> emitError) const {
+  LogicalResult
+  setOpPropertiesFromAttribute(OperationName opName,
+                               OpaqueProperties properties, Attribute attr,
+                               InFlightDiagnostic *diagnostic) const {
     return getImpl()->setPropertiesFromAttr(opName, properties, attr,
-                                            emitError);
+                                            diagnostic);
   }
 
   void copyOpProperties(OpaqueProperties lhs, OpaqueProperties rhs) const {
     return getImpl()->copyProperties(lhs, rhs);
-  }
-
-  bool compareOpProperties(OpaqueProperties lhs, OpaqueProperties rhs) const {
-    return getImpl()->compareProperties(lhs, rhs);
   }
 
   llvm::hash_code hashOpProperties(OpaqueProperties properties) const {
@@ -597,9 +591,9 @@ public:
     }
     LogicalResult
     verifyInherentAttrs(OperationName opName, NamedAttrList &attributes,
-                        function_ref<InFlightDiagnostic()> emitError) final {
+                        function_ref<InFlightDiagnostic()> getDiag) final {
       if constexpr (hasProperties)
-        return ConcreteOp::verifyInherentAttrs(opName, attributes, emitError);
+        return ConcreteOp::verifyInherentAttrs(opName, attributes, getDiag);
       return success();
     }
     // Detect if the concrete operation defined properties.
@@ -634,15 +628,16 @@ public:
                                               *properties.as<Properties *>());
     }
 
-    LogicalResult
-    setPropertiesFromAttr(OperationName opName, OpaqueProperties properties,
-                          Attribute attr,
-                          function_ref<InFlightDiagnostic()> emitError) final {
+    LogicalResult setPropertiesFromAttr(OperationName opName,
+                                        OpaqueProperties properties,
+                                        Attribute attr,
+                                        InFlightDiagnostic *diag) final {
       if constexpr (hasProperties) {
         auto p = properties.as<Properties *>();
-        return ConcreteOp::setPropertiesFromAttr(*p, attr, emitError);
+        return ConcreteOp::setPropertiesFromAttr(*p, attr, diag);
       }
-      emitError() << "this operation does not support properties";
+      if (diag)
+        *diag << "This operation does not support properties";
       return failure();
     }
     Attribute getPropertiesAsAttr(Operation *op) final {
@@ -652,13 +647,6 @@ public:
                                                concreteOp.getProperties());
       }
       return {};
-    }
-    bool compareProperties(OpaqueProperties lhs, OpaqueProperties rhs) final {
-      if constexpr (hasProperties) {
-        return *lhs.as<Properties *>() == *rhs.as<Properties *>();
-      } else {
-        return true;
-      }
     }
     void copyProperties(OpaqueProperties lhs, OpaqueProperties rhs) final {
       *lhs.as<Properties *>() = *rhs.as<Properties *>();
@@ -1009,9 +997,8 @@ public:
 
   // Set the properties defined on this OpState on the given operation,
   // optionally emit diagnostics on error through the provided diagnostic.
-  LogicalResult
-  setProperties(Operation *op,
-                function_ref<InFlightDiagnostic()> emitError) const;
+  LogicalResult setProperties(Operation *op,
+                              InFlightDiagnostic *diagnostic) const;
 
   void addOperands(ValueRange newOperands);
 

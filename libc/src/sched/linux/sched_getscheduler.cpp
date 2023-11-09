@@ -14,10 +14,10 @@
 
 #include <sys/syscall.h> // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, sched_getscheduler, (pid_t tid)) {
-  int ret = LIBC_NAMESPACE::syscall_impl<int>(SYS_sched_getscheduler, tid);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_sched_getscheduler, tid);
   if (ret < 0) {
     libc_errno = -ret;
     return -1;
@@ -25,4 +25,4 @@ LLVM_LIBC_FUNCTION(int, sched_getscheduler, (pid_t tid)) {
   return ret;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

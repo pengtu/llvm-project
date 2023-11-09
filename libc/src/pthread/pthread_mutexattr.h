@@ -13,7 +13,7 @@
 
 #include <pthread.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 enum class PThreadMutexAttrPos : unsigned int {
   TYPE_SHIFT = 0,
@@ -43,6 +43,6 @@ LIBC_INLINE int get_mutexattr_robust(pthread_mutexattr_t attr) {
          unsigned(PThreadMutexAttrPos::ROBUST_SHIFT);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_PTHREAD_PTHREAD_MUTEXATTR_H

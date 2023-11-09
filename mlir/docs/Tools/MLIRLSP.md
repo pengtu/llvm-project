@@ -392,8 +392,7 @@ to work:
 
 ### Visual Studio Code
 
-The [MLIR extension](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-mlir)
-provides language IDE features for [MLIR](https://mlir.llvm.org/) related
+Provides language IDE features for [MLIR](https://mlir.llvm.org/) related
 languages: [MLIR](#mlir---mlir-textual-assembly-format),
 [PDLL](#pdll---mlir-pdll-pattern-files), and [TableGen](#td---tablegen-files)
 

@@ -9,10 +9,10 @@
 #ifndef LLVM_LIBC_SRC_MATH_POWF_H
 #define LLVM_LIBC_SRC_MATH_POWF_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 float powf(float x, float y);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_MATH_POWF_H

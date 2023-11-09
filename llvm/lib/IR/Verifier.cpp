@@ -363,7 +363,7 @@ class Verifier : public InstVisitor<Verifier>, VerifierSupport {
   SmallVector<const DILocalVariable *, 16> DebugFnArgs;
 
   TBAAVerifier TBAAVerifyHelper;
-  ConvergenceVerifier ConvergenceVerifyHelper;
+  ConvergenceVerifier CV;
 
   SmallVector<IntrinsicInst *, 4> NoAliasScopeDecls;
 
@@ -408,15 +408,15 @@ public:
     auto FailureCB = [this](const Twine &Message) {
       this->CheckFailed(Message);
     };
-    ConvergenceVerifyHelper.initialize(OS, FailureCB, F);
+    CV.initialize(OS, FailureCB, F);
 
     Broken = false;
     // FIXME: We strip const here because the inst visitor strips const.
     visit(const_cast<Function &>(F));
     verifySiblingFuncletUnwinds();
 
-    if (ConvergenceVerifyHelper.sawTokens())
-      ConvergenceVerifyHelper.verify(DT);
+    if (CV.sawTokens())
+      CV.verify(DT);
 
     InstsInThisBlock.clear();
     DebugFnArgs.clear();
@@ -850,9 +850,17 @@ void Verifier::visitGlobalVariable(const GlobalVariable &GV) {
   }
 
   // Scalable vectors cannot be global variables, since we don't know
-  // the runtime size.
-  Check(!GV.getValueType()->isScalableTy(),
-        "Globals cannot contain scalable types", &GV);
+  // the runtime size. If the global is an array containing scalable vectors,
+  // that will be caught by the isValidElementType methods in StructType or
+  // ArrayType instead.
+  Check(!isa<ScalableVectorType>(GV.getValueType()),
+        "Globals cannot contain scalable vectors", &GV);
+
+  if (auto *STy = dyn_cast<StructType>(GV.getValueType())) {
+    SmallPtrSet<Type *, 4> Visited;
+    Check(!STy->containsScalableVectorType(&Visited),
+          "Globals cannot contain scalable vectors", &GV);
+  }
 
   // Check if it's a target extension type that disallows being used as a
   // global.
@@ -1287,10 +1295,6 @@ void Verifier::visitDICompositeType(const DICompositeType &N) {
     CheckDI(N.getTag() == dwarf::DW_TAG_array_type,
             "rank can only appear in array type");
   }
-
-  if (N.getTag() == dwarf::DW_TAG_array_type) {
-    CheckDI(N.getRawBaseType(), "array types must have a base type", &N);
-  }
 }
 
 void Verifier::visitDISubroutineType(const DISubroutineType &N) {
@@ -1408,9 +1412,9 @@ void Verifier::visitDISubprogram(const DISubprogram &N) {
     CheckDI(Node, "invalid retained nodes list", &N, RawNode);
     for (Metadata *Op : Node->operands()) {
       CheckDI(Op && (isa<DILocalVariable>(Op) || isa<DILabel>(Op) ||
-                     isa<DIImportedEntity>(Op) || isa<DIType>(Op)),
-              "invalid retained nodes, expected DILocalVariable, DILabel, "
-              "DIImportedEntity or DIType",
+                     isa<DIImportedEntity>(Op)),
+              "invalid retained nodes, expected DILocalVariable, DILabel or "
+              "DIImportedEntity",
               &N, Node, Op);
     }
   }
@@ -1931,14 +1935,6 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
         "'noinline and alwaysinline' are incompatible!",
         V);
 
-  Check(!(Attrs.hasAttribute(Attribute::Writable) &&
-          Attrs.hasAttribute(Attribute::ReadNone)),
-        "Attributes writable and readnone are incompatible!", V);
-
-  Check(!(Attrs.hasAttribute(Attribute::Writable) &&
-          Attrs.hasAttribute(Attribute::ReadOnly)),
-        "Attributes writable and readonly are incompatible!", V);
-
   AttributeMask IncompatibleAttrs = AttributeFuncs::typeIncompatible(Ty);
   for (Attribute Attr : Attrs) {
     if (!Attr.isStringAttribute() &&
@@ -2130,23 +2126,7 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
 
     Check(!Attrs.hasFnAttr(Attribute::MinSize),
           "Attributes 'minsize and optnone' are incompatible!", V);
-
-    Check(!Attrs.hasFnAttr(Attribute::OptimizeForDebugging),
-          "Attributes 'optdebug and optnone' are incompatible!", V);
   }
-
-  if (Attrs.hasFnAttr(Attribute::OptimizeForDebugging)) {
-    Check(!Attrs.hasFnAttr(Attribute::OptimizeForSize),
-          "Attributes 'optsize and optdebug' are incompatible!", V);
-
-    Check(!Attrs.hasFnAttr(Attribute::MinSize),
-          "Attributes 'minsize and optdebug' are incompatible!", V);
-  }
-
-  Check(!Attrs.hasAttrSomewhere(Attribute::Writable) ||
-        isModSet(Attrs.getMemoryEffects().getModRef(IRMemLocation::ArgMem)),
-        "Attribute writable and memory without argmem: write are incompatible!",
-        V);
 
   if (Attrs.hasFnAttr("aarch64_pstate_sm_enabled")) {
     Check(!Attrs.hasFnAttr("aarch64_pstate_sm_compatible"),
@@ -2895,7 +2875,6 @@ void Verifier::visitFunction(const Function &F) {
 //
 void Verifier::visitBasicBlock(BasicBlock &BB) {
   InstsInThisBlock.clear();
-  ConvergenceVerifyHelper.visit(BB);
 
   // Ensure that basic blocks have terminators!
   Check(BB.getTerminator(), "Basic Block does not have terminator!", &BB);
@@ -3597,7 +3576,7 @@ void Verifier::visitCallBase(CallBase &Call) {
   if (Call.isInlineAsm())
     verifyInlineAsmCall(Call);
 
-  ConvergenceVerifyHelper.visit(Call);
+  CV.visit(Call);
 
   visitInstruction(Call);
 }
@@ -5686,28 +5665,10 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     }
     break;
   }
+  case Intrinsic::lround:
+  case Intrinsic::llround:
   case Intrinsic::lrint:
   case Intrinsic::llrint: {
-    Type *ValTy = Call.getArgOperand(0)->getType();
-    Type *ResultTy = Call.getType();
-    Check(
-        ValTy->isFPOrFPVectorTy() && ResultTy->isIntOrIntVectorTy(),
-        "llvm.lrint, llvm.llrint: argument must be floating-point or vector "
-        "of floating-points, and result must be integer or vector of integers",
-        &Call);
-    Check(ValTy->isVectorTy() == ResultTy->isVectorTy(),
-          "llvm.lrint, llvm.llrint: argument and result disagree on vector use",
-          &Call);
-    if (ValTy->isVectorTy()) {
-      Check(cast<VectorType>(ValTy)->getElementCount() ==
-                cast<VectorType>(ResultTy)->getElementCount(),
-            "llvm.lrint, llvm.llrint: argument must be same length as result",
-            &Call);
-    }
-    break;
-  }
-  case Intrinsic::lround:
-  case Intrinsic::llround: {
     Type *ValTy = Call.getArgOperand(0)->getType();
     Type *ResultTy = Call.getType();
     Check(!ValTy->isVectorTy() && !ResultTy->isVectorTy(),
@@ -5993,29 +5954,6 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     break;
   case Intrinsic::experimental_convergence_loop:
     break;
-  case Intrinsic::ptrmask: {
-    Type *Ty0 = Call.getArgOperand(0)->getType();
-    Type *Ty1 = Call.getArgOperand(1)->getType();
-    Check(Ty0->isPtrOrPtrVectorTy(),
-          "llvm.ptrmask intrinsic first argument must be pointer or vector "
-          "of pointers",
-          &Call);
-    Check(
-        Ty0->isVectorTy() == Ty1->isVectorTy(),
-        "llvm.ptrmask intrinsic arguments must be both scalars or both vectors",
-        &Call);
-    if (Ty0->isVectorTy())
-      Check(cast<VectorType>(Ty0)->getElementCount() ==
-                cast<VectorType>(Ty1)->getElementCount(),
-            "llvm.ptrmask intrinsic arguments must have the same number of "
-            "elements",
-            &Call);
-    Check(DL.getIndexTypeSizeInBits(Ty0) == Ty1->getScalarSizeInBits(),
-          "llvm.ptrmask intrinsic second argument bitwidth must match "
-          "pointer index type size of first argument",
-          &Call);
-    break;
-  }
   };
 
   // Verify that there aren't any unmediated control transfers between funclets.

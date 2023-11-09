@@ -55,7 +55,7 @@ protected:
   };
 
   struct BitsTag {
-    LLVM_PREFERRED_TYPE(Kind)
+    /// A Kind.
     unsigned Kind : 2;
 
     // The template parameter index.

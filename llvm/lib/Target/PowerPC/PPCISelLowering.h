@@ -975,20 +975,21 @@ namespace llvm {
 
     /// LowerAsmOperandForConstraint - Lower the specified operand into the Ops
     /// vector.  If it is invalid, don't add anything to Ops.
-    void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+    void LowerAsmOperandForConstraint(SDValue Op,
+                                      std::string &Constraint,
                                       std::vector<SDValue> &Ops,
                                       SelectionDAG &DAG) const override;
 
-    InlineAsm::ConstraintCode
+    unsigned
     getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
       if (ConstraintCode == "es")
-        return InlineAsm::ConstraintCode::es;
+        return InlineAsm::Constraint_es;
       else if (ConstraintCode == "Q")
-        return InlineAsm::ConstraintCode::Q;
+        return InlineAsm::Constraint_Q;
       else if (ConstraintCode == "Z")
-        return InlineAsm::ConstraintCode::Z;
+        return InlineAsm::Constraint_Z;
       else if (ConstraintCode == "Zy")
-        return InlineAsm::ConstraintCode::Zy;
+        return InlineAsm::Constraint_Zy;
       return TargetLowering::getInlineAsmMemConstraint(ConstraintCode);
     }
 

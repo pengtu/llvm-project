@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC_STRING_ALLOCATING_STRING_UTILS_H
-#define LLVM_LIBC_SRC_STRING_ALLOCATING_STRING_UTILS_H
+#ifndef LIBC_SRC_STRING_ALLOCATING_STRING_UTILS_H
+#define LIBC_SRC_STRING_ALLOCATING_STRING_UTILS_H
 
 #include "src/__support/CPP/new.h"
 #include "src/__support/CPP/optional.h"
@@ -17,7 +17,7 @@
 
 #include <stddef.h> // For size_t
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace internal {
 
 LIBC_INLINE cpp::optional<char *> strdup(const char *src) {
@@ -33,6 +33,6 @@ LIBC_INLINE cpp::optional<char *> strdup(const char *src) {
 }
 
 } // namespace internal
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC_STRING_ALLOCATING_STRING_UTILS_H
+#endif

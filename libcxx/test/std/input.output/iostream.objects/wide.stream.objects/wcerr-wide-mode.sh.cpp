@@ -13,10 +13,10 @@
 // UNSUPPORTED: no-wide-characters
 // REQUIRES: target={{.+}}-windows-{{.+}}
 
-// FILE_DEPENDENCIES: test.dat
+// UNSUPPORTED: executor-has-no-bash
+// FILE_DEPENDENCIES: check-stderr.sh, test.dat
 // RUN: %{build}
-// RUN: %{exec} %t.exe 2> %t.actual
-// RUN: diff test.dat %t.actual
+// RUN: %{exec} bash check-stderr.sh "%t.exe" "test.dat"
 
 // Check that wcerr works, preserving the unicode characters, after switching
 // stderr to wide mode.

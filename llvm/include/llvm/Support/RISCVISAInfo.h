@@ -9,7 +9,6 @@
 #ifndef LLVM_SUPPORT_RISCVISAINFO_H
 #define LLVM_SUPPORT_RISCVISAINFO_H
 
-#include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Error.h"
 
@@ -23,7 +22,7 @@ struct RISCVExtensionInfo {
   unsigned MinorVersion;
 };
 
-void riscvExtensionsHelp(StringMap<StringRef> DescMap);
+void riscvExtensionsHelp();
 
 class RISCVISAInfo {
 public:

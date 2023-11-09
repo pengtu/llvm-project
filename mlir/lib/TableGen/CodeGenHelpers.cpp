@@ -133,9 +133,9 @@ static ::mlir::LogicalResult {0}(
 /// functions are stripped anyways.
 static const char *const attrConstraintCode = R"(
 static ::mlir::LogicalResult {0}(
-    ::mlir::Attribute attr, ::llvm::StringRef attrName, llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {{
+    ::mlir::Attribute attr, ::llvm::StringRef attrName, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag) {{
   if (attr && !({1}))
-    return emitError() << "attribute '" << attrName
+    return getDiag() << "attribute '" << attrName
         << "' failed to satisfy constraint: {2}";
   return ::mlir::success();
 }

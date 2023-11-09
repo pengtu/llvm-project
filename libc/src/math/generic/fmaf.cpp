@@ -11,10 +11,10 @@
 
 #include "src/__support/FPUtil/FMA.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, fmaf, (float x, float y, float z)) {
   return fputil::fma(x, y, z);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

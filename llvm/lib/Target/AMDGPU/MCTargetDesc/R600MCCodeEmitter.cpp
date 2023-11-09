@@ -142,11 +142,11 @@ void R600MCCodeEmitter::encodeInstruction(const MCInst &MI,
 }
 
 void R600MCCodeEmitter::emit(uint32_t Value, SmallVectorImpl<char> &CB) const {
-  support::endian::write(CB, Value, llvm::endianness::little);
+  support::endian::write(CB, Value, support::little);
 }
 
 void R600MCCodeEmitter::emit(uint64_t Value, SmallVectorImpl<char> &CB) const {
-  support::endian::write(CB, Value, llvm::endianness::little);
+  support::endian::write(CB, Value, support::little);
 }
 
 unsigned R600MCCodeEmitter::getHWReg(unsigned RegNo) const {

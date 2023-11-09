@@ -15,10 +15,8 @@ add_mlir_conversion_library(MLIRNVGPUToNVVM
   MLIRGPUToGPURuntimeTransforms
   MLIRLLVMCommonConversion
   MLIRLLVMDialect
-  MLIRNVGPUDialect
   MLIRNVVMDialect
-  MLIRArithDialect
+  MLIRNVGPUDialect
   MLIRPass
-  MLIRSCFTransforms
   MLIRTransforms
   )

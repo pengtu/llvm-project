@@ -177,7 +177,6 @@
 // RUN:   | FileCheck %s --check-prefix=CHECK-RELOCATABLE
 // CHECK-RELOCATABLE:     "-L
 // CHECK-RELOCATABLE:     "-r"
-// CHECK-RELOCATABLE-NOT: "-e"
 // CHECK-RELOCATABLE-NOT: "-l
 // CHECK-RELOCATABLE-NOT: /crt{{[^.]+}}.o
 // CHECK-RELOCATABLE-NOT: /values-{{[^.]+}}.o

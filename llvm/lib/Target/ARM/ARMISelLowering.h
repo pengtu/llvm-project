@@ -530,33 +530,33 @@ class VectorType;
     /// vector.  If it is invalid, don't add anything to Ops. If hasMemory is
     /// true it means one of the asm constraint of the inline asm instruction
     /// being processed is 'm'.
-    void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+    void LowerAsmOperandForConstraint(SDValue Op, std::string &Constraint,
                                       std::vector<SDValue> &Ops,
                                       SelectionDAG &DAG) const override;
 
-    InlineAsm::ConstraintCode
+    unsigned
     getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
       if (ConstraintCode == "Q")
-        return InlineAsm::ConstraintCode::Q;
-      if (ConstraintCode.size() == 2) {
+        return InlineAsm::Constraint_Q;
+      else if (ConstraintCode.size() == 2) {
         if (ConstraintCode[0] == 'U') {
           switch(ConstraintCode[1]) {
           default:
             break;
           case 'm':
-            return InlineAsm::ConstraintCode::Um;
+            return InlineAsm::Constraint_Um;
           case 'n':
-            return InlineAsm::ConstraintCode::Un;
+            return InlineAsm::Constraint_Un;
           case 'q':
-            return InlineAsm::ConstraintCode::Uq;
+            return InlineAsm::Constraint_Uq;
           case 's':
-            return InlineAsm::ConstraintCode::Us;
+            return InlineAsm::Constraint_Us;
           case 't':
-            return InlineAsm::ConstraintCode::Ut;
+            return InlineAsm::Constraint_Ut;
           case 'v':
-            return InlineAsm::ConstraintCode::Uv;
+            return InlineAsm::Constraint_Uv;
           case 'y':
-            return InlineAsm::ConstraintCode::Uy;
+            return InlineAsm::Constraint_Uy;
           }
         }
       }

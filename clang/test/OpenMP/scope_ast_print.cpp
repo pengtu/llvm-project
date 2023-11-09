@@ -81,8 +81,8 @@ int template_test() {
 //DUMP: BuiltinType {{.*}}'double'
 //DUMP: OMPScopeDirective
 //DUMP: OMPPrivateClause
-//DUMP: DeclRefExpr {{.*}}'double' lvalue Var {{.*}} 'a' 'double'
+//DUMP: DeclRefExpr {{.*}}'double':'double' lvalue Var {{.*}} 'a' 'double':'double'
 //DUMP: OMPReductionClause
-//DUMP: DeclRefExpr {{.*}}'double' lvalue Var {{.*}} 'b' 'double'
+//DUMP: DeclRefExpr {{.*}}'double':'double' lvalue Var {{.*}} 'b' 'double':'double'
 //PRINT: #pragma omp scope private(a) reduction(*: b)
 #endif // HEADER

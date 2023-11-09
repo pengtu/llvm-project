@@ -111,7 +111,7 @@ static bool hasAnyUnrollPragma(const Loop *L, StringRef Prefix) {
       if (!S)
         continue;
 
-      if (S->getString().starts_with(Prefix))
+      if (S->getString().startswith(Prefix))
         return true;
     }
   }
@@ -153,11 +153,9 @@ static bool computeUnrollAndJamCount(
     LoopInfo *LI, AssumptionCache *AC, ScalarEvolution &SE,
     const SmallPtrSetImpl<const Value *> &EphValues,
     OptimizationRemarkEmitter *ORE, unsigned OuterTripCount,
-    unsigned OuterTripMultiple, const UnrollCostEstimator &OuterUCE,
-    unsigned InnerTripCount, unsigned InnerLoopSize,
-    TargetTransformInfo::UnrollingPreferences &UP,
+    unsigned OuterTripMultiple, unsigned OuterLoopSize, unsigned InnerTripCount,
+    unsigned InnerLoopSize, TargetTransformInfo::UnrollingPreferences &UP,
     TargetTransformInfo::PeelingPreferences &PP) {
-  unsigned OuterLoopSize = OuterUCE.getRolledLoopSize();
   // First up use computeUnrollCount from the loop unroller to get a count
   // for unrolling the outer loop, plus any loops requiring explicit
   // unrolling we leave to the unroller. This uses UP.Threshold /
@@ -167,7 +165,7 @@ static bool computeUnrollAndJamCount(
   bool UseUpperBound = false;
   bool ExplicitUnroll = computeUnrollCount(
     L, TTI, DT, LI, AC, SE, EphValues, ORE, OuterTripCount, MaxTripCount,
-      /*MaxOrZero*/ false, OuterTripMultiple, OuterUCE, UP, PP,
+      /*MaxOrZero*/ false, OuterTripMultiple, OuterLoopSize, UP, PP,
       UseUpperBound);
   if (ExplicitUnroll || UseUpperBound) {
     // If the user explicitly set the loop as unrolled, dont UnJ it. Leave it
@@ -320,28 +318,39 @@ tryToUnrollAndJamLoop(Loop *L, DominatorTree &DT, LoopInfo *LI,
   }
 
   // Approximate the loop size and collect useful info
+  unsigned NumInlineCandidates;
+  bool NotDuplicatable;
+  bool Convergent;
   SmallPtrSet<const Value *, 32> EphValues;
   CodeMetrics::collectEphemeralValues(L, &AC, EphValues);
   Loop *SubLoop = L->getSubLoops()[0];
-  UnrollCostEstimator InnerUCE(SubLoop, TTI, EphValues, UP.BEInsns);
-  UnrollCostEstimator OuterUCE(L, TTI, EphValues, UP.BEInsns);
+  InstructionCost InnerLoopSizeIC =
+      ApproximateLoopSize(SubLoop, NumInlineCandidates, NotDuplicatable,
+                          Convergent, TTI, EphValues, UP.BEInsns);
+  InstructionCost OuterLoopSizeIC =
+      ApproximateLoopSize(L, NumInlineCandidates, NotDuplicatable, Convergent,
+                          TTI, EphValues, UP.BEInsns);
+  LLVM_DEBUG(dbgs() << "  Outer Loop Size: " << OuterLoopSizeIC << "\n");
+  LLVM_DEBUG(dbgs() << "  Inner Loop Size: " << InnerLoopSizeIC << "\n");
 
-  if (!InnerUCE.canUnroll() || !OuterUCE.canUnroll()) {
+  if (!InnerLoopSizeIC.isValid() || !OuterLoopSizeIC.isValid()) {
     LLVM_DEBUG(dbgs() << "  Not unrolling loop which contains instructions"
-                      << " which cannot be duplicated or have invalid cost.\n");
+                      << " with invalid cost.\n");
     return LoopUnrollResult::Unmodified;
   }
+  unsigned InnerLoopSize = *InnerLoopSizeIC.getValue();
+  unsigned OuterLoopSize = *OuterLoopSizeIC.getValue();
 
-  unsigned InnerLoopSize = InnerUCE.getRolledLoopSize();
-  LLVM_DEBUG(dbgs() << "  Outer Loop Size: " << OuterUCE.getRolledLoopSize()
-                    << "\n");
-  LLVM_DEBUG(dbgs() << "  Inner Loop Size: " << InnerLoopSize << "\n");
-
-  if (InnerUCE.NumInlineCandidates != 0 || OuterUCE.NumInlineCandidates != 0) {
+  if (NotDuplicatable) {
+    LLVM_DEBUG(dbgs() << "  Not unrolling loop which contains non-duplicatable "
+                         "instructions.\n");
+    return LoopUnrollResult::Unmodified;
+  }
+  if (NumInlineCandidates != 0) {
     LLVM_DEBUG(dbgs() << "  Not unrolling loop with inlinable calls.\n");
     return LoopUnrollResult::Unmodified;
   }
-  if (InnerUCE.Convergent || OuterUCE.Convergent) {
+  if (Convergent) {
     LLVM_DEBUG(
         dbgs() << "  Not unrolling loop with convergent instructions.\n");
     return LoopUnrollResult::Unmodified;
@@ -370,7 +379,7 @@ tryToUnrollAndJamLoop(Loop *L, DominatorTree &DT, LoopInfo *LI,
   // Decide if, and by how much, to unroll
   bool IsCountSetExplicitly = computeUnrollAndJamCount(
     L, SubLoop, TTI, DT, LI, &AC, SE, EphValues, &ORE, OuterTripCount,
-      OuterTripMultiple, OuterUCE, InnerTripCount, InnerLoopSize, UP, PP);
+      OuterTripMultiple, OuterLoopSize, InnerTripCount, InnerLoopSize, UP, PP);
   if (UP.Count <= 1)
     return LoopUnrollResult::Unmodified;
   // Unroll factor (Count) must be less or equal to TripCount.

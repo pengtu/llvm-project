@@ -99,18 +99,18 @@ struct CreateMethodDecl : public TypeVisitorCallbacks {
 static clang::TagTypeKind TranslateUdtKind(const TagRecord &cr) {
   switch (cr.Kind) {
   case TypeRecordKind::Class:
-    return clang::TagTypeKind::Class;
+    return clang::TTK_Class;
   case TypeRecordKind::Struct:
-    return clang::TagTypeKind::Struct;
+    return clang::TTK_Struct;
   case TypeRecordKind::Union:
-    return clang::TagTypeKind::Union;
+    return clang::TTK_Union;
   case TypeRecordKind::Interface:
-    return clang::TagTypeKind::Interface;
+    return clang::TTK_Interface;
   case TypeRecordKind::Enum:
-    return clang::TagTypeKind::Enum;
+    return clang::TTK_Enum;
   default:
     lldbassert(false && "Invalid tag record kind!");
-    return clang::TagTypeKind::Struct;
+    return clang::TTK_Struct;
   }
 }
 
@@ -608,17 +608,16 @@ clang::QualType PdbAstBuilder::CreateRecordType(PdbTypeSymId id,
     return {};
 
   clang::TagTypeKind ttk = TranslateUdtKind(record);
-  lldb::AccessType access = (ttk == clang::TagTypeKind::Class)
-                                ? lldb::eAccessPrivate
-                                : lldb::eAccessPublic;
+  lldb::AccessType access =
+      (ttk == clang::TTK_Class) ? lldb::eAccessPrivate : lldb::eAccessPublic;
 
   ClangASTMetadata metadata;
   metadata.SetUserID(toOpaqueUid(id));
   metadata.SetIsDynamicCXXType(false);
 
-  CompilerType ct = m_clang.CreateRecordType(
-      context, OptionalClangModuleID(), access, uname, llvm::to_underlying(ttk),
-      lldb::eLanguageTypeC_plus_plus, &metadata);
+  CompilerType ct =
+      m_clang.CreateRecordType(context, OptionalClangModuleID(), access, uname,
+                               ttk, lldb::eLanguageTypeC_plus_plus, &metadata);
 
   lldbassert(ct.IsValid());
 

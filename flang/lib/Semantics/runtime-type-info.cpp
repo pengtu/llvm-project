@@ -310,11 +310,8 @@ static SomeExpr StructureExpr(evaluate::StructureConstructor &&x) {
 
 static int GetIntegerKind(const Symbol &symbol) {
   auto dyType{evaluate::DynamicType::From(symbol)};
-  CHECK((dyType && dyType->category() == TypeCategory::Integer) ||
-      symbol.owner().context().HasError(symbol));
-  return dyType && dyType->category() == TypeCategory::Integer
-      ? dyType->kind()
-      : symbol.owner().context().GetDefaultKind(TypeCategory::Integer);
+  CHECK(dyType && dyType->category() == TypeCategory::Integer);
+  return dyType->kind();
 }
 
 // Save a rank-1 array constant of some numeric type as an
@@ -642,8 +639,7 @@ const Symbol *RuntimeTableBuilder::DescribeType(Scope &dtScope) {
         IntExpr<1>(derivedTypeSpec && !derivedTypeSpec->HasDestruction()));
     // Similarly, a flag to short-circuit finalization when not needed.
     AddValue(dtValues, derivedTypeSchema_, "nofinalizationneeded"s,
-        IntExpr<1>(
-            derivedTypeSpec && !MayRequireFinalization(*derivedTypeSpec)));
+        IntExpr<1>(derivedTypeSpec && !IsFinalizable(*derivedTypeSpec)));
   }
   dtObject.get<ObjectEntityDetails>().set_init(MaybeExpr{
       StructureExpr(Structure(derivedTypeSchema_, std::move(dtValues)))});

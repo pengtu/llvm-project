@@ -17,9 +17,7 @@ namespace llvm {
 class LLVMContext;
 
 /// MLModelRunner interface: abstraction of a mechanism for evaluating a
-/// ML model. More abstractly, evaluating a function that has as tensors as
-/// arguments, described via TensorSpecs, and returns a tensor. Currently, the
-/// latter is assumed to be a scalar, in absence of more elaborate scenarios.
+/// tensorflow "saved model".
 /// NOTE: feature indices are expected to be consistent all accross
 /// MLModelRunners (pertaining to the same model), and also Loggers (see
 /// TFUtils.h)

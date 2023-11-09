@@ -36,9 +36,10 @@ program sample
     !ERROR: k must not have ALLOCATABLE attribute
         k = x
 
-    !$omp atomic update
+    !$omp atomic update 
+    !ERROR: Atomic update statement should be of form `k = k operator expr` OR `k = expr operator k`
     !ERROR: k must not have ALLOCATABLE attribute
-        k = k + x * (v * x)
+        k = v + k * (v * k)
 
     !$omp atomic
     !ERROR: k must not have ALLOCATABLE attribute

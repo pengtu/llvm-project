@@ -321,11 +321,11 @@ TypeSize
 GCNTTIImpl::getRegisterBitWidth(TargetTransformInfo::RegisterKind K) const {
   switch (K) {
   case TargetTransformInfo::RGK_Scalar:
-    return TypeSize::Fixed(32);
+    return TypeSize::getFixed(32);
   case TargetTransformInfo::RGK_FixedWidthVector:
-    return TypeSize::Fixed(ST->hasPackedFP32Ops() ? 64 : 32);
+    return TypeSize::getFixed(ST->hasPackedFP32Ops() ? 64 : 32);
   case TargetTransformInfo::RGK_ScalableVector:
-    return TypeSize::Scalable(0);
+    return TypeSize::getScalable(0);
   }
   llvm_unreachable("Unsupported register kind");
 }
@@ -647,15 +647,6 @@ InstructionCost GCNTTIImpl::getArithmeticInstrCost(
       // f16 div_fixup
       int Cost =
           4 * getFullRateInstrCost() + 2 * getQuarterRateInstrCost(CostKind);
-      return LT.first * Cost * NElts;
-    }
-
-    if (SLT == MVT::f32 && ((CxtI && CxtI->hasApproxFunc()) ||
-                            TLI->getTargetMachine().Options.UnsafeFPMath)) {
-      // Fast unsafe fdiv lowering:
-      // f32 rcp
-      // f32 fmul
-      int Cost = getQuarterRateInstrCost(CostKind) + getFullRateInstrCost();
       return LT.first * Cost * NElts;
     }
 

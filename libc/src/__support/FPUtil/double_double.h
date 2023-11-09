@@ -6,17 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_FPUTIL_DOUBLE_DOUBLE_H
-#define LLVM_LIBC_SRC___SUPPORT_FPUTIL_DOUBLE_DOUBLE_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_FPUTIL_DOUBLEDOUBLE_H
+#define LLVM_LIBC_SRC_SUPPORT_FPUTIL_DOUBLEDOUBLE_H
 
 #include "multiply_add.h"
 #include "src/__support/common.h"
 #include "src/__support/macros/properties/cpu_features.h" // LIBC_TARGET_CPU_HAS_FMA
 #include "src/__support/number_pair.h"
 
-namespace LIBC_NAMESPACE::fputil {
+namespace __llvm_libc::fputil {
 
-using DoubleDouble = LIBC_NAMESPACE::NumberPair<double>;
+using DoubleDouble = __llvm_libc::NumberPair<double>;
 
 // The output of Dekker's FastTwoSum algorithm is correct, i.e.:
 //   r.hi + r.lo = a + b exactly
@@ -99,6 +99,6 @@ LIBC_INLINE DoubleDouble multiply_add<DoubleDouble>(const DoubleDouble &a,
   return add(c, quick_mult(a, b));
 }
 
-} // namespace LIBC_NAMESPACE::fputil
+} // namespace __llvm_libc::fputil
 
-#endif // LLVM_LIBC_SRC___SUPPORT_FPUTIL_DOUBLE_DOUBLE_H
+#endif // LLVM_LIBC_SRC_SUPPORT_FPUTIL_DOUBLEDOUBLE_H

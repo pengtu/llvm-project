@@ -78,7 +78,7 @@ getCleanupLoopLowerBound(AffineForOp forOp, unsigned unrollFactor,
   // these affine.apply's make up the cleanup loop lower bound.
   SmallVector<AffineExpr, 4> bumpExprs(tripCountMap.getNumResults());
   SmallVector<Value, 4> bumpValues(tripCountMap.getNumResults());
-  int64_t step = forOp.getStepAsInt();
+  int64_t step = forOp.getStep();
   for (unsigned i = 0, e = tripCountMap.getNumResults(); i < e; i++) {
     auto tripCountExpr = tripCountMap.getResult(i);
     bumpExprs[i] = (tripCountExpr - tripCountExpr % unrollFactor) * step;
@@ -114,7 +114,7 @@ getCleanupLoopLowerBound(AffineForOp forOp, unsigned unrollFactor,
 /// yield values while promoting single iteration affine.for ops.
 static void replaceIterArgsAndYieldResults(AffineForOp forOp) {
   // Replace uses of iter arguments with iter operands (initial values).
-  auto iterOperands = forOp.getInits();
+  auto iterOperands = forOp.getIterOperands();
   auto iterArgs = forOp.getRegionIterArgs();
   for (auto e : llvm::zip(iterOperands, iterArgs))
     std::get<1>(e).replaceAllUsesWith(std::get<0>(e));
@@ -189,9 +189,8 @@ static AffineForOp generateShiftedLoop(
   assert(lbMap.getNumInputs() == lbOperands.size());
   assert(ubMap.getNumInputs() == ubOperands.size());
 
-  auto loopChunk =
-      b.create<AffineForOp>(srcForOp.getLoc(), lbOperands, lbMap, ubOperands,
-                            ubMap, srcForOp.getStepAsInt());
+  auto loopChunk = b.create<AffineForOp>(srcForOp.getLoc(), lbOperands, lbMap,
+                                         ubOperands, ubMap, srcForOp.getStep());
   auto loopChunkIV = loopChunk.getInductionVar();
   auto srcIV = srcForOp.getInductionVar();
 
@@ -209,7 +208,7 @@ static AffineForOp generateShiftedLoop(
       auto ivRemap = bodyBuilder.create<AffineApplyOp>(
           srcForOp.getLoc(),
           bodyBuilder.getSingleDimShiftAffineMap(
-              -static_cast<int64_t>(srcForOp.getStepAsInt() * shift)),
+              -static_cast<int64_t>(srcForOp.getStep() * shift)),
           loopChunkIV);
       operandMap.map(srcIV, ivRemap);
     } else {
@@ -256,7 +255,7 @@ LogicalResult mlir::affine::affineForOpBodySkew(AffineForOp forOp,
   assert(isOpwiseShiftValid(forOp, shifts) &&
          "shifts will lead to an invalid transformation\n");
 
-  int64_t step = forOp.getStepAsInt();
+  int64_t step = forOp.getStep();
 
   unsigned numChildOps = shifts.size();
 
@@ -536,7 +535,7 @@ static void setIntraTileBoundsParametric(OpBuilder &b, AffineForOp origLoop,
       origLowerBoundExpr);
 
   // Get the origLoopStep as an affine expression.
-  AffineExpr origLoopStep = b.getAffineConstantExpr(origLoop.getStepAsInt());
+  AffineExpr origLoopStep = b.getAffineConstantExpr(origLoop.getStep());
 
   // Insert ub as inter-tile ((loop IV - origlb) * tilingParameter) +
   // (tilingParameter * origLoopStep) + origlb.
@@ -558,7 +557,7 @@ static void setIntraTileBoundsParametric(OpBuilder &b, AffineForOp origLoop,
   newIntraTileLoop.setUpperBound(ubOperands, ubMap);
 
   // Original loop step must be preserved.
-  newIntraTileLoop.setStep(origLoop.getStepAsInt());
+  newIntraTileLoop.setStep(origLoop.getStep());
 }
 
 /// Set lower and upper bounds of inter-tile loops for parametric tiling.
@@ -655,7 +654,7 @@ static void setInterTileBoundsParametric(OpBuilder &b, AffineForOp origLoop,
   newLoop.setUpperBound(ubOperands, ubMap);
 
   // Original loop step must be preserved.
-  newLoop.setStep(origLoop.getStepAsInt());
+  newLoop.setStep(origLoop.getStep());
 }
 
 /// Constructs and sets new loop bounds after tiling for the case of
@@ -709,7 +708,7 @@ constructTiledIndexSetHyperRect(MutableArrayRef<AffineForOp> origLoops,
     newLoops[i].setUpperBound(newUbOperands, origLoops[i].getUpperBoundMap());
     // If the step size of original loop is x and tileSize is y then after
     // tiling the tile space loops' step size becomes x*y.
-    newLoops[i].setStep(tileSizes[i] * origLoops[i].getStepAsInt());
+    newLoops[i].setStep(tileSizes[i] * origLoops[i].getStep());
   }
   // Bounds for intra-tile loops.
   for (unsigned i = 0; i < width; i++) {
@@ -721,14 +720,14 @@ constructTiledIndexSetHyperRect(MutableArrayRef<AffineForOp> origLoops,
     newLoops[width + i].setLowerBound(
         /*operands=*/newLoops[i].getInductionVar(), lbMap);
     // The step sizes of intra-tile loops is just the original loops' step size.
-    newLoops[width + i].setStep(origLoops[i].getStepAsInt());
+    newLoops[width + i].setStep(origLoops[i].getStep());
 
     // Set the upper bound.
     if (mayBeConstantCount && *mayBeConstantCount < tileSizes[i]) {
       // Trip count is less than the tile size: upper bound is lower bound +
       // trip count * stepSize.
-      AffineMap ubMap = b.getSingleDimShiftAffineMap(
-          *mayBeConstantCount * origLoops[i].getStepAsInt());
+      AffineMap ubMap = b.getSingleDimShiftAffineMap(*mayBeConstantCount *
+                                                     origLoops[i].getStep());
       newLoops[width + i].setUpperBound(
           /*operands=*/newLoops[i].getInductionVar(), ubMap);
     } else if (largestDiv % tileSizes[i] != 0) {
@@ -758,7 +757,7 @@ constructTiledIndexSetHyperRect(MutableArrayRef<AffineForOp> origLoops,
       AffineExpr dim = b.getAffineDimExpr(origUbMap.getNumDims());
       // The new upper bound map is the original one with an additional
       // expression i + tileSize * stepSize (of original loop) appended.
-      boundExprs.push_back(dim + tileSizes[i] * origLoops[i].getStepAsInt());
+      boundExprs.push_back(dim + tileSizes[i] * origLoops[i].getStep());
       boundExprs.append(origUbMap.getResults().begin(),
                         origUbMap.getResults().end());
       AffineMap ubMap =
@@ -768,8 +767,8 @@ constructTiledIndexSetHyperRect(MutableArrayRef<AffineForOp> origLoops,
     } else {
       // No need of the min expression.
       AffineExpr dim = b.getAffineDimExpr(0);
-      AffineMap ubMap = AffineMap::get(
-          1, 0, dim + tileSizes[i] * origLoops[i].getStepAsInt());
+      AffineMap ubMap =
+          AffineMap::get(1, 0, dim + tileSizes[i] * origLoops[i].getStep());
       newLoops[width + i].setUpperBound(newLoops[i].getInductionVar(), ubMap);
     }
   }
@@ -988,7 +987,7 @@ static LogicalResult generateCleanupLoopForUnroll(AffineForOp forOp,
   // and produce results for the original users of `forOp` results.
   auto results = forOp.getResults();
   auto cleanupResults = cleanupForOp.getResults();
-  auto cleanupIterOperands = cleanupForOp.getInits();
+  auto cleanupIterOperands = cleanupForOp.getIterOperands();
 
   for (auto e : llvm::zip(results, cleanupResults, cleanupIterOperands)) {
     std::get<0>(e).replaceAllUsesWith(std::get<1>(e));
@@ -1062,7 +1061,7 @@ LogicalResult mlir::affine::loopUnrollByFactor(
   auto yieldedValues = forOp.getBody()->getTerminator()->getOperands();
 
   // Scale the step of loop being unrolled by unroll factor.
-  int64_t step = forOp.getStepAsInt();
+  int64_t step = forOp.getStep();
   forOp.setStep(step * unrollFactor);
   generateUnrolledLoop(
       forOp.getBody(), forOp.getInductionVar(), unrollFactor,
@@ -1198,10 +1197,10 @@ LogicalResult mlir::affine::loopUnrollJamByFactor(AffineForOp forOp,
   // `unrollJamFactor` copies of its iterOperands, iter_args and yield
   // operands.
   SmallVector<AffineForOp, 4> newLoopsWithIterArgs;
-  IRRewriter rewriter(forOp.getContext());
+  OpBuilder builder(forOp.getContext());
   for (AffineForOp oldForOp : loopsWithIterArgs) {
-    SmallVector<Value> dupIterOperands, dupYieldOperands;
-    ValueRange oldIterOperands = oldForOp.getInits();
+    SmallVector<Value, 4> dupIterOperands, dupIterArgs, dupYieldOperands;
+    ValueRange oldIterOperands = oldForOp.getIterOperands();
     ValueRange oldIterArgs = oldForOp.getRegionIterArgs();
     ValueRange oldYieldOperands =
         cast<AffineYieldOp>(oldForOp.getBody()->getTerminator()).getOperands();
@@ -1209,21 +1208,19 @@ LogicalResult mlir::affine::loopUnrollJamByFactor(AffineForOp forOp,
     // fix iterOperands and yield operands after cloning of sub-blocks.
     for (unsigned i = unrollJamFactor - 1; i >= 1; --i) {
       dupIterOperands.append(oldIterOperands.begin(), oldIterOperands.end());
+      dupIterArgs.append(oldIterArgs.begin(), oldIterArgs.end());
       dupYieldOperands.append(oldYieldOperands.begin(), oldYieldOperands.end());
     }
     // Create a new loop with additional iterOperands, iter_args and yield
     // operands. This new loop will take the loop body of the original loop.
-    bool forOpReplaced = oldForOp == forOp;
-    AffineForOp newForOp =
-        cast<AffineForOp>(*oldForOp.replaceWithAdditionalYields(
-            rewriter, dupIterOperands, /*replaceInitOperandUsesInLoop=*/false,
-            [&](OpBuilder &b, Location loc, ArrayRef<BlockArgument> newBbArgs) {
-              return dupYieldOperands;
-            }));
+    AffineForOp newForOp = affine::replaceForOpWithNewYields(
+        builder, oldForOp, dupIterOperands, dupYieldOperands, dupIterArgs);
     newLoopsWithIterArgs.push_back(newForOp);
     // `forOp` has been replaced with a new loop.
-    if (forOpReplaced)
+    if (oldForOp == forOp)
       forOp = newForOp;
+    assert(oldForOp.use_empty() && "old for op should not have any user");
+    oldForOp.erase();
     // Update `operandMaps` for `newForOp` iterArgs and results.
     ValueRange newIterArgs = newForOp.getRegionIterArgs();
     unsigned oldNumIterArgs = oldIterArgs.size();
@@ -1245,7 +1242,7 @@ LogicalResult mlir::affine::loopUnrollJamByFactor(AffineForOp forOp,
   }
 
   // Scale the step of loop being unroll-jammed by the unroll-jam factor.
-  int64_t step = forOp.getStepAsInt();
+  int64_t step = forOp.getStep();
   forOp.setStep(step * unrollJamFactor);
 
   auto forOpIV = forOp.getInductionVar();
@@ -1297,7 +1294,7 @@ LogicalResult mlir::affine::loopUnrollJamByFactor(AffineForOp forOp,
     // into one value. For example, for %0:2 = affine.for ... and addf, we add
     // %1 = arith.addf %0#0, %0#1, and replace the following uses of %0#0 with
     // %1.
-    rewriter.setInsertionPointAfter(forOp);
+    builder.setInsertionPointAfter(forOp);
     auto loc = forOp.getLoc();
     unsigned oldNumResults = forOp.getNumResults() / unrollJamFactor;
     for (LoopReduction &reduction : reductions) {
@@ -1308,7 +1305,7 @@ LogicalResult mlir::affine::loopUnrollJamByFactor(AffineForOp forOp,
       for (unsigned i = unrollJamFactor - 1; i >= 1; --i) {
         rhs = forOp.getResult(i * oldNumResults + pos);
         // Create ops based on reduction type.
-        lhs = arith::getReductionOp(reduction.kind, rewriter, loc, lhs, rhs);
+        lhs = arith::getReductionOp(reduction.kind, builder, loc, lhs, rhs);
         if (!lhs)
           return failure();
         Operation *op = lhs.getDefiningOp();
@@ -1572,7 +1569,7 @@ static void augmentMapAndBounds(OpBuilder &b, Value iv, AffineMap *map,
 static SmallVector<AffineForOp, 8>
 stripmineSink(AffineForOp forOp, uint64_t factor,
               ArrayRef<AffineForOp> targets) {
-  auto originalStep = forOp.getStepAsInt();
+  auto originalStep = forOp.getStep();
   auto scaledStep = originalStep * factor;
   forOp.setStep(scaledStep);
 
@@ -1660,7 +1657,7 @@ LogicalResult mlir::affine::coalesceLoops(MutableArrayRef<AffineForOp> loops) {
   OpBuilder builder(outermost);
   for (AffineForOp loop : loops) {
     // We only work on normalized loops.
-    if (loop.getStepAsInt() != 1 || !loop.hasConstantLowerBound() ||
+    if (loop.getStep() != 1 || !loop.hasConstantLowerBound() ||
         loop.getConstantLowerBound() != 0)
       return failure();
   }
@@ -2607,7 +2604,7 @@ static AffineIfOp createSeparationCondition(MutableArrayRef<AffineForOp> loops,
   for (auto loop : loops) {
     (void)loop;
     // TODO: Non-unit stride is not an issue to generalize to.
-    assert(loop.getStepAsInt() == 1 && "point loop step expected to be one");
+    assert(loop.getStep() == 1 && "point loop step expected to be one");
     // Mark everything symbols for the purpose of finding a constant diff pair.
     cst.setDimSymbolSeparation(/*newSymbolCount=*/cst.getNumDimAndSymbolVars() -
                                1);
@@ -2674,7 +2671,7 @@ createFullTiles(MutableArrayRef<AffineForOp> inputNest,
   FlatAffineValueConstraints cst;
   for (auto loop : inputNest) {
     // TODO: straightforward to generalize to a non-unit stride.
-    if (loop.getStepAsInt() != 1) {
+    if (loop.getStep() != 1) {
       LLVM_DEBUG(llvm::dbgs()
                  << "[tile separation] non-unit stride not implemented\n");
       return failure();

@@ -63,8 +63,6 @@ public:
         Data.getBufferStart());
   }
 
-  uint16_t getMachine() const { return getCOFFImportHeader()->Machine; }
-
 private:
   bool isData() const {
     return getCOFFImportHeader()->getType() == COFF::IMPORT_DATA;

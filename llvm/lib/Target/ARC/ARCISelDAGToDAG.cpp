@@ -45,7 +45,7 @@ public:
 
   ARCDAGToDAGISel() = delete;
 
-  ARCDAGToDAGISel(ARCTargetMachine &TM, CodeGenOptLevel OptLevel)
+  ARCDAGToDAGISel(ARCTargetMachine &TM, CodeGenOpt::Level OptLevel)
       : SelectionDAGISel(ID, TM, OptLevel) {}
 
   void Select(SDNode *N) override;
@@ -69,7 +69,7 @@ INITIALIZE_PASS(ARCDAGToDAGISel, DEBUG_TYPE, PASS_NAME, false, false)
 /// This pass converts a legalized DAG into a ARC-specific DAG, ready for
 /// instruction scheduling.
 FunctionPass *llvm::createARCISelDag(ARCTargetMachine &TM,
-                                     CodeGenOptLevel OptLevel) {
+                                     CodeGenOpt::Level OptLevel) {
   return new ARCDAGToDAGISel(TM, OptLevel);
 }
 

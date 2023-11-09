@@ -168,6 +168,31 @@ updateBranches(MachineFunction &MF,
   }
 }
 
+// This function provides the BBCluster information associated with a function.
+// Returns true if a valid association exists and false otherwise.
+bool getBBClusterInfoForFunction(
+    const MachineFunction &MF,
+    BasicBlockSectionsProfileReader *BBSectionsProfileReader,
+    DenseMap<unsigned, BBClusterInfo> &V) {
+
+  // Find the assoicated cluster information.
+  std::pair<bool, SmallVector<BBClusterInfo, 4>> P =
+      BBSectionsProfileReader->getBBClusterInfoForFunction(MF.getName());
+  if (!P.first)
+    return false;
+
+  if (P.second.empty()) {
+    // This indicates that sections are desired for all basic blocks of this
+    // function. We clear the BBClusterInfo vector to denote this.
+    V.clear();
+    return true;
+  }
+
+  for (const BBClusterInfo &BBCI : P.second)
+    V[BBCI.BBID] = BBCI;
+  return true;
+}
+
 // This function sorts basic blocks according to the cluster's information.
 // All explicitly specified clusters of basic blocks will be ordered
 // accordingly. All non-specified BBs go into a separate "Cold" section.
@@ -175,12 +200,12 @@ updateBranches(MachineFunction &MF,
 // clusters, they are moved into a single "Exception" section. Eventually,
 // clusters are ordered in increasing order of their IDs, with the "Exception"
 // and "Cold" succeeding all other clusters.
-// FuncClusterInfo represents the cluster information for basic blocks. It
+// FuncBBClusterInfo represent the cluster information for basic blocks. It
 // maps from BBID of basic blocks to their cluster information. If this is
 // empty, it means unique sections for all basic blocks in the function.
 static void
 assignSections(MachineFunction &MF,
-               const DenseMap<UniqueBBID, BBClusterInfo> &FuncClusterInfo) {
+               const DenseMap<unsigned, BBClusterInfo> &FuncBBClusterInfo) {
   assert(MF.hasBBSections() && "BB Sections is not set for function.");
   // This variable stores the section ID of the cluster containing eh_pads (if
   // all eh_pads are one cluster). If more than one cluster contain eh_pads, we
@@ -191,17 +216,17 @@ assignSections(MachineFunction &MF,
     // With the 'all' option, every basic block is placed in a unique section.
     // With the 'list' option, every basic block is placed in a section
     // associated with its cluster, unless we want individual unique sections
-    // for every basic block in this function (if FuncClusterInfo is empty).
+    // for every basic block in this function (if FuncBBClusterInfo is empty).
     if (MF.getTarget().getBBSectionsType() == llvm::BasicBlockSection::All ||
-        FuncClusterInfo.empty()) {
+        FuncBBClusterInfo.empty()) {
       // If unique sections are desired for all basic blocks of the function, we
       // set every basic block's section ID equal to its original position in
       // the layout (which is equal to its number). This ensures that basic
       // blocks are ordered canonically.
       MBB.setSectionID(MBB.getNumber());
     } else {
-      auto I = FuncClusterInfo.find(*MBB.getBBID());
-      if (I != FuncClusterInfo.end()) {
+      auto I = FuncBBClusterInfo.find(*MBB.getBBID());
+      if (I != FuncBBClusterInfo.end()) {
         MBB.setSectionID(I->second.ClusterID);
       } else {
         // BB goes into the special cold section if it is not specified in the
@@ -264,7 +289,12 @@ void llvm::avoidZeroOffsetLandingPad(MachineFunction &MF) {
   }
 }
 
-bool llvm::hasInstrProfHashMismatch(MachineFunction &MF) {
+// This checks if the source of this function has drifted since this binary was
+// profiled previously.  For now, we are piggy backing on what PGO does to
+// detect this with instrumented profiles.  PGO emits an hash of the IR and
+// checks if the hash has changed.  Advanced basic block layout is usually done
+// on top of PGO optimized binaries and hence this check works well in practice.
+static bool hasInstrProfHashMismatch(MachineFunction &MF) {
   if (!BBSectionsDetectSourceDrift)
     return false;
 
@@ -285,7 +315,7 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
   assert(BBSectionsType != BasicBlockSection::None &&
          "BB Sections not enabled!");
 
-  // Check for source drift. If the source has changed since the profiles
+  // Check for source drift.  If the source has changed since the profiles
   // were obtained, optimizing basic blocks might be sub-optimal.
   // This only applies to BasicBlockSection::List as it creates
   // clusters of basic blocks using basic block ids. Source drift can
@@ -293,30 +323,26 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
   // regards to performance.
   if (BBSectionsType == BasicBlockSection::List &&
       hasInstrProfHashMismatch(MF))
-    return false;
+    return true;
   // Renumber blocks before sorting them. This is useful for accessing the
   // original layout positions and finding the original fallthroughs.
   MF.RenumberBlocks();
 
   if (BBSectionsType == BasicBlockSection::Labels) {
     MF.setBBSectionsType(BBSectionsType);
-    return false;
+    return true;
   }
 
-  DenseMap<UniqueBBID, BBClusterInfo> FuncClusterInfo;
-  if (BBSectionsType == BasicBlockSection::List) {
-    auto [HasProfile, ClusterInfo] =
-        getAnalysis<BasicBlockSectionsProfileReader>()
-            .getClusterInfoForFunction(MF.getName());
-    if (!HasProfile)
-      return false;
-    for (auto &BBClusterInfo : ClusterInfo) {
-      FuncClusterInfo.try_emplace(BBClusterInfo.BBID, BBClusterInfo);
-    }
-  }
+  BBSectionsProfileReader = &getAnalysis<BasicBlockSectionsProfileReader>();
 
+  // Map from BBID of blocks to their cluster information.
+  DenseMap<unsigned, BBClusterInfo> FuncBBClusterInfo;
+  if (BBSectionsType == BasicBlockSection::List &&
+      !getBBClusterInfoForFunction(MF, BBSectionsProfileReader,
+                                   FuncBBClusterInfo))
+    return true;
   MF.setBBSectionsType(BBSectionsType);
-  assignSections(MF, FuncClusterInfo);
+  assignSections(MF, FuncBBClusterInfo);
 
   // We make sure that the cluster including the entry basic block precedes all
   // other clusters.
@@ -350,8 +376,8 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
     // If the two basic block are in the same section, the order is decided by
     // their position within the section.
     if (XSectionID.Type == MBBSectionID::SectionType::Default)
-      return FuncClusterInfo.lookup(*X.getBBID()).PositionInCluster <
-             FuncClusterInfo.lookup(*Y.getBBID()).PositionInCluster;
+      return FuncBBClusterInfo.lookup(*X.getBBID()).PositionInCluster <
+             FuncBBClusterInfo.lookup(*Y.getBBID()).PositionInCluster;
     return X.getNumber() < Y.getNumber();
   };
 

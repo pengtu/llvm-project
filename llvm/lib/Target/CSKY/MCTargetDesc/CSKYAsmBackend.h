@@ -20,7 +20,7 @@ class CSKYAsmBackend : public MCAsmBackend {
 
 public:
   CSKYAsmBackend(const MCSubtargetInfo &STI, const MCTargetOptions &OP)
-      : MCAsmBackend(llvm::endianness::little) {}
+      : MCAsmBackend(support::little) {}
 
   unsigned int getNumFixupKinds() const override {
     return CSKY::NumTargetFixupKinds;

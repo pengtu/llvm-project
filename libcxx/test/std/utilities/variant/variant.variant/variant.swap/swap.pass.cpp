@@ -8,6 +8,8 @@
 
 // UNSUPPORTED: c++03, c++11, c++14
 
+// XFAIL: availability-bad_variant_access-missing && !no-exceptions
+
 // <variant>
 
 // template <class ...Types> class variant;
@@ -15,7 +17,6 @@
 // void swap(variant& rhs) noexcept(see below)
 
 #include <cassert>
-#include <cstdlib>
 #include <string>
 #include <type_traits>
 #include <variant>

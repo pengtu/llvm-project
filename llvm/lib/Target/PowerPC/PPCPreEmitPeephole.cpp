@@ -495,8 +495,7 @@ static bool hasPCRelativeForm(MachineInstr &Use) {
             }
           }
           MachineInstr *DefMIToErase = nullptr;
-          SmallSet<Register, 4> UpdatedRegs;
-          if (TII->convertToImmediateForm(MI, UpdatedRegs, &DefMIToErase)) {
+          if (TII->convertToImmediateForm(MI, &DefMIToErase)) {
             Changed = true;
             NumRRConvertedInPreEmit++;
             LLVM_DEBUG(dbgs() << "Converted instruction to imm form: ");

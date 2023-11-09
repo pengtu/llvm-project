@@ -66,14 +66,6 @@ public:
 
   void insertVarInPlace(VarKind kind, unsigned pos, unsigned num = 1);
 
-  /// Converts variables of the specified kind in the column range [srcPos,
-  /// srcPos + num) to variables of the specified kind at position dstPos. The
-  /// ranges are relative to the kind of variable.
-  ///
-  /// srcKind and dstKind must be different.
-  void convertVarKind(VarKind srcKind, unsigned srcPos, unsigned num,
-                      VarKind dstKind, unsigned dstPos);
-
   /// Return a reference to the list of disjuncts.
   ArrayRef<IntegerRelation> getAllDisjuncts() const;
 
@@ -169,17 +161,17 @@ public:
   bool isIntegerEmpty() const;
 
   /// Return true if there is no disjunct, false otherwise.
-  bool isObviouslyEmpty() const;
+  bool isPlainEmpty() const;
 
   /// Return true if the set is known to have one unconstrained disjunct, false
   /// otherwise.
-  bool isObviouslyUniverse() const;
+  bool isPlainUniverse() const;
 
   /// Perform a quick equality check on `this` and `other`. The relations are
   /// equal if the check return true, but may or may not be equal if the check
   /// returns false. This is doing by directly comparing whether each internal
   /// disjunct is the same.
-  bool isObviouslyEqual(const PresburgerRelation &set) const;
+  bool isPlainEqual(const PresburgerRelation &set) const;
 
   /// Return true if the set is consist of a single disjunct, without any local
   /// variables, false otherwise.
@@ -212,10 +204,6 @@ public:
   /// representation may involve local ids that correspond to divisions, and may
   /// also be a union of convex disjuncts.
   PresburgerRelation computeReprWithOnlyDivLocals() const;
-
-  /// Simplify each disjunct, canonicalizing each disjunct and removing
-  /// redundencies.
-  PresburgerRelation simplify() const;
 
   /// Print the set's internal state.
   void print(raw_ostream &os) const;

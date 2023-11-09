@@ -978,9 +978,7 @@ static int linkAndVerify() {
     if (!Checker)
       Checker = std::make_unique<RuntimeDyldChecker>(
           IsSymbolValid, GetSymbolInfo, GetSectionInfo, GetStubInfo,
-          GetStubInfo,
-          Obj.isLittleEndian() ? llvm::endianness::little
-                               : llvm::endianness::big,
+          GetStubInfo, Obj.isLittleEndian() ? support::little : support::big,
           TheTriple, MCPU, SubtargetFeatures(), dbgs());
 
     auto FileName = sys::path::filename(InputFile);

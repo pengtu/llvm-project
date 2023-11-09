@@ -31,17 +31,15 @@
 // Do the same run, but now with direct IR generation and VLA vectorization.
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | env %{env} %{run_sve} | FileCheck %s %}
 
-!Filename = !llvm.ptr
+!Filename = !llvm.ptr<i8>
 
 #SparseTensor = #sparse_tensor.encoding<{
+  lvlTypes = [ "compressed", "compressed", "compressed", "compressed",
+                   "compressed", "compressed", "compressed", "compressed" ],
   // Note that any dimToLvl permutation should give the same results
   // since, even though it impacts the sparse storage scheme layout,
   // it should not change the semantics.
-  map = (d0, d1, d2, d3,
-         d4, d5, d6, d7) -> (d7 : compressed, d6 : compressed,
-                             d1 : compressed, d2 : compressed,
-                             d0 : compressed, d3 : compressed,
-                             d4 : compressed, d5 : compressed)
+  dimToLvl = affine_map<(i,j,k,l,m,n,o,p) -> (p,o,j,k,i,l,m,n)>
 }>
 
 #trait_flatten = {

@@ -34,7 +34,7 @@ public:
 
   MipsDAGToDAGISel() = delete;
 
-  explicit MipsDAGToDAGISel(MipsTargetMachine &TM, CodeGenOptLevel OL)
+  explicit MipsDAGToDAGISel(MipsTargetMachine &TM, CodeGenOpt::Level OL)
       : SelectionDAGISel(ID, TM, OL), Subtarget(nullptr) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override;
@@ -141,7 +141,7 @@ private:
   virtual void processFunctionAfterISel(MachineFunction &MF) = 0;
 
   bool SelectInlineAsmMemoryOperand(const SDValue &Op,
-                                    InlineAsm::ConstraintCode ConstraintID,
+                                    unsigned ConstraintID,
                                     std::vector<SDValue> &OutOps) override;
 };
 }

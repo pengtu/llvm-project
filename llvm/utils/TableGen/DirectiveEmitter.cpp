@@ -736,7 +736,6 @@ static void GenerateFlangClausesParser(const DirectiveLanguage &DirLang,
             .Case("Name", "name")
             .Case("ScalarIntConstantExpr", "scalarIntConstantExpr")
             .Case("ScalarIntExpr", "scalarIntExpr")
-            .Case("ScalarExpr", "scalarExpr")
             .Case("ScalarLogicalExpr", "scalarLogicalExpr")
             .Default(("Parser<" + Clause.getFlangClass() + ">{}")
                          .toStringRef(Scratch));

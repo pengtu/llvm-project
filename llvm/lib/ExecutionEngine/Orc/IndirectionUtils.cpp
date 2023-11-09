@@ -244,7 +244,8 @@ Constant* createIRTypedAddress(FunctionType &FT, ExecutorAddr Addr) {
   Constant *AddrIntVal =
     ConstantInt::get(Type::getInt64Ty(FT.getContext()), Addr.getValue());
   Constant *AddrPtrVal =
-    ConstantExpr::getIntToPtr(AddrIntVal, PointerType::get(&FT, 0));
+    ConstantExpr::getCast(Instruction::IntToPtr, AddrIntVal,
+                          PointerType::get(&FT, 0));
   return AddrPtrVal;
 }
 

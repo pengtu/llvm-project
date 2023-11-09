@@ -26,7 +26,7 @@ public:
   /// Properties to be used with the `settings` command.
   class PluginProperties : public Properties {
   public:
-    static llvm::StringRef GetSettingName();
+    static ConstString GetSettingName();
 
     PluginProperties();
 

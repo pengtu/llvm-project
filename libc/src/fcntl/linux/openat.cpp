@@ -16,7 +16,7 @@
 #include <stdarg.h>
 #include <sys/syscall.h> // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, openat, (int dfd, const char *path, int flags, ...)) {
   mode_t mode_flags = 0;
@@ -29,8 +29,8 @@ LLVM_LIBC_FUNCTION(int, openat, (int dfd, const char *path, int flags, ...)) {
     va_end(varargs);
   }
 
-  int fd = LIBC_NAMESPACE::syscall_impl<int>(SYS_openat, dfd, path, flags,
-                                             mode_flags);
+  int fd =
+      __llvm_libc::syscall_impl<int>(SYS_openat, dfd, path, flags, mode_flags);
   if (fd > 0)
     return fd;
 
@@ -38,4 +38,4 @@ LLVM_LIBC_FUNCTION(int, openat, (int dfd, const char *path, int flags, ...)) {
   return -1;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

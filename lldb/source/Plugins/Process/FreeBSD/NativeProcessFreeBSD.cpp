@@ -69,7 +69,7 @@ NativeProcessFreeBSD::Manager::Launch(ProcessLaunchInfo &launch_info,
   int wstatus;
   ::pid_t wpid = llvm::sys::RetryAfterSignal(-1, ::waitpid, pid, &wstatus, 0);
   assert(wpid == pid);
-  UNUSED_IF_ASSERT_DISABLED(wpid);
+  (void)wpid;
   if (!WIFSTOPPED(wstatus)) {
     LLDB_LOG(log, "Could not sync with inferior process: wstatus={1}",
              WaitStatus::Decode(wstatus));

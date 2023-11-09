@@ -125,11 +125,11 @@ def InstFlag : OperandWithDefaultOps <i32, (ops (i32 0))>;
 
 def i1imm_0 : OperandWithDefaultOps<i1, (ops (i1 0))>;
 
-class CustomOperandClass<string name, bit optional, string predicateMethod,
-                         string parserMethod, string defaultMethod>
+class CustomOperandClass<string name, bit optional, string parserMethod,
+                         string defaultMethod>
     : AsmOperandClass {
   let Name = name;
-  let PredicateMethod = predicateMethod;
+  let PredicateMethod = "is"#name;
   let ParserMethod = parserMethod;
   let RenderMethod = "addImmOperands";
   let IsOptional = optional;
@@ -138,7 +138,6 @@ class CustomOperandClass<string name, bit optional, string predicateMethod,
 
 class CustomOperandProps<bit optional = 0, string name = NAME> {
   string ImmTy = "ImmTy"#name;
-  string PredicateMethod = "is"#name;
   string ParserMethod = "parse"#name;
   string DefaultValue = "0";
   string DefaultMethod = "[this]() { return "#
@@ -146,8 +145,7 @@ class CustomOperandProps<bit optional = 0, string name = NAME> {
     "AMDGPUOperand::"#ImmTy#"); }";
   string PrintMethod = "print"#name;
   AsmOperandClass ParserMatchClass =
-    CustomOperandClass<name, optional, PredicateMethod, ParserMethod,
-                       DefaultMethod>;
+    CustomOperandClass<name, optional, ParserMethod, DefaultMethod>;
   string OperandType = "OPERAND_IMMEDIATE";
 }
 
@@ -623,7 +621,6 @@ defm int_amdgcn_flat_atomic_fadd : global_addr_space_atomic_op;
 defm int_amdgcn_global_atomic_fadd_v2bf16 : noret_op;
 defm int_amdgcn_global_atomic_fmin : noret_op;
 defm int_amdgcn_global_atomic_fmax : noret_op;
-defm int_amdgcn_global_atomic_csub : noret_op;
 defm int_amdgcn_flat_atomic_fadd : local_addr_space_atomic_op;
 defm int_amdgcn_ds_fadd_v2bf16 : noret_op;
 

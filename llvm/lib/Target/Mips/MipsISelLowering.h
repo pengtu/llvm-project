@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cassert>
 #include <deque>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -640,18 +641,19 @@ class TargetRegisterClass;
     /// vector.  If it is invalid, don't add anything to Ops. If hasMemory is
     /// true it means one of the asm constraint of the inline asm instruction
     /// being processed is 'm'.
-    void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+    void LowerAsmOperandForConstraint(SDValue Op,
+                                      std::string &Constraint,
                                       std::vector<SDValue> &Ops,
                                       SelectionDAG &DAG) const override;
 
-    InlineAsm::ConstraintCode
+    unsigned
     getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
       if (ConstraintCode == "o")
-        return InlineAsm::ConstraintCode::o;
+        return InlineAsm::Constraint_o;
       if (ConstraintCode == "R")
-        return InlineAsm::ConstraintCode::R;
+        return InlineAsm::Constraint_R;
       if (ConstraintCode == "ZC")
-        return InlineAsm::ConstraintCode::ZC;
+        return InlineAsm::Constraint_ZC;
       return TargetLowering::getInlineAsmMemConstraint(ConstraintCode);
     }
 

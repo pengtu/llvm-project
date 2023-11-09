@@ -14,12 +14,12 @@
 
 #include <stddef.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace scanf_core {
 
 int convert_string(Reader *reader, const FormatSection &to_conv);
 
 } // namespace scanf_core
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_SCANF_CORE_STRING_CONVERTER_H

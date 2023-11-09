@@ -10,7 +10,7 @@
 #include "src/__support/OSUtil/quick_exit.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 namespace internal {
 void call_exit_callbacks();
@@ -22,4 +22,4 @@ LLVM_LIBC_FUNCTION(void, exit, (int status)) {
   __builtin_unreachable();
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

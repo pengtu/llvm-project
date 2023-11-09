@@ -979,7 +979,7 @@ bool AArch64TargetInfo::initFeatureMap(
   // Parse the CPU and add any implied features.
   std::optional<llvm::AArch64::CpuInfo> CpuInfo = llvm::AArch64::parseCpu(CPU);
   if (CpuInfo) {
-    auto Exts = CpuInfo->getImpliedExtensions();
+    uint64_t Exts = CpuInfo->getImpliedExtensions();
     std::vector<StringRef> CPUFeats;
     llvm::AArch64::getExtensionFeatures(Exts, CPUFeats);
     for (auto F : CPUFeats) {
@@ -1302,12 +1302,6 @@ bool AArch64TargetInfo::validateAsmConstraint(
     if (Name[1] == 'p' &&
         (Name[2] == 'l' || Name[2] == 'a' || Name[2] == 'h')) {
       // SVE predicate registers ("Upa"=P0-15, "Upl"=P0-P7, "Uph"=P8-P15)
-      Info.setAllowsRegister();
-      Name += 2;
-      return true;
-    }
-    if (Name[1] == 'c' && (Name[2] == 'i' || Name[2] == 'j')) {
-      // Gpr registers ("Uci"=w8-11, "Ucj"=w12-15)
       Info.setAllowsRegister();
       Name += 2;
       return true;

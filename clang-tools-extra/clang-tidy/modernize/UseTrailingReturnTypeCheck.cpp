@@ -98,13 +98,12 @@ public:
       return false;
     const auto *T = TL.getTypePtr();
     return TraverseTypeLoc(TL.getNamedTypeLoc(),
-                           T->getKeyword() != ElaboratedTypeKeyword::None ||
-                               T->getQualifier());
+                           T->getKeyword() != ETK_None || T->getQualifier());
   }
 
   bool VisitDeclRefExpr(DeclRefExpr *S) {
     DeclarationName Name = S->getNameInfo().getName();
-    return S->getQualifierLoc() || Name.isEmpty() || !Name.isIdentifier() ||
+    return S->getQualifierLoc() || !Name.isIdentifier() ||
            !visitUnqualName(Name.getAsIdentifierInfo()->getName());
   }
 

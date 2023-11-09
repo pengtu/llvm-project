@@ -36,11 +36,11 @@ ConstantSubscripts ConstantBounds::ComputeUbounds(
     std::optional<int> dim) const {
   if (dim) {
     CHECK(*dim < Rank());
-    return {lbounds_[*dim] + (shape_[*dim] - 1)};
+    return {lbounds_[*dim] + shape_[*dim] - 1};
   } else {
     ConstantSubscripts ubounds(Rank());
     for (int i{0}; i < Rank(); ++i) {
-      ubounds[i] = lbounds_[i] + (shape_[i] - 1);
+      ubounds[i] = lbounds_[i] + shape_[i] - 1;
     }
     return ubounds;
   }
@@ -73,25 +73,15 @@ ConstantSubscript ConstantBounds::SubscriptsToOffset(
   for (auto j : index) {
     auto lb{lbounds_[dim]};
     auto extent{shape_[dim++]};
-    CHECK(j >= lb && j - lb < extent);
+    CHECK(j >= lb && j < lb + extent);
     offset += stride * (j - lb);
     stride *= extent;
   }
   return offset;
 }
 
-std::optional<uint64_t> TotalElementCount(const ConstantSubscripts &shape) {
-  uint64_t size{1};
-  for (auto dim : shape) {
-    CHECK(dim >= 0);
-    uint64_t osize{size};
-    size = osize * dim;
-    if (size > std::numeric_limits<decltype(dim)>::max() ||
-        (dim != 0 && size / dim != osize)) {
-      return std::nullopt;
-    }
-  }
-  return static_cast<uint64_t>(GetSize(shape));
+std::size_t TotalElementCount(const ConstantSubscripts &shape) {
+  return static_cast<std::size_t>(GetSize(shape));
 }
 
 bool ConstantBounds::IncrementSubscripts(
@@ -103,10 +93,10 @@ bool ConstantBounds::IncrementSubscripts(
     ConstantSubscript k{dimOrder ? (*dimOrder)[j] : j};
     auto lb{lbounds_[k]};
     CHECK(indices[k] >= lb);
-    if (++indices[k] - lb < shape_[k]) {
+    if (++indices[k] < lb + shape_[k]) {
       return true;
     } else {
-      CHECK(indices[k] - lb == std::max<ConstantSubscript>(shape_[k], 1));
+      CHECK(indices[k] == lb + std::max<ConstantSubscript>(shape_[k], 1));
       indices[k] = lb;
     }
   }
@@ -145,7 +135,7 @@ template <typename RESULT, typename ELEMENT>
 ConstantBase<RESULT, ELEMENT>::ConstantBase(
     std::vector<Element> &&x, ConstantSubscripts &&sh, Result res)
     : ConstantBounds(std::move(sh)), result_{res}, values_(std::move(x)) {
-  CHECK(TotalElementCount(shape()) && size() == *TotalElementCount(shape()));
+  CHECK(size() == TotalElementCount(shape()));
 }
 
 template <typename RESULT, typename ELEMENT>
@@ -159,9 +149,7 @@ bool ConstantBase<RESULT, ELEMENT>::operator==(const ConstantBase &that) const {
 template <typename RESULT, typename ELEMENT>
 auto ConstantBase<RESULT, ELEMENT>::Reshape(
     const ConstantSubscripts &dims) const -> std::vector<Element> {
-  std::optional<uint64_t> optN{TotalElementCount(dims)};
-  CHECK(optN);
-  uint64_t n{*optN};
+  std::size_t n{TotalElementCount(dims)};
   CHECK(!empty() || n == 0);
   std::vector<Element> elements;
   auto iter{values().cbegin()};
@@ -221,8 +209,7 @@ template <int KIND>
 Constant<Type<TypeCategory::Character, KIND>>::Constant(ConstantSubscript len,
     std::vector<Scalar<Result>> &&strings, ConstantSubscripts &&sh)
     : ConstantBounds(std::move(sh)), length_{len} {
-  CHECK(TotalElementCount(shape()) &&
-      strings.size() == *TotalElementCount(shape()));
+  CHECK(strings.size() == TotalElementCount(shape()));
   values_.assign(strings.size() * length_,
       static_cast<typename Scalar<Result>::value_type>(' '));
   ConstantSubscript at{0};
@@ -249,9 +236,7 @@ bool Constant<Type<TypeCategory::Character, KIND>>::empty() const {
 template <int KIND>
 std::size_t Constant<Type<TypeCategory::Character, KIND>>::size() const {
   if (length_ == 0) {
-    std::optional<uint64_t> n{TotalElementCount(shape())};
-    CHECK(n);
-    return *n;
+    return TotalElementCount(shape());
   } else {
     return static_cast<ConstantSubscript>(values_.size()) / length_;
   }
@@ -289,9 +274,7 @@ auto Constant<Type<TypeCategory::Character, KIND>>::Substring(
 template <int KIND>
 auto Constant<Type<TypeCategory::Character, KIND>>::Reshape(
     ConstantSubscripts &&dims) const -> Constant<Result> {
-  std::optional<uint64_t> optN{TotalElementCount(dims)};
-  CHECK(optN);
-  uint64_t n{*optN};
+  std::size_t n{TotalElementCount(dims)};
   CHECK(!empty() || n == 0);
   std::vector<Element> elements;
   ConstantSubscript at{0},

@@ -19,7 +19,7 @@
 
 using namespace ompx;
 
-extern "C" [[gnu::weak]] int IsSPMDMode;
+extern "C" __attribute__((weak)) int IsSPMDMode;
 
 namespace impl {
 

@@ -24,8 +24,7 @@ std::string llvm::demangle(std::string_view MangledName) {
     return Result;
 
   if (starts_with(MangledName, '_') &&
-      nonMicrosoftDemangle(MangledName.substr(1), Result,
-                           /*CanHaveLeadingDot=*/false))
+      nonMicrosoftDemangle(MangledName.substr(1), Result))
     return Result;
 
   if (char *Demangled = microsoftDemangle(MangledName, nullptr, nullptr)) {
@@ -47,15 +46,8 @@ static bool isRustEncoding(std::string_view S) { return starts_with(S, "_R"); }
 static bool isDLangEncoding(std::string_view S) { return starts_with(S, "_D"); }
 
 bool llvm::nonMicrosoftDemangle(std::string_view MangledName,
-                                std::string &Result, bool CanHaveLeadingDot) {
+                                std::string &Result) {
   char *Demangled = nullptr;
-
-  // Do not consider the dot prefix as part of the demangled symbol name.
-  if (CanHaveLeadingDot && MangledName.size() > 0 && MangledName[0] == '.') {
-    MangledName.remove_prefix(1);
-    Result = ".";
-  }
-
   if (isItaniumEncoding(MangledName))
     Demangled = itaniumDemangle(MangledName);
   else if (isRustEncoding(MangledName))
@@ -66,7 +58,7 @@ bool llvm::nonMicrosoftDemangle(std::string_view MangledName,
   if (!Demangled)
     return false;
 
-  Result += Demangled;
+  Result = Demangled;
   std::free(Demangled);
   return true;
 }

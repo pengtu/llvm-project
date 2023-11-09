@@ -159,7 +159,7 @@ void DependencyCollector::maybeAddDependency(StringRef Filename,
                                              bool IsMissing) {
   if (sawDependency(Filename, FromModule, IsSystem, IsModuleFile, IsMissing)) {
     if (IsSystem && FileMgr && shouldCanonicalizeSystemDependencies()) {
-      if (auto F = FileMgr->getOptionalFileRef(Filename))
+      if (auto F = FileMgr->getFile(Filename))
         Filename = FileMgr->getCanonicalName(*F);
     }
     addDependency(Filename);

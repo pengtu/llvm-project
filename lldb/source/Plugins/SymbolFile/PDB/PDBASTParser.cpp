@@ -49,13 +49,13 @@ using namespace llvm::pdb;
 static int TranslateUdtKind(PDB_UdtType pdb_kind) {
   switch (pdb_kind) {
   case PDB_UdtType::Class:
-    return llvm::to_underlying(clang::TagTypeKind::Class);
+    return clang::TTK_Class;
   case PDB_UdtType::Struct:
-    return llvm::to_underlying(clang::TagTypeKind::Struct);
+    return clang::TTK_Struct;
   case PDB_UdtType::Union:
-    return llvm::to_underlying(clang::TagTypeKind::Union);
+    return clang::TTK_Union;
   case PDB_UdtType::Interface:
-    return llvm::to_underlying(clang::TagTypeKind::Interface);
+    return clang::TTK_Interface;
   }
   llvm_unreachable("unsuported PDB UDT type");
 }
@@ -1387,9 +1387,9 @@ void PDBASTParser::AddRecordBases(
     auto is_virtual = base->isVirtualBaseClass();
 
     std::unique_ptr<clang::CXXBaseSpecifier> base_spec =
-        m_ast.CreateBaseClassSpecifier(
-            base_comp_type.GetOpaqueQualType(), access, is_virtual,
-            record_kind == llvm::to_underlying(clang::TagTypeKind::Class));
+        m_ast.CreateBaseClassSpecifier(base_comp_type.GetOpaqueQualType(),
+                                       access, is_virtual,
+                                       record_kind == clang::TTK_Class);
     lldbassert(base_spec);
 
     base_classes.push_back(std::move(base_spec));

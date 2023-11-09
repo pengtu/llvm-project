@@ -276,7 +276,7 @@ public:
       detail::Interface<ConcreteType, Type, Traits, Type, TypeTrait::TraitBase>;
   using InterfaceBase::InterfaceBase;
 
-protected:
+private:
   /// Returns the impl interface instance for the given type.
   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
 #ifndef NDEBUG
@@ -406,6 +406,7 @@ struct CastInfo<
     /// Return a constant true instead of a dynamic true when casting to self or
     /// up the hierarchy.
     if constexpr (std::is_base_of_v<To, From>) {
+      (void)ty;
       return true;
     } else {
       return To::classof(ty);

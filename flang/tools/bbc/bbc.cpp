@@ -199,10 +199,6 @@ static llvm::cl::opt<bool> enableCUDA("fcuda",
                                       llvm::cl::desc("enable CUDA Fortran"),
                                       llvm::cl::init(false));
 
-static llvm::cl::opt<bool> fixedForm("ffixed-form",
-                                     llvm::cl::desc("enable fixed form"),
-                                     llvm::cl::init(false));
-
 #define FLANG_EXCLUDE_CODEGEN
 #include "flang/Tools/CLOptions.inc"
 
@@ -333,11 +329,6 @@ static mlir::LogicalResult convertFortranSourceToMLIR(
   // Otherwise run the default passes.
   mlir::PassManager pm(mlirModule->getName(),
                        mlir::OpPassManager::Nesting::Implicit);
-  if (enableOpenMP)
-    // WARNING: This pipeline must be run immediately after the lowering to
-    // ensure that the FIR is correct with respect to OpenMP operations/
-    // attributes.
-    fir::createOpenMPFIRPassPipeline(pm, enableOpenMPDevice);
   pm.enableVerifier(/*verifyPasses=*/true);
   (void)mlir::applyPassManagerCLOptions(pm);
   if (passPipeline.hasAnyOccurrences()) {
@@ -372,8 +363,7 @@ static mlir::LogicalResult convertFortranSourceToMLIR(
     pm.addPass(std::make_unique<Fortran::lower::VerifierPass>());
 
     // Add O2 optimizer pass pipeline.
-    fir::createDefaultFIROptimizerPassPipeline(
-        pm, MLIRToLLVMPassPipelineConfig(llvm::OptimizationLevel::O2));
+    fir::createDefaultFIROptimizerPassPipeline(pm, llvm::OptimizationLevel::O2);
   }
 
   if (mlir::succeeded(pm.run(mlirModule))) {
@@ -435,10 +425,6 @@ int main(int argc, char **argv) {
   // enable parsing of CUDA Fortran
   if (enableCUDA) {
     options.features.Enable(Fortran::common::LanguageFeature::CUDA);
-  }
-
-  if (fixedForm) {
-    options.isFixedForm = fixedForm;
   }
 
   Fortran::common::IntrinsicTypeDefaultKinds defaultKinds;

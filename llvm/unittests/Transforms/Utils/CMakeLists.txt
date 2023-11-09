@@ -15,7 +15,6 @@ add_llvm_unittest(UtilsTests
   CallPromotionUtilsTest.cpp
   CloningTest.cpp
   CodeExtractorTest.cpp
-  CodeLayoutTest.cpp
   CodeMoverUtilsTest.cpp
   DebugifyTest.cpp
   FunctionComparatorTest.cpp

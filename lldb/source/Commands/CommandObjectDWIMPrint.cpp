@@ -58,7 +58,7 @@ void CommandObjectDWIMPrint::HandleArgumentCompletion(
       GetCommandInterpreter(), lldb::eVariablePathCompletion, request, nullptr);
 }
 
-void CommandObjectDWIMPrint::DoExecute(StringRef command,
+bool CommandObjectDWIMPrint::DoExecute(StringRef command,
                                        CommandReturnObject &result) {
   m_option_group.NotifyOptionParsingStarting(&m_exe_ctx);
   OptionsWithRaw args{command};
@@ -67,13 +67,13 @@ void CommandObjectDWIMPrint::DoExecute(StringRef command,
   if (expr.empty()) {
     result.AppendErrorWithFormatv("'{0}' takes a variable or expression",
                                   m_cmd_name);
-    return;
+    return false;
   }
 
   if (args.HasArgs()) {
     if (!ParseOptionsAndNotify(args.GetArgs(), result, m_option_group,
                                m_exe_ctx))
-      return;
+      return false;
   }
 
   // If the user has not specified, default to disabling persistent results.
@@ -164,7 +164,7 @@ void CommandObjectDWIMPrint::DoExecute(StringRef command,
         valobj_sp->Dump(result.GetOutputStream(), dump_options);
       }
       result.SetStatus(eReturnStatusSuccessFinishResult);
-      return;
+      return true;
     }
   }
 
@@ -172,19 +172,8 @@ void CommandObjectDWIMPrint::DoExecute(StringRef command,
   {
     auto *exe_scope = m_exe_ctx.GetBestExecutionContextScope();
     ValueObjectSP valobj_sp;
-    std::string fixed_expression;
-
-    ExpressionResults expr_result = target.EvaluateExpression(
-        expr, exe_scope, valobj_sp, eval_options, &fixed_expression);
-
-    // Only mention Fix-Its if the expression evaluator applied them.
-    // Compiler errors refer to the final expression after applying Fix-It(s).
-    if (!fixed_expression.empty() && target.GetEnableNotifyAboutFixIts()) {
-      Stream &error_stream = result.GetErrorStream();
-      error_stream << "  Evaluated this expression after applying Fix-It(s):\n";
-      error_stream << "    " << fixed_expression << "\n";
-    }
-
+    ExpressionResults expr_result =
+        target.EvaluateExpression(expr, exe_scope, valobj_sp, eval_options);
     if (expr_result == eExpressionCompleted) {
       if (verbosity != eDWIMPrintVerbosityNone) {
         StringRef flags;
@@ -216,12 +205,14 @@ void CommandObjectDWIMPrint::DoExecute(StringRef command,
         }
 
       result.SetStatus(eReturnStatusSuccessFinishResult);
+      return true;
     } else {
       if (valobj_sp)
         result.SetError(valobj_sp->GetError());
       else
         result.AppendErrorWithFormatv(
             "unknown error evaluating expression `{0}`", expr);
+      return false;
     }
   }
 }

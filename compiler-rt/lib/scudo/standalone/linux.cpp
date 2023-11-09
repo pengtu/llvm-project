@@ -14,7 +14,6 @@
 #include "internal_defs.h"
 #include "linux.h"
 #include "mutex.h"
-#include "report_linux.h"
 #include "string_utils.h"
 
 #include <errno.h>
@@ -67,7 +66,7 @@ void *map(void *Addr, uptr Size, UNUSED const char *Name, uptr Flags,
   void *P = mmap(Addr, Size, MmapProt, MmapFlags, -1, 0);
   if (P == MAP_FAILED) {
     if (!(Flags & MAP_ALLOWNOMEM) || errno != ENOMEM)
-      reportMapError(errno == ENOMEM ? Size : 0);
+      dieOnMapUnmapError(errno == ENOMEM ? Size : 0);
     return nullptr;
   }
 #if SCUDO_ANDROID
@@ -81,7 +80,7 @@ void *map(void *Addr, uptr Size, UNUSED const char *Name, uptr Flags,
 void unmap(void *Addr, uptr Size, UNUSED uptr Flags,
            UNUSED MapPlatformData *Data) {
   if (munmap(Addr, Size) != 0)
-    reportUnmapError(reinterpret_cast<uptr>(Addr), Size);
+    dieOnMapUnmapError();
 }
 
 // TODO: Will be deprecated. Use the interfaces in MemMapLinux instead.
@@ -89,7 +88,7 @@ void setMemoryPermission(uptr Addr, uptr Size, uptr Flags,
                          UNUSED MapPlatformData *Data) {
   int Prot = (Flags & MAP_NOACCESS) ? PROT_NONE : (PROT_READ | PROT_WRITE);
   if (mprotect(reinterpret_cast<void *>(Addr), Size, Prot) != 0)
-    reportProtectError(Addr, Size, Prot);
+    dieOnMapUnmapError();
 }
 
 // TODO: Will be deprecated. Use the interfaces in MemMapLinux instead.

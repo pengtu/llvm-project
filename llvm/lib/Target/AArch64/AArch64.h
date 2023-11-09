@@ -36,7 +36,7 @@ FunctionPass *createAArch64CompressJumpTablesPass();
 FunctionPass *createAArch64ConditionalCompares();
 FunctionPass *createAArch64AdvSIMDScalar();
 FunctionPass *createAArch64ISelDag(AArch64TargetMachine &TM,
-                                   CodeGenOptLevel OptLevel);
+                                 CodeGenOpt::Level OptLevel);
 FunctionPass *createAArch64StorePairSuppressPass();
 FunctionPass *createAArch64ExpandPseudoPass();
 FunctionPass *createAArch64SLSHardeningPass();
@@ -51,7 +51,6 @@ FunctionPass *createAArch64A57FPLoadBalancing();
 FunctionPass *createAArch64A53Fix835769();
 FunctionPass *createFalkorHWPFFixPass();
 FunctionPass *createFalkorMarkStridedAccessesPass();
-FunctionPass *createAArch64PointerAuthPass();
 FunctionPass *createAArch64BranchTargetsPass();
 FunctionPass *createAArch64MIPeepholeOptPass();
 
@@ -75,7 +74,6 @@ ModulePass *createAArch64GlobalsTaggingPass();
 void initializeAArch64A53Fix835769Pass(PassRegistry&);
 void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);
 void initializeAArch64AdvSIMDScalarPass(PassRegistry&);
-void initializeAArch64PointerAuthPass(PassRegistry&);
 void initializeAArch64BranchTargetsPass(PassRegistry&);
 void initializeAArch64CFIFixupPass(PassRegistry&);
 void initializeAArch64CollectLOHPass(PassRegistry &);

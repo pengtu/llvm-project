@@ -20,5 +20,4 @@ add_llvm_component_library(LLVMFrontendOpenMP
   MC
   Scalar
   BitReader
-  FrontendOffloading
   )

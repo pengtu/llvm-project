@@ -413,7 +413,7 @@ static void computeFunctionSummary(
         // information.
         if (BFI != nullptr && Hotness == CalleeInfo::HotnessType::Unknown) {
           uint64_t BBFreq = BFI->getBlockFreq(&BB).getFrequency();
-          uint64_t EntryFreq = BFI->getEntryFreq().getFrequency();
+          uint64_t EntryFreq = BFI->getEntryFreq();
           ValueInfo.updateRelBlockFreq(BBFreq, EntryFreq);
         }
       } else {

@@ -8,10 +8,9 @@
 
 # The F18 Parser
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 This program source code implements a parser for the Fortran programming

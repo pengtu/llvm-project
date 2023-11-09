@@ -31,11 +31,11 @@
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | %{run_sve} | FileCheck %s %}
 
 #SortedCOO = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ]
 }>
 
 #CSR = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ]
 }>
 
 #trait = {

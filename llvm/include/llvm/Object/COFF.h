@@ -1298,8 +1298,7 @@ private:
 class ResourceSectionRef {
 public:
   ResourceSectionRef() = default;
-  explicit ResourceSectionRef(StringRef Ref)
-      : BBS(Ref, llvm::endianness::little) {}
+  explicit ResourceSectionRef(StringRef Ref) : BBS(Ref, support::little) {}
 
   Error load(const COFFObjectFile *O);
   Error load(const COFFObjectFile *O, const SectionRef &S);

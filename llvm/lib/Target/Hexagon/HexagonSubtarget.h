@@ -70,7 +70,7 @@ class HexagonSubtarget : public HexagonGenSubtargetInfo {
 public:
   Hexagon::ArchEnum HexagonArchVersion;
   Hexagon::ArchEnum HexagonHVXVersion = Hexagon::ArchEnum::NoArch;
-  CodeGenOptLevel OptLevel;
+  CodeGenOpt::Level OptLevel;
   /// True if the target should use Back-Skip-Back scheduling. This is the
   /// default for V60.
   bool UseBSBScheduling;

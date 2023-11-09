@@ -14,7 +14,7 @@
 #define OPENACC_OPS_TYPES
 
 include "mlir/IR/AttrTypeBase.td"
-include "mlir/Dialect/OpenACC/OpenACCBase.td"
+include "OpenACCBase.td"
 
 class OpenACC_Type<string name, string typeMnemonic> : TypeDef<OpenACC_Dialect, name> {
   let mnemonic = typeMnemonic;

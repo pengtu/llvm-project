@@ -1,25 +1,31 @@
-; RUN: llc < %s -mtriple=amdgcn -mcpu=kaveri -verify-machineinstrs | FileCheck -check-prefix=CI -check-prefix=GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mcpu=fiji -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefix=VI-NOXNACK -check-prefix=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=kaveri -verify-machineinstrs | FileCheck -check-prefix=CI -check-prefix=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=fiji -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefix=VI-NOXNACK -check-prefix=GCN %s
 
-; RUN: llc < %s -mtriple=amdgcn -mcpu=carrizo -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mcpu=stoney -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=carrizo -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=stoney -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,GCN %s
 
-; RUN: llc < %s -mtriple=amdgcn -mcpu=carrizo -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefix=VI-XNACK  -check-prefix=GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mcpu=stoney -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefix=VI-XNACK  -check-prefix=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=carrizo -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefix=VI-XNACK  -check-prefix=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mcpu=stoney -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefix=VI-XNACK  -check-prefix=GCN %s
 
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=kaveri -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=carrizo -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,HSA-VI-NOXNACK,GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=carrizo -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-XNACK,HSA-VI-XNACK,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/200/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=kaveri -verify-machineinstrs | FileCheck -check-prefixes=CI,HSA-CI-V2,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/200/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=carrizo -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-XNACK,HSA-VI-XNACK-V2,GCN %s
 
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch,-xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-NOXNACK,GFX9-ARCH-FLAT,GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch,+xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-XNACK,GFX9-ARCH-FLAT,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=kaveri -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=carrizo -mattr=-xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-NOXNACK,HSA-VI-NOXNACK,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=carrizo -mattr=+xnack -verify-machineinstrs | FileCheck -check-prefixes=VI-XNACK,HSA-VI-XNACK,GCN %s
 
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch,-xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-NOXNACK,GFX10-ARCH-FLAT,GCN %s
-; RUN: llc < %s -mtriple=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch,+xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-XNACK,GFX10-ARCH-FLAT,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch,-xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-NOXNACK,GFX9-ARCH-FLAT,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx900 -mattr=+architected-flat-scratch,+xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-XNACK,GFX9-ARCH-FLAT,GCN %s
+
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch -verify-machineinstrs | FileCheck -check-prefixes=GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch,-xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-NOXNACK,GFX10-ARCH-FLAT,GCN %s
+; RUN: sed 's/CODE_OBJECT_VERSION/400/g' %s | llc -march=amdgcn -mtriple=amdgcn--amdhsa -mcpu=gfx1010 -mattr=+architected-flat-scratch,+xnack -verify-machineinstrs | FileCheck -check-prefixes=HSA-VI-XNACK,GFX10-ARCH-FLAT,GCN %s
 
 ; GCN-LABEL: {{^}}no_vcc_no_flat:
+
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
 
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
@@ -38,6 +44,9 @@ entry:
 
 ; GCN-LABEL: {{^}}vcc_no_flat:
 
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
+
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
 ; HSA-VI-XNACK: .amdhsa_reserve_xnack_mask 1
@@ -55,6 +64,9 @@ entry:
 
 ; GCN-LABEL: {{^}}no_vcc_flat:
 
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
+
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
 ; HSA-VI-XNACK: .amdhsa_reserve_xnack_mask 1
@@ -71,6 +83,9 @@ entry:
 }
 
 ; GCN-LABEL: {{^}}vcc_flat:
+
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
 
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
@@ -92,6 +107,9 @@ entry:
 
 ; GCN-LABEL: {{^}}use_flat_scr:
 
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
+
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
 ; HSA-VI-XNACK: .amdhsa_reserve_xnack_mask 1
@@ -109,6 +127,9 @@ entry:
 
 ; GCN-LABEL: {{^}}use_flat_scr_lo:
 
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
+
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
 ; HSA-VI-XNACK: .amdhsa_reserve_xnack_mask 1
@@ -125,6 +146,9 @@ entry:
 }
 
 ; GCN-LABEL: {{^}}use_flat_scr_hi:
+
+; HSA-CI-V2: is_xnack_enabled = 0
+; HSA-VI-XNACK-V2: is_xnack_enabled = 1
 
 ; NOT-HSA-CI: .amdhsa_reserve_xnack_mask
 ; HSA-VI-NOXNACK: .amdhsa_reserve_xnack_mask 0
@@ -144,4 +168,4 @@ entry:
 attributes #0 = { nounwind }
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 400}
+!0 = !{i32 1, !"amdgpu_code_object_version", i32 CODE_OBJECT_VERSION}

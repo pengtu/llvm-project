@@ -55,7 +55,7 @@ class ValueSymbolTable;
 class BasicBlock final : public Value, // Basic blocks are data objects also
                          public ilist_node_with_parent<BasicBlock, Function> {
 public:
-  using InstListType = SymbolTableList<Instruction, ilist_iterator_bits<true>>;
+  using InstListType = SymbolTableList<Instruction>;
 
 private:
   friend class BlockAddress;
@@ -91,13 +91,11 @@ public:
 
   // These functions and classes need access to the instruction list.
   friend void Instruction::removeFromParent();
-  friend BasicBlock::iterator Instruction::eraseFromParent();
+  friend iplist<Instruction>::iterator Instruction::eraseFromParent();
   friend BasicBlock::iterator Instruction::insertInto(BasicBlock *BB,
                                                       BasicBlock::iterator It);
-  friend class llvm::SymbolTableListTraits<llvm::Instruction,
-                                           ilist_iterator_bits<true>>;
-  friend class llvm::ilist_node_with_parent<llvm::Instruction, llvm::BasicBlock,
-                                            ilist_iterator_bits<true>>;
+  friend class llvm::SymbolTableListTraits<llvm::Instruction>;
+  friend class llvm::ilist_node_with_parent<llvm::Instruction, llvm::BasicBlock>;
 
   /// Creates a new BasicBlock.
   ///
@@ -180,8 +178,7 @@ public:
   InstListType::const_iterator getFirstNonPHIIt() const;
   InstListType::iterator getFirstNonPHIIt() {
     BasicBlock::iterator It =
-        static_cast<const BasicBlock *>(this)->getFirstNonPHIIt().getNonConst();
-    It.setHeadBit(true);
+      static_cast<const BasicBlock *>(this)->getFirstNonPHIIt().getNonConst();
     return It;
   }
 
@@ -335,19 +332,8 @@ public:
   //===--------------------------------------------------------------------===//
   /// Instruction iterator methods
   ///
-  inline iterator begin() {
-    iterator It = InstList.begin();
-    // Set the head-inclusive bit to indicate that this iterator includes
-    // any debug-info at the start of the block. This is a no-op unless the
-    // appropriate CMake flag is set.
-    It.setHeadBit(true);
-    return It;
-  }
-  inline const_iterator begin() const {
-    const_iterator It = InstList.begin();
-    It.setHeadBit(true);
-    return It;
-  }
+  inline iterator                begin()       { return InstList.begin(); }
+  inline const_iterator          begin() const { return InstList.begin(); }
   inline iterator                end  ()       { return InstList.end();   }
   inline const_iterator          end  () const { return InstList.end();   }
 

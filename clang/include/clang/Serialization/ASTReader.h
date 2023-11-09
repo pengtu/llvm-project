@@ -38,7 +38,6 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 #include "llvm/ADT/MapVector.h"
-#include "llvm/ADT/PagedVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -488,7 +487,7 @@ private:
   ///
   /// When the pointer at index I is non-NULL, the type with
   /// ID = (I + 1) << FastQual::Width has already been loaded
-  llvm::PagedVector<QualType> TypesLoaded;
+  std::vector<QualType> TypesLoaded;
 
   using GlobalTypeMapType =
       ContinuousRangeMap<serialization::TypeID, ModuleFile *, 4>;
@@ -502,7 +501,7 @@ private:
   ///
   /// When the pointer at index I is non-NULL, the declaration with ID
   /// = I + 1 has already been loaded.
-  llvm::PagedVector<Decl *> DeclsLoaded;
+  std::vector<Decl *> DeclsLoaded;
 
   using GlobalDeclMapType =
       ContinuousRangeMap<serialization::DeclID, ModuleFile *, 4>;
@@ -1822,7 +1821,7 @@ public:
   SourceRange ReadSkippedRange(unsigned Index) override;
 
   /// Read the header file information for the given file entry.
-  HeaderFileInfo GetHeaderFileInfo(FileEntryRef FE) override;
+  HeaderFileInfo GetHeaderFileInfo(const FileEntry *FE) override;
 
   void ReadPragmaDiagnosticMappings(DiagnosticsEngine &Diag);
 
@@ -2154,12 +2153,6 @@ public:
 
   /// Read the source location entry with index ID.
   bool ReadSLocEntry(int ID) override;
-  /// Get the index ID for the loaded SourceLocation offset.
-  int getSLocEntryID(SourceLocation::UIntTy SLocOffset) override;
-  /// Try to read the offset of the SLocEntry at the given index in the given
-  /// module file.
-  llvm::Expected<SourceLocation::UIntTy> readSLocOffset(ModuleFile *F,
-                                                        unsigned Index);
 
   /// Retrieve the module import location and module name for the
   /// given source manager entry ID.
@@ -2405,53 +2398,6 @@ public:
                                llvm::function_ref<void(FileEntryRef)> Visitor);
 
   bool isProcessingUpdateRecords() { return ProcessingUpdateRecords; }
-};
-
-/// A simple helper class to unpack an integer to bits and consuming
-/// the bits in order.
-class BitsUnpacker {
-  constexpr static uint32_t BitsIndexUpbound = 32;
-
-public:
-  BitsUnpacker(uint32_t V) { updateValue(V); }
-  BitsUnpacker(const BitsUnpacker &) = delete;
-  BitsUnpacker(BitsUnpacker &&) = delete;
-  BitsUnpacker operator=(const BitsUnpacker &) = delete;
-  BitsUnpacker operator=(BitsUnpacker &&) = delete;
-  ~BitsUnpacker() {
-#ifndef NDEBUG
-    while (isValid())
-      assert(!getNextBit() && "There are unprocessed bits!");
-#endif
-  }
-
-  void updateValue(uint32_t V) {
-    Value = V;
-    CurrentBitsIndex = 0;
-  }
-
-  bool getNextBit() {
-    assert(isValid());
-    return Value & (1 << CurrentBitsIndex++);
-  }
-
-  uint32_t getNextBits(uint32_t Width) {
-    assert(isValid());
-    assert(Width < BitsIndexUpbound);
-    uint32_t Ret = (Value >> CurrentBitsIndex) & ((1 << Width) - 1);
-    CurrentBitsIndex += Width;
-    return Ret;
-  }
-
-  bool canGetNextNBits(uint32_t Width) const {
-    return CurrentBitsIndex + Width < BitsIndexUpbound;
-  }
-
-private:
-  bool isValid() const { return CurrentBitsIndex < BitsIndexUpbound; }
-
-  uint32_t Value;
-  uint32_t CurrentBitsIndex = ~0;
 };
 
 } // namespace clang

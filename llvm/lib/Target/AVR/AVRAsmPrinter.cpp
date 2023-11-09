@@ -118,8 +118,8 @@ bool AVRAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNum,
     Register Reg = MO.getReg();
 
     unsigned ByteNumber = ExtraCode[0] - 'A';
-    const InlineAsm::Flag OpFlags(MI->getOperand(OpNum - 1).getImm());
-    const unsigned NumOpRegs = OpFlags.getNumOperandRegisters();
+    unsigned OpFlags = MI->getOperand(OpNum - 1).getImm();
+    unsigned NumOpRegs = InlineAsm::getNumOperandRegisters(OpFlags);
 
     const AVRSubtarget &STI = MF->getSubtarget<AVRSubtarget>();
     const TargetRegisterInfo &TRI = *STI.getRegisterInfo();
@@ -176,8 +176,8 @@ bool AVRAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
 
   // If NumOpRegs == 2, then we assume it is product of a FrameIndex expansion
   // and the second operand is an Imm.
-  const InlineAsm::Flag OpFlags(MI->getOperand(OpNum - 1).getImm());
-  const unsigned NumOpRegs = OpFlags.getNumOperandRegisters();
+  unsigned OpFlags = MI->getOperand(OpNum - 1).getImm();
+  unsigned NumOpRegs = InlineAsm::getNumOperandRegisters(OpFlags);
 
   if (NumOpRegs == 2) {
     assert(MI->getOperand(OpNum).getReg() != AVR::R27R26 &&

@@ -137,7 +137,7 @@ class X86AsmBackend : public MCAsmBackend {
 
 public:
   X86AsmBackend(const Target &T, const MCSubtargetInfo &STI)
-      : MCAsmBackend(llvm::endianness::little), STI(STI),
+      : MCAsmBackend(support::little), STI(STI),
         MCII(T.createMCInstrInfo()) {
     if (X86AlignBranchWithin32BBoundaries) {
       // At the moment, this defaults to aligning fused branches, unconditional

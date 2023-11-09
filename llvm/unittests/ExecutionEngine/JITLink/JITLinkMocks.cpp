@@ -52,8 +52,7 @@ TEST(JITLinkMocks, SmokeTest) {
   // Check that the testing infrastructure defaults can "link" a graph
   // successfully.
   auto G = std::make_unique<LinkGraph>("foo", Triple("x86_64-apple-darwin"), 8,
-                                       llvm::endianness::little,
-                                       getGenericEdgeKindName);
+                                       support::little, getGenericEdgeKindName);
 
   ArrayRef<char> Content = "hello, world!";
   auto &Sec =

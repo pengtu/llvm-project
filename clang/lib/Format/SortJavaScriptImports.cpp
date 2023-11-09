@@ -548,12 +548,10 @@ private:
       nextToken();
       if (Current->is(tok::r_brace))
         break;
-      auto IsIdentifier = [](const auto *Tok) {
-        return Tok->isOneOf(tok::identifier, tok::kw_default, tok::kw_template);
-      };
-      bool isTypeOnly = Current->is(Keywords.kw_type) && Current->Next &&
-                        IsIdentifier(Current->Next);
-      if (!isTypeOnly && !IsIdentifier(Current))
+      bool isTypeOnly =
+          Current->is(Keywords.kw_type) && Current->Next &&
+          Current->Next->isOneOf(tok::identifier, tok::kw_default);
+      if (!isTypeOnly && !Current->isOneOf(tok::identifier, tok::kw_default))
         return false;
 
       JsImportedSymbol Symbol;
@@ -567,7 +565,7 @@ private:
 
       if (Current->is(Keywords.kw_as)) {
         nextToken();
-        if (!IsIdentifier(Current))
+        if (!Current->isOneOf(tok::identifier, tok::kw_default))
           return false;
         Symbol.Alias = Current->TokenText;
         nextToken();

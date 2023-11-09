@@ -23,6 +23,7 @@ using llvm::yaml::Hex32;
 using llvm::yaml::Hex64;
 using llvm::yaml::Hex8;
 using llvm::yaml::Input;
+using llvm::yaml::IO;
 using llvm::yaml::isNumeric;
 using llvm::yaml::MappingNormalization;
 using llvm::yaml::MappingTraits;
@@ -550,10 +551,10 @@ TEST(YAMLIO, TestReadWriteBuiltInTypes) {
 
 struct EndianTypes {
   typedef llvm::support::detail::packed_endian_specific_integral<
-      float, llvm::endianness::little, llvm::support::unaligned>
+      float, llvm::support::little, llvm::support::unaligned>
       ulittle_float;
   typedef llvm::support::detail::packed_endian_specific_integral<
-      double, llvm::endianness::little, llvm::support::unaligned>
+      double, llvm::support::little, llvm::support::unaligned>
       ulittle_double;
 
   llvm::support::ulittle64_t u64;
@@ -2392,7 +2393,6 @@ TEST(YAMLIO, TestMalformedMapFailsGracefully) {
 
 struct OptionalTest {
   std::vector<int> Numbers;
-  std::optional<int> MaybeNumber;
 };
 
 struct OptionalTestSeq {
@@ -2406,7 +2406,6 @@ namespace yaml {
   struct MappingTraits<OptionalTest> {
     static void mapping(IO& IO, OptionalTest &OT) {
       IO.mapOptional("Numbers", OT.Numbers);
-      IO.mapOptional("MaybeNumber", OT.MaybeNumber);
     }
   };
 
@@ -2468,7 +2467,6 @@ TEST(YAMLIO, TestEmptyStringSucceedsForMapWithOptionalFields) {
   Input yin("");
   yin >> doc;
   EXPECT_FALSE(yin.error());
-  EXPECT_FALSE(doc.MaybeNumber.has_value());
 }
 
 TEST(YAMLIO, TestEmptyStringSucceedsForSequence) {
@@ -3156,7 +3154,7 @@ TEST(YAMLIO, TestFlowSequenceTokenErrors) {
 
 TEST(YAMLIO, TestDirectiveMappingNoValue) {
   Input yin("%YAML\n{5:");
-  yin.setCurrentDocument();
+  EXPECT_FALSE(yin.setCurrentDocument());
   EXPECT_TRUE(yin.error());
 
   Input yin2("%TAG\n'\x98!< :\n");

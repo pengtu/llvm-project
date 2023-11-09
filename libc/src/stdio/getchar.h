@@ -9,10 +9,10 @@
 #ifndef LLVM_LIBC_SRC_STDIO_GETCHAR_H
 #define LLVM_LIBC_SRC_STDIO_GETCHAR_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int getchar();
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_GETCHAR_H

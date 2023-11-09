@@ -1,15 +1,12 @@
-; RUN: llc -O0 -mtriple=spirv32-unknown-unknown %s -o - | FileCheck %s
-
-target triple = "spirv32-unknown-unknown"
+; RUN: llc -O0 -opaque-pointers=0 -mtriple=spirv32-unknown-unknown %s -o - | FileCheck %s
 
 ; CHECK-DAG: OpName %[[#BAR:]] "bar"
 ; CHECK-DAG: OpName %[[#FOO:]] "foo"
 ; CHECK-DAG: OpName %[[#GOO:]] "goo"
 
-; CHECK-DAG: %[[#CHAR:]] = OpTypeInt 8
-; CHECK-DAG: %[[#INT:]] = OpTypeInt 32
+; CHECK:     %[[#INT:]] = OpTypeInt 32
 ; CHECK-DAG: %[[#STACK_PTR:]] = OpTypePointer Function %[[#INT]]
-; CHECK-DAG: %[[#GLOBAL_PTR:]] = OpTypePointer CrossWorkgroup %[[#CHAR]]
+; CHECK-DAG: %[[#GLOBAL_PTR:]] = OpTypePointer CrossWorkgroup %[[#INT]]
 ; CHECK-DAG: %[[#FN1:]] = OpTypeFunction %[[#INT]] %[[#INT]]
 ; CHECK-DAG: %[[#FN2:]] = OpTypeFunction %[[#INT]] %[[#INT]] %[[#GLOBAL_PTR]]
 

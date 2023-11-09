@@ -73,7 +73,6 @@ add_lld_library(lldELF
   Passes
   Support
   TargetParser
-  TransformUtils
 
   LINK_LIBS
   lldCommon

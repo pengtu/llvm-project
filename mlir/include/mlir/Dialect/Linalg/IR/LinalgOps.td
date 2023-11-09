@@ -149,7 +149,14 @@ def Linalg_SoftmaxOp : Linalg_Op<"softmax",
     int64_t getOutputOperandRank() {
       return getOutputOperandType().getRank();
     }
-    MutableOperandRange getDpsInitsMutable() { return getOutputMutable(); }
+    // Method to implement DestinationStyleOpInterface.
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
+      std::pair<unsigned, unsigned> outputsIndexAndLength =
+        getODSOperandIndexAndLength(1);
+      return std::make_pair<int64_t, int64_t>(
+          outputsIndexAndLength.first,
+          outputsIndexAndLength.first + outputsIndexAndLength.second);
+    }
   }];
   let hasVerifier = 1;
 }

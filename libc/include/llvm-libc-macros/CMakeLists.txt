@@ -47,12 +47,6 @@ add_macro_header(
 )
 
 add_macro_header(
-  features_macros
-  HDR
-    features-macros.h
-)
-
-add_macro_header(
   fenv_macros
   HDR
     fenv-macros.h

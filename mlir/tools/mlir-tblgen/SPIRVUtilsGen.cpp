@@ -16,7 +16,6 @@
 #include "mlir/TableGen/Format.h"
 #include "mlir/TableGen/GenInfo.h"
 #include "mlir/TableGen/Operator.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/Sequence.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
@@ -197,8 +196,7 @@ static void emitInterfaceDef(const Availability &availability,
 
 static bool emitInterfaceDefs(const RecordKeeper &recordKeeper,
                               raw_ostream &os) {
-  llvm::emitSourceFileHeader("Availability Interface Definitions", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("Availability Interface Definitions", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("Availability");
   SmallVector<const Record *, 1> handledClasses;
@@ -287,8 +285,7 @@ static void emitInterfaceDecl(const Availability &availability,
 
 static bool emitInterfaceDecls(const RecordKeeper &recordKeeper,
                                raw_ostream &os) {
-  llvm::emitSourceFileHeader("Availability Interface Declarations", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("Availability Interface Declarations", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("Availability");
   SmallVector<const Record *, 4> handledClasses;
@@ -451,8 +448,7 @@ static void emitEnumDecl(const Record &enumDef, raw_ostream &os) {
 }
 
 static bool emitEnumDecls(const RecordKeeper &recordKeeper, raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Enum Availability Declarations", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Enum Availability Declarations", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   for (const auto *def : defs)
@@ -483,8 +479,7 @@ static void emitEnumDef(const Record &enumDef, raw_ostream &os) {
 }
 
 static bool emitEnumDefs(const RecordKeeper &recordKeeper, raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Enum Availability Definitions", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Enum Availability Definitions", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   for (const auto *def : defs)
@@ -517,14 +512,6 @@ static mlir::GenRegistration
 // Serialization AutoGen
 //===----------------------------------------------------------------------===//
 
-// These enums are encoded as <id> to constant values in SPIR-V blob, but we
-// directly use the constant value as attribute in SPIR-V dialect. So need
-// to handle them separately from normal enum attributes.
-constexpr llvm::StringLiteral constantIdEnumAttrs[] = {
-    "SPIRV_ScopeAttr", "SPIRV_KHR_CooperativeMatrixUseAttr",
-    "SPIRV_KHR_CooperativeMatrixLayoutAttr", "SPIRV_MemorySemanticsAttr",
-    "SPIRV_MatrixLayoutAttr"};
-
 /// Generates code to serialize attributes of a SPIRV_Op `op` into `os`. The
 /// generates code extracts the attribute with name `attrName` from
 /// `operandList` of `op`.
@@ -534,7 +521,12 @@ static void emitAttributeSerialization(const Attribute &attr,
                                        StringRef attrName, raw_ostream &os) {
   os << tabs
      << formatv("if (auto attr = {0}->getAttr(\"{1}\")) {{\n", opVar, attrName);
-  if (llvm::is_contained(constantIdEnumAttrs, attr.getAttrDefName())) {
+  if (attr.getAttrDefName() == "SPIRV_ScopeAttr" ||
+      attr.getAttrDefName() == "SPIRV_MemorySemanticsAttr" ||
+      attr.getAttrDefName() == "SPIRV_MatrixLayoutAttr") {
+    // These two enums are encoded as <id> to constant values in SPIR-V blob,
+    // but we directly use the constant value as attribute in SPIR-V dialect. So
+    // need to handle them separately from normal enum attributes.
     EnumAttr baseEnum(attr.getDef().getValueAsDef("enum"));
     os << tabs
        << formatv("  {0}.push_back(prepareConstantInt({1}.getLoc(), "
@@ -565,18 +557,11 @@ static void emitAttributeSerialization(const Attribute &attr,
               "  {0}.push_back(static_cast<uint32_t>("
               "llvm::cast<IntegerAttr>(attr).getValue().getZExtValue()));\n",
               operandList);
-  } else if (attr.isEnumAttr() || attr.isTypeAttr()) {
-    // It may be the first time this type appears in the IR, so we need to
-    // process it.
-    StringRef attrTypeID = "attrTypeID";
-    os << tabs << formatv("  uint32_t {0} = 0;\n", attrTypeID);
+  } else if (attr.isEnumAttr() || attr.getAttrDefName() == "TypeAttr") {
     os << tabs
-       << formatv("  if (failed(processType({0}.getLoc(), "
-                  "llvm::cast<TypeAttr>(attr).getValue(), {1}))) {{\n",
-                  opVar, attrTypeID);
-    os << tabs << "    return failure();\n";
-    os << tabs << "  }\n";
-    os << tabs << formatv("  {0}.push_back(attrTypeID);\n", operandList);
+       << formatv("  {0}.push_back(static_cast<uint32_t>("
+                  "getTypeID(llvm::cast<TypeAttr>(attr).getValue())));\n",
+                  operandList);
   } else {
     PrintFatalError(
         loc,
@@ -831,7 +816,12 @@ static void emitAttributeDeserialization(const Attribute &attr,
                                          StringRef attrList, StringRef attrName,
                                          StringRef words, StringRef wordIndex,
                                          raw_ostream &os) {
-  if (llvm::is_contained(constantIdEnumAttrs, attr.getAttrDefName())) {
+  if (attr.getAttrDefName() == "SPIRV_ScopeAttr" ||
+      attr.getAttrDefName() == "SPIRV_MemorySemanticsAttr" ||
+      attr.getAttrDefName() == "SPIRV_MatrixLayoutAttr") {
+    // These two enums are encoded as <id> to constant values in SPIR-V blob,
+    // but we directly use the constant value as attribute in SPIR-V dialect. So
+    // need to handle them separately from normal enum attributes.
     EnumAttr baseEnum(attr.getDef().getValueAsDef("enum"));
     os << tabs
        << formatv("{0}.push_back(opBuilder.getNamedAttr(\"{1}\", "
@@ -1182,8 +1172,7 @@ emitExtendedSetDeserializationDispatch(const RecordKeeper &recordKeeper,
 /// SPIRV_Ops.
 static bool emitSerializationFns(const RecordKeeper &recordKeeper,
                                  raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Serialization Utilities/Functions", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Serialization Utilities/Functions", os);
 
   std::string dSerFnString, dDesFnString, serFnString, deserFnString,
       utilsString;
@@ -1262,7 +1251,7 @@ static void emitEnumGetAttrNameFnDefn(const EnumAttr &enumAttr,
 }
 
 static bool emitAttrUtils(const RecordKeeper &recordKeeper, raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Attribute Utilities", os, recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Attribute Utilities", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("EnumAttrInfo");
   os << "#ifndef MLIR_DIALECT_SPIRV_IR_ATTR_UTILS_H_\n";
@@ -1407,8 +1396,7 @@ static void emitAvailabilityImpl(const Operator &srcOp, raw_ostream &os) {
 
 static bool emitAvailabilityImpl(const RecordKeeper &recordKeeper,
                                  raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Op Availability Implementations", os,
-                             recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Op Availability Implementations", os);
 
   auto defs = recordKeeper.getAllDerivedDefinitions("SPIRV_Op");
   for (const auto *def : defs) {
@@ -1436,7 +1424,7 @@ static mlir::GenRegistration
 
 static bool emitCapabilityImplication(const RecordKeeper &recordKeeper,
                                       raw_ostream &os) {
-  llvm::emitSourceFileHeader("SPIR-V Capability Implication", os, recordKeeper);
+  llvm::emitSourceFileHeader("SPIR-V Capability Implication", os);
 
   EnumAttr enumAttr(
       recordKeeper.getDef("SPIRV_CapabilityAttr")->getValueAsDef("enum"));

@@ -64,6 +64,17 @@ void llvm::createMemCpyLoopKnownSize(
 
     IRBuilder<> PLBuilder(PreLoopBB->getTerminator());
 
+    // Cast the Src and Dst pointers to pointers to the loop operand type (if
+    // needed).
+    PointerType *SrcOpType = PointerType::get(LoopOpType, SrcAS);
+    PointerType *DstOpType = PointerType::get(LoopOpType, DstAS);
+    if (SrcAddr->getType() != SrcOpType) {
+      SrcAddr = PLBuilder.CreateBitCast(SrcAddr, SrcOpType);
+    }
+    if (DstAddr->getType() != DstOpType) {
+      DstAddr = PLBuilder.CreateBitCast(DstAddr, DstOpType);
+    }
+
     Align PartDstAlign(commonAlignment(DstAlign, LoopOpSize));
     Align PartSrcAlign(commonAlignment(SrcAlign, LoopOpSize));
 
@@ -126,9 +137,13 @@ void llvm::createMemCpyLoopKnownSize(
       uint64_t GepIndex = BytesCopied / OperandSize;
       assert(GepIndex * OperandSize == BytesCopied &&
              "Division should have no Remainder!");
-
+      // Cast source to operand type and load
+      PointerType *SrcPtrType = PointerType::get(OpTy, SrcAS);
+      Value *CastedSrc = SrcAddr->getType() == SrcPtrType
+                             ? SrcAddr
+                             : RBuilder.CreateBitCast(SrcAddr, SrcPtrType);
       Value *SrcGEP = RBuilder.CreateInBoundsGEP(
-          OpTy, SrcAddr, ConstantInt::get(TypeOfCopyLen, GepIndex));
+          OpTy, CastedSrc, ConstantInt::get(TypeOfCopyLen, GepIndex));
       LoadInst *Load =
           RBuilder.CreateAlignedLoad(OpTy, SrcGEP, PartSrcAlign, SrcIsVolatile);
       if (!CanOverlap) {
@@ -136,8 +151,13 @@ void llvm::createMemCpyLoopKnownSize(
         Load->setMetadata(LLVMContext::MD_alias_scope,
                           MDNode::get(Ctx, NewScope));
       }
+      // Cast destination to operand type and store.
+      PointerType *DstPtrType = PointerType::get(OpTy, DstAS);
+      Value *CastedDst = DstAddr->getType() == DstPtrType
+                             ? DstAddr
+                             : RBuilder.CreateBitCast(DstAddr, DstPtrType);
       Value *DstGEP = RBuilder.CreateInBoundsGEP(
-          OpTy, DstAddr, ConstantInt::get(TypeOfCopyLen, GepIndex));
+          OpTy, CastedDst, ConstantInt::get(TypeOfCopyLen, GepIndex));
       StoreInst *Store = RBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign,
                                                      DstIsVolatile);
       if (!CanOverlap) {
@@ -185,6 +205,15 @@ void llvm::createMemCpyLoopUnknownSize(
          "Atomic memcpy lowering is not supported for selected operand size");
 
   IRBuilder<> PLBuilder(PreLoopBB->getTerminator());
+
+  PointerType *SrcOpType = PointerType::get(LoopOpType, SrcAS);
+  PointerType *DstOpType = PointerType::get(LoopOpType, DstAS);
+  if (SrcAddr->getType() != SrcOpType) {
+    SrcAddr = PLBuilder.CreateBitCast(SrcAddr, SrcOpType);
+  }
+  if (DstAddr->getType() != DstOpType) {
+    DstAddr = PLBuilder.CreateBitCast(DstAddr, DstOpType);
+  }
 
   // Calculate the loop trip count, and remaining bytes to copy after the loop.
   Type *CopyLenType = CopyLen->getType();
@@ -276,9 +305,13 @@ void llvm::createMemCpyLoopUnknownSize(
         ResBuilder.CreatePHI(CopyLenType, 2, "residual-loop-index");
     ResidualIndex->addIncoming(Zero, ResHeaderBB);
 
+    Value *SrcAsResLoopOpType = ResBuilder.CreateBitCast(
+        SrcAddr, PointerType::get(ResLoopOpType, SrcAS));
+    Value *DstAsResLoopOpType = ResBuilder.CreateBitCast(
+        DstAddr, PointerType::get(ResLoopOpType, DstAS));
     Value *FullOffset = ResBuilder.CreateAdd(RuntimeBytesCopied, ResidualIndex);
-    Value *SrcGEP =
-        ResBuilder.CreateInBoundsGEP(ResLoopOpType, SrcAddr, FullOffset);
+    Value *SrcGEP = ResBuilder.CreateInBoundsGEP(
+        ResLoopOpType, SrcAsResLoopOpType, FullOffset);
     LoadInst *Load = ResBuilder.CreateAlignedLoad(ResLoopOpType, SrcGEP,
                                                   PartSrcAlign, SrcIsVolatile);
     if (!CanOverlap) {
@@ -286,8 +319,8 @@ void llvm::createMemCpyLoopUnknownSize(
       Load->setMetadata(LLVMContext::MD_alias_scope,
                         MDNode::get(Ctx, NewScope));
     }
-    Value *DstGEP =
-        ResBuilder.CreateInBoundsGEP(ResLoopOpType, DstAddr, FullOffset);
+    Value *DstGEP = ResBuilder.CreateInBoundsGEP(
+        ResLoopOpType, DstAsResLoopOpType, FullOffset);
     StoreInst *Store = ResBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign,
                                                      DstIsVolatile);
     if (!CanOverlap) {

@@ -30,9 +30,8 @@ Constraint::Constraint(const llvm::Record *record)
     kind = CK_Region;
   } else if (def->isSubClassOf("SuccessorConstraint")) {
     kind = CK_Successor;
-  } else if(!def->isSubClassOf("Constraint")) {
-    llvm::errs() << "Expected a constraint but got: \n" << *def << "\n";
-    llvm::report_fatal_error("Abort");
+  } else {
+    assert(def->isSubClassOf("Constraint"));
   }
 }
 

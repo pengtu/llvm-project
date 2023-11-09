@@ -11,10 +11,10 @@
 
 #include <wchar.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 wint_t btowc(int c);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_WCHAR_BTOWC_H

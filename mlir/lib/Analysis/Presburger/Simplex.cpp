@@ -7,26 +7,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Analysis/Presburger/Simplex.h"
-#include "mlir/Analysis/Presburger/Fraction.h"
-#include "mlir/Analysis/Presburger/IntegerRelation.h"
-#include "mlir/Analysis/Presburger/MPInt.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
-#include "mlir/Analysis/Presburger/PresburgerSpace.h"
-#include "mlir/Analysis/Presburger/Utils.h"
-#include "mlir/Support/LLVM.h"
-#include "mlir/Support/LogicalResult.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SmallBitVector.h"
-#include "llvm/ADT/SmallVector.h"
+#include "mlir/Support/MathExtras.h"
 #include "llvm/Support/Compiler.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/raw_ostream.h"
-#include <cassert>
-#include <functional>
-#include <limits>
+#include <numeric>
 #include <optional>
-#include <tuple>
-#include <utility>
 
 using namespace mlir;
 using namespace presburger;
@@ -451,7 +436,7 @@ LogicalResult SymbolicLexSimplex::addSymbolicCut(unsigned row) {
 }
 
 void SymbolicLexSimplex::recordOutput(SymbolicLexOpt &result) const {
-  IntMatrix output(0, domainPoly.getNumVars() + 1);
+  Matrix output(0, domainPoly.getNumVars() + 1);
   output.reserveRows(result.lexopt.getNumOutputs());
   for (const Unknown &u : var) {
     if (u.isSymbol)
@@ -1816,7 +1801,7 @@ private:
 ///
 /// When incrementing i, no cached f values get invalidated. However, the cached
 /// duals do get invalidated as the duals for the higher levels are different.
-void Simplex::reduceBasis(IntMatrix &basis, unsigned level) {
+void Simplex::reduceBasis(Matrix &basis, unsigned level) {
   const Fraction epsilon(3, 4);
 
   if (level == basis.getNumRows() - 1)
@@ -1990,7 +1975,7 @@ std::optional<SmallVector<MPInt, 8>> Simplex::findIntegerSample() {
     return {};
 
   unsigned nDims = var.size();
-  IntMatrix basis = IntMatrix::identity(nDims);
+  Matrix basis = Matrix::identity(nDims);
 
   unsigned level = 0;
   // The snapshot just before constraining a direction to a value at each level.

@@ -53,7 +53,7 @@ int main() {
 
 // CHECK: WARNING: ThreadSanitizer: data race
 // CHECK-NEXT:   {{(Write|Read)}} of size 4
-// CHECK-NEXT: #0 {{.*}}taskwait-depend.c:42
+// CHECK-NEXT: #0 {{.*}}taskwait-depend.c:42:20
 // CHECK:   Previous write of size 4
-// CHECK-NEXT: #0 {{.*}}taskwait-depend.c:35
+// CHECK-NEXT: #0 {{.*}}taskwait-depend.c:35:6
 // CHECK: ThreadSanitizer: reported {{[0-9]+}} warnings

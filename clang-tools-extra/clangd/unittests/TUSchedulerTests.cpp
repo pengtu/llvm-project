@@ -49,6 +49,7 @@ namespace clang {
 namespace clangd {
 namespace {
 
+using ::testing::_;
 using ::testing::AllOf;
 using ::testing::AnyOf;
 using ::testing::Contains;

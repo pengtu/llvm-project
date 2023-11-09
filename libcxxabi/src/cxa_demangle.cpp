@@ -18,7 +18,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
 #include <functional>
 #include <numeric>
 #include <string_view>

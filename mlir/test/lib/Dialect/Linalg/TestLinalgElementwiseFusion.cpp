@@ -26,7 +26,7 @@ static void addOperands(Operation *op, SetVector<Value> &operandSet) {
     return;
   TypeSwitch<Operation *, void>(op)
       .Case<linalg::LinalgOp>([&](linalg::LinalgOp linalgOp) {
-        SmallVector<Value> inputOperands = linalgOp.getDpsInputs();
+        SmallVector<Value> inputOperands{linalgOp.getDpsInputOperands()};
         operandSet.insert(inputOperands.begin(), inputOperands.end());
       })
       .Default([&](Operation *operation) {
@@ -258,7 +258,7 @@ struct TestLinalgElementwiseFusion
       SmallVector<int64_t, 2> dims(collapseDimensions.begin(),
                                    collapseDimensions.end());
       linalg::GetCollapsableDimensionsFn collapseFn =
-          [&dims](linalg::LinalgOp op) {
+          [&dims](linalg::GenericOp op) {
             SmallVector<ReassociationIndices> reassociations;
             reassociations.emplace_back(dims);
             return reassociations;

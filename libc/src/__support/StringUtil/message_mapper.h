@@ -6,15 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H
-#define LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H
+#define LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H
 
 #include "src/__support/CPP/array.h"
 #include "src/__support/CPP/optional.h"
 #include "src/__support/CPP/string_view.h"
 #include <stddef.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 struct MsgMapping {
   int num;
@@ -98,6 +98,6 @@ constexpr MsgTable<N1 + N2> operator+(const MsgTable<N1> &t1,
   return res;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H
+#endif // LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_MESSAGE_MAPPER_H

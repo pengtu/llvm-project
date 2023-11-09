@@ -574,10 +574,10 @@ public:
     SourceRange BlockRange = D->getSourceRange();
     const char *LinkageLabel;
     switch (D->getLanguage()) {
-    case LinkageSpecLanguageIDs::C:
+    case LinkageSpecDecl::lang_c:
       LinkageLabel = "extern \"C\" {}";
       break;
-    case LinkageSpecLanguageIDs::CXX:
+    case LinkageSpecDecl::lang_cxx:
       LinkageLabel = "extern \"C++\" {}";
       break;
     }

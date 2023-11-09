@@ -11,7 +11,7 @@
 #include <chrono>
 #include <fstream>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 struct TimerImplementation {
@@ -39,4 +39,4 @@ uint64_t Timer::nanoseconds() const {
 }
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

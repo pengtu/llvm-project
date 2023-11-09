@@ -33,7 +33,6 @@
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/VectorUtils.h"
-#include "llvm/Analysis/WithCache.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/BasicBlock.h"
@@ -164,9 +163,9 @@ void llvm::computeKnownBits(const Value *V, KnownBits &Known,
                             const DataLayout &DL, unsigned Depth,
                             AssumptionCache *AC, const Instruction *CxtI,
                             const DominatorTree *DT, bool UseInstrInfo) {
-  ::computeKnownBits(
-      V, Known, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  ::computeKnownBits(V, Known, Depth,
+                     SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                   safeCxtI(V, CxtI), UseInstrInfo));
 }
 
 void llvm::computeKnownBits(const Value *V, const APInt &DemandedElts,
@@ -174,34 +173,39 @@ void llvm::computeKnownBits(const Value *V, const APInt &DemandedElts,
                             unsigned Depth, AssumptionCache *AC,
                             const Instruction *CxtI, const DominatorTree *DT,
                             bool UseInstrInfo) {
-  ::computeKnownBits(
-      V, DemandedElts, Known, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  ::computeKnownBits(V, DemandedElts, Known, Depth,
+                     SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                   safeCxtI(V, CxtI), UseInstrInfo));
 }
+
+static KnownBits computeKnownBits(const Value *V, const APInt &DemandedElts,
+                                  unsigned Depth, const SimplifyQuery &Q);
+
+static KnownBits computeKnownBits(const Value *V, unsigned Depth,
+                                  const SimplifyQuery &Q);
 
 KnownBits llvm::computeKnownBits(const Value *V, const DataLayout &DL,
                                  unsigned Depth, AssumptionCache *AC,
                                  const Instruction *CxtI,
                                  const DominatorTree *DT, bool UseInstrInfo) {
-  return computeKnownBits(
-      V, Depth, SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::computeKnownBits(V, Depth,
+                            SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                          safeCxtI(V, CxtI), UseInstrInfo));
 }
 
 KnownBits llvm::computeKnownBits(const Value *V, const APInt &DemandedElts,
                                  const DataLayout &DL, unsigned Depth,
                                  AssumptionCache *AC, const Instruction *CxtI,
                                  const DominatorTree *DT, bool UseInstrInfo) {
-  return computeKnownBits(
-      V, DemandedElts, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::computeKnownBits(V, DemandedElts, Depth,
+                            SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                          safeCxtI(V, CxtI), UseInstrInfo));
 }
 
-bool llvm::haveNoCommonBitsSet(const WithCache<const Value *> &LHSCache,
-                               const WithCache<const Value *> &RHSCache,
-                               const SimplifyQuery &SQ) {
-  const Value *LHS = LHSCache.getValue();
-  const Value *RHS = RHSCache.getValue();
-
+bool llvm::haveNoCommonBitsSet(const Value *LHS, const Value *RHS,
+                               const DataLayout &DL, AssumptionCache *AC,
+                               const Instruction *CxtI, const DominatorTree *DT,
+                               bool UseInstrInfo) {
   assert(LHS->getType() == RHS->getType() &&
          "LHS and RHS should have the same type");
   assert(LHS->getType()->isIntOrIntVectorTy() &&
@@ -249,9 +253,12 @@ bool llvm::haveNoCommonBitsSet(const WithCache<const Value *> &LHSCache,
         match(LHS, m_Not(m_c_Or(m_Specific(A), m_Specific(B)))))
       return true;
   }
-
-  return KnownBits::haveNoCommonBitsSet(LHSCache.getKnownBits(SQ),
-                                        RHSCache.getKnownBits(SQ));
+  IntegerType *IT = cast<IntegerType>(LHS->getType()->getScalarType());
+  KnownBits LHSKnown(IT->getBitWidth());
+  KnownBits RHSKnown(IT->getBitWidth());
+  computeKnownBits(LHS, LHSKnown, DL, 0, AC, CxtI, DT, UseInstrInfo);
+  computeKnownBits(RHS, RHSKnown, DL, 0, AC, CxtI, DT, UseInstrInfo);
+  return KnownBits::haveNoCommonBitsSet(LHSKnown, RHSKnown);
 }
 
 bool llvm::isOnlyUsedInZeroEqualityComparison(const Instruction *I) {
@@ -268,9 +275,10 @@ bool llvm::isKnownToBeAPowerOfTwo(const Value *V, const DataLayout &DL,
                                   bool OrZero, unsigned Depth,
                                   AssumptionCache *AC, const Instruction *CxtI,
                                   const DominatorTree *DT, bool UseInstrInfo) {
-  return ::isKnownToBeAPowerOfTwo(
-      V, OrZero, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::isKnownToBeAPowerOfTwo(V, OrZero, Depth,
+                                  SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                                safeCxtI(V, CxtI),
+                                                UseInstrInfo));
 }
 
 static bool isKnownNonZero(const Value *V, const APInt &DemandedElts,
@@ -282,8 +290,9 @@ static bool isKnownNonZero(const Value *V, unsigned Depth,
 bool llvm::isKnownNonZero(const Value *V, const DataLayout &DL, unsigned Depth,
                           AssumptionCache *AC, const Instruction *CxtI,
                           const DominatorTree *DT, bool UseInstrInfo) {
-  return ::isKnownNonZero(
-      V, Depth, SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::isKnownNonZero(V, Depth,
+                          SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                        safeCxtI(V, CxtI), UseInstrInfo));
 }
 
 bool llvm::isKnownNonNegative(const Value *V, const DataLayout &DL,
@@ -320,9 +329,9 @@ bool llvm::isKnownNonEqual(const Value *V1, const Value *V2,
                            const DataLayout &DL, AssumptionCache *AC,
                            const Instruction *CxtI, const DominatorTree *DT,
                            bool UseInstrInfo) {
-  return ::isKnownNonEqual(
-      V1, V2, 0,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V2, V1, CxtI), UseInstrInfo));
+  return ::isKnownNonEqual(V1, V2, 0,
+                           SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                         safeCxtI(V2, V1, CxtI), UseInstrInfo));
 }
 
 static bool MaskedValueIsZero(const Value *V, const APInt &Mask, unsigned Depth,
@@ -332,9 +341,9 @@ bool llvm::MaskedValueIsZero(const Value *V, const APInt &Mask,
                              const DataLayout &DL, unsigned Depth,
                              AssumptionCache *AC, const Instruction *CxtI,
                              const DominatorTree *DT, bool UseInstrInfo) {
-  return ::MaskedValueIsZero(
-      V, Mask, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::MaskedValueIsZero(V, Mask, Depth,
+                             SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                           safeCxtI(V, CxtI), UseInstrInfo));
 }
 
 static unsigned ComputeNumSignBits(const Value *V, const APInt &DemandedElts,
@@ -352,8 +361,9 @@ unsigned llvm::ComputeNumSignBits(const Value *V, const DataLayout &DL,
                                   unsigned Depth, AssumptionCache *AC,
                                   const Instruction *CxtI,
                                   const DominatorTree *DT, bool UseInstrInfo) {
-  return ::ComputeNumSignBits(
-      V, Depth, SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+  return ::ComputeNumSignBits(V, Depth,
+                              SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                            safeCxtI(V, CxtI), UseInstrInfo));
 }
 
 unsigned llvm::ComputeMaxSignificantBits(const Value *V, const DataLayout &DL,
@@ -563,24 +573,11 @@ static bool cmpExcludesZero(CmpInst::Predicate Pred, const Value *RHS) {
 
   // All other predicates - rely on generic ConstantRange handling.
   const APInt *C;
-  auto Zero = APInt::getZero(RHS->getType()->getScalarSizeInBits());
-  if (match(RHS, m_APInt(C))) {
-    ConstantRange TrueValues = ConstantRange::makeExactICmpRegion(Pred, *C);
-    return !TrueValues.contains(Zero);
-  }
-
-  auto *VC = dyn_cast<ConstantDataVector>(RHS);
-  if (VC == nullptr)
+  if (!match(RHS, m_APInt(C)))
     return false;
 
-  for (unsigned ElemIdx = 0, NElem = VC->getNumElements(); ElemIdx < NElem;
-       ++ElemIdx) {
-    ConstantRange TrueValues = ConstantRange::makeExactICmpRegion(
-        Pred, VC->getElementAsAPInt(ElemIdx));
-    if (TrueValues.contains(Zero))
-      return false;
-  }
-  return true;
+  ConstantRange TrueValues = ConstantRange::makeExactICmpRegion(Pred, *C);
+  return !TrueValues.contains(APInt::getZero(C->getBitWidth()));
 }
 
 static bool isKnownNonZeroFromAssume(const Value *V, const SimplifyQuery &Q) {
@@ -959,9 +956,10 @@ KnownBits llvm::analyzeKnownBitsFromAndXorOr(
   APInt DemandedElts =
       FVTy ? APInt::getAllOnes(FVTy->getNumElements()) : APInt(1, 1);
 
-  return getKnownBitsFromAndXorOr(
-      I, DemandedElts, KnownLHS, KnownRHS, Depth,
-      SimplifyQuery(DL, DT, AC, safeCxtI(I, CxtI), UseInstrInfo));
+  return getKnownBitsFromAndXorOr(I, DemandedElts, KnownLHS, KnownRHS, Depth,
+                                  SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC,
+                                                safeCxtI(I, CxtI),
+                                                UseInstrInfo));
 }
 
 ConstantRange llvm::getVScaleRange(const Function *F, unsigned BitWidth) {
@@ -1637,8 +1635,8 @@ static void computeKnownBitsFromOperator(const Operator *I,
         const Value *Mask = I->getOperand(1);
         Known2 = KnownBits(Mask->getType()->getScalarSizeInBits());
         computeKnownBits(Mask, Known2, Depth + 1, Q);
-        // TODO: 1-extend would be more precise.
-        Known &= Known2.anyextOrTrunc(BitWidth);
+        // This is basically a pointer typed and.
+        Known &= Known2.zextOrTrunc(Known.getBitWidth());
         break;
       }
       case Intrinsic::x86_sse42_crc32_64_64:
@@ -1780,19 +1778,19 @@ static void computeKnownBitsFromOperator(const Operator *I,
 
 /// Determine which bits of V are known to be either zero or one and return
 /// them.
-KnownBits llvm::computeKnownBits(const Value *V, const APInt &DemandedElts,
-                                 unsigned Depth, const SimplifyQuery &Q) {
+KnownBits computeKnownBits(const Value *V, const APInt &DemandedElts,
+                           unsigned Depth, const SimplifyQuery &Q) {
   KnownBits Known(getBitWidth(V->getType(), Q.DL));
-  ::computeKnownBits(V, DemandedElts, Known, Depth, Q);
+  computeKnownBits(V, DemandedElts, Known, Depth, Q);
   return Known;
 }
 
 /// Determine which bits of V are known to be either zero or one and return
 /// them.
-KnownBits llvm::computeKnownBits(const Value *V, unsigned Depth,
-                                 const SimplifyQuery &Q) {
+KnownBits computeKnownBits(const Value *V, unsigned Depth,
+                           const SimplifyQuery &Q) {
   KnownBits Known(getBitWidth(V->getType(), Q.DL));
-  ::computeKnownBits(V, Known, Depth, Q);
+  computeKnownBits(V, Known, Depth, Q);
   return Known;
 }
 
@@ -2057,19 +2055,20 @@ bool isKnownToBeAPowerOfTwo(const Value *V, bool OrZero, unsigned Depth,
       return isKnownToBeAPowerOfTwo(I->getOperand(0), OrZero, Depth, Q);
     return false;
   case Instruction::Mul:
-    return isKnownToBeAPowerOfTwo(I->getOperand(1), OrZero, Depth, Q) &&
-           isKnownToBeAPowerOfTwo(I->getOperand(0), OrZero, Depth, Q) &&
-           (OrZero || isKnownNonZero(I, Depth, Q));
+    return OrZero &&
+           isKnownToBeAPowerOfTwo(I->getOperand(1), OrZero, Depth, Q) &&
+           isKnownToBeAPowerOfTwo(I->getOperand(0), OrZero, Depth, Q);
   case Instruction::And:
-    // A power of two and'd with anything is a power of two or zero.
-    if (OrZero &&
-        (isKnownToBeAPowerOfTwo(I->getOperand(1), /*OrZero*/ true, Depth, Q) ||
-         isKnownToBeAPowerOfTwo(I->getOperand(0), /*OrZero*/ true, Depth, Q)))
-      return true;
-    // X & (-X) is always a power of two or zero.
-    if (match(I->getOperand(0), m_Neg(m_Specific(I->getOperand(1)))) ||
-        match(I->getOperand(1), m_Neg(m_Specific(I->getOperand(0)))))
-      return OrZero || isKnownNonZero(I->getOperand(0), Depth, Q);
+    if (OrZero) {
+      // A power of two and'd with anything is a power of two or zero.
+      if (isKnownToBeAPowerOfTwo(I->getOperand(1), /*OrZero*/ true, Depth, Q) ||
+          isKnownToBeAPowerOfTwo(I->getOperand(0), /*OrZero*/ true, Depth, Q))
+        return true;
+      // X & (-X) is always a power of two or zero.
+      if (match(I->getOperand(0), m_Neg(m_Specific(I->getOperand(1)))) ||
+          match(I->getOperand(1), m_Neg(m_Specific(I->getOperand(0)))))
+        return true;
+    }
     return false;
   case Instruction::Add: {
     // Adding a power-of-two or zero to the same power-of-two or zero yields
@@ -2263,10 +2262,6 @@ static bool isKnownNonNullFromDominatingCondition(const Value *V,
           DT->dominates(I, CtxI))
         return true;
     }
-
-    if (match(U, m_IDiv(m_Value(), m_Specific(V))) &&
-        isValidAssumeForContext(cast<Instruction>(U), CtxI, DT))
-      return true;
 
     // Consider only compare instructions uniquely controlling a branch
     Value *RHS;
@@ -3122,25 +3117,6 @@ static bool isNonEqualPHIs(const PHINode *PN1, const PHINode *PN2,
   return true;
 }
 
-static bool isNonEqualSelect(const Value *V1, const Value *V2, unsigned Depth,
-                             const SimplifyQuery &Q) {
-  const SelectInst *SI1 = dyn_cast<SelectInst>(V1);
-  if (!SI1)
-    return false;
-
-  if (const SelectInst *SI2 = dyn_cast<SelectInst>(V2)) {
-    const Value *Cond1 = SI1->getCondition();
-    const Value *Cond2 = SI2->getCondition();
-    if (Cond1 == Cond2)
-      return isKnownNonEqual(SI1->getTrueValue(), SI2->getTrueValue(),
-                             Depth + 1, Q) &&
-             isKnownNonEqual(SI1->getFalseValue(), SI2->getFalseValue(),
-                             Depth + 1, Q);
-  }
-  return isKnownNonEqual(SI1->getTrueValue(), V2, Depth + 1, Q) &&
-         isKnownNonEqual(SI1->getFalseValue(), V2, Depth + 1, Q);
-}
-
 /// Return true if it is known that V1 != V2.
 static bool isKnownNonEqual(const Value *V1, const Value *V2, unsigned Depth,
                             const SimplifyQuery &Q) {
@@ -3190,10 +3166,6 @@ static bool isKnownNonEqual(const Value *V1, const Value *V2, unsigned Depth,
         Known2.Zero.intersects(Known1.One))
       return true;
   }
-
-  if (isNonEqualSelect(V1, V2, Depth, Q) || isNonEqualSelect(V2, V1, Depth, Q))
-    return true;
-
   return false;
 }
 
@@ -4036,7 +4008,7 @@ std::pair<Value *, FPClassTest> llvm::fcmpToClassTest(FCmpInst::Predicate Pred,
                                                       bool LookThroughSrc) {
   const APFloat *ConstRHS;
   if (!match(RHS, m_APFloatAllowUndef(ConstRHS)))
-    return {nullptr, fcAllFlags};
+    return {nullptr, fcNone};
 
   return fcmpToClassTest(Pred, F, LHS, ConstRHS, LookThroughSrc);
 }
@@ -4058,7 +4030,7 @@ llvm::fcmpToClassTest(FCmpInst::Predicate Pred, const Function &F, Value *LHS,
     // TODO: Handle DAZ by expanding masks to cover subnormal cases.
     if (Pred != FCmpInst::FCMP_ORD && Pred != FCmpInst::FCMP_UNO &&
         !inputDenormalIsIEEE(F, LHS->getType()))
-      return {nullptr, fcAllFlags};
+      return {nullptr, fcNone};
 
     switch (Pred) {
     case FCmpInst::FCMP_OEQ: // Match x == 0.0
@@ -4095,7 +4067,7 @@ llvm::fcmpToClassTest(FCmpInst::Predicate Pred, const Function &F, Value *LHS,
       break;
     }
 
-    return {nullptr, fcAllFlags};
+    return {nullptr, fcNone};
   }
 
   Value *Src = LHS;
@@ -4179,7 +4151,7 @@ llvm::fcmpToClassTest(FCmpInst::Predicate Pred, const Function &F, Value *LHS,
     case FCmpInst::FCMP_OGE:
     case FCmpInst::FCMP_ULT: {
       if (ConstRHS->isNegative()) // TODO
-        return {nullptr, fcAllFlags};
+        return {nullptr, fcNone};
 
       // fcmp oge fabs(x), +inf -> fcInf
       // fcmp oge x, +inf -> fcPosInf
@@ -4193,14 +4165,14 @@ llvm::fcmpToClassTest(FCmpInst::Predicate Pred, const Function &F, Value *LHS,
     case FCmpInst::FCMP_OGT:
     case FCmpInst::FCMP_ULE: {
       if (ConstRHS->isNegative())
-        return {nullptr, fcAllFlags};
+        return {nullptr, fcNone};
 
       // No value is ordered and greater than infinity.
       Mask = fcNone;
       break;
     }
     default:
-      return {nullptr, fcAllFlags};
+      return {nullptr, fcNone};
     }
   } else if (ConstRHS->isSmallestNormalized() && !ConstRHS->isNegative()) {
     // Match pattern that's used in __builtin_isnormal.
@@ -4229,14 +4201,14 @@ llvm::fcmpToClassTest(FCmpInst::Predicate Pred, const Function &F, Value *LHS,
       break;
     }
     default:
-      return {nullptr, fcAllFlags};
+      return {nullptr, fcNone};
     }
   } else if (ConstRHS->isNaN()) {
     // fcmp o__ x, nan -> false
     // fcmp u__ x, nan -> true
     Mask = fcNone;
   } else
-    return {nullptr, fcAllFlags};
+    return {nullptr, fcNone};
 
   // Invert the comparison for the unordered cases.
   if (FCmpInst::isUnordered(Pred))
@@ -5390,9 +5362,10 @@ Value *llvm::isBytewiseValue(Value *V, const DataLayout &DL) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
       if (auto *PtrTy = dyn_cast<PointerType>(CE->getType())) {
         unsigned BitWidth = DL.getPointerSizeInBits(PtrTy->getAddressSpace());
-        if (Constant *Op = ConstantFoldIntegerCast(
-                CE->getOperand(0), Type::getIntNTy(Ctx, BitWidth), false, DL))
-          return isBytewiseValue(Op, DL);
+        return isBytewiseValue(
+            ConstantExpr::getIntegerCast(CE->getOperand(0),
+                                         Type::getIntNTy(Ctx, BitWidth), false),
+            DL);
       }
     }
   }
@@ -6277,31 +6250,36 @@ static OverflowResult mapOverflowResult(ConstantRange::OverflowResult OR) {
 }
 
 /// Combine constant ranges from computeConstantRange() and computeKnownBits().
-static ConstantRange
-computeConstantRangeIncludingKnownBits(const WithCache<const Value *> &V,
-                                       bool ForSigned,
-                                       const SimplifyQuery &SQ) {
-  ConstantRange CR1 =
-      ConstantRange::fromKnownBits(V.getKnownBits(SQ), ForSigned);
-  ConstantRange CR2 = computeConstantRange(V, ForSigned, SQ.IIQ.UseInstrInfo);
+static ConstantRange computeConstantRangeIncludingKnownBits(
+    const Value *V, bool ForSigned, const DataLayout &DL, unsigned Depth,
+    AssumptionCache *AC, const Instruction *CxtI, const DominatorTree *DT,
+    bool UseInstrInfo = true) {
+  KnownBits Known = computeKnownBits(V, DL, Depth, AC, CxtI, DT, UseInstrInfo);
+  ConstantRange CR1 = ConstantRange::fromKnownBits(Known, ForSigned);
+  ConstantRange CR2 = computeConstantRange(V, ForSigned, UseInstrInfo);
   ConstantRange::PreferredRangeType RangeType =
       ForSigned ? ConstantRange::Signed : ConstantRange::Unsigned;
   return CR1.intersectWith(CR2, RangeType);
 }
 
-OverflowResult llvm::computeOverflowForUnsignedMul(const Value *LHS,
-                                                   const Value *RHS,
-                                                   const SimplifyQuery &SQ) {
-  KnownBits LHSKnown = computeKnownBits(LHS, /*Depth=*/0, SQ);
-  KnownBits RHSKnown = computeKnownBits(RHS, /*Depth=*/0, SQ);
+OverflowResult llvm::computeOverflowForUnsignedMul(
+    const Value *LHS, const Value *RHS, const DataLayout &DL,
+    AssumptionCache *AC, const Instruction *CxtI, const DominatorTree *DT,
+    bool UseInstrInfo) {
+  KnownBits LHSKnown = computeKnownBits(LHS, DL, /*Depth=*/0, AC, CxtI, DT,
+                                        UseInstrInfo);
+  KnownBits RHSKnown = computeKnownBits(RHS, DL, /*Depth=*/0, AC, CxtI, DT,
+                                        UseInstrInfo);
   ConstantRange LHSRange = ConstantRange::fromKnownBits(LHSKnown, false);
   ConstantRange RHSRange = ConstantRange::fromKnownBits(RHSKnown, false);
   return mapOverflowResult(LHSRange.unsignedMulMayOverflow(RHSRange));
 }
 
-OverflowResult llvm::computeOverflowForSignedMul(const Value *LHS,
-                                                 const Value *RHS,
-                                                 const SimplifyQuery &SQ) {
+OverflowResult
+llvm::computeOverflowForSignedMul(const Value *LHS, const Value *RHS,
+                                  const DataLayout &DL, AssumptionCache *AC,
+                                  const Instruction *CxtI,
+                                  const DominatorTree *DT, bool UseInstrInfo) {
   // Multiplying n * m significant bits yields a result of n + m significant
   // bits. If the total number of significant bits does not exceed the
   // result bit width (minus 1), there is no overflow.
@@ -6312,8 +6290,8 @@ OverflowResult llvm::computeOverflowForSignedMul(const Value *LHS,
 
   // Note that underestimating the number of sign bits gives a more
   // conservative answer.
-  unsigned SignBits =
-      ::ComputeNumSignBits(LHS, 0, SQ) + ::ComputeNumSignBits(RHS, 0, SQ);
+  unsigned SignBits = ComputeNumSignBits(LHS, DL, 0, AC, CxtI, DT) +
+                      ComputeNumSignBits(RHS, DL, 0, AC, CxtI, DT);
 
   // First handle the easy case: if we have enough sign bits there's
   // definitely no overflow.
@@ -6330,29 +6308,34 @@ OverflowResult llvm::computeOverflowForSignedMul(const Value *LHS,
     // product is exactly the minimum negative number.
     // E.g. mul i16 with 17 sign bits: 0xff00 * 0xff80 = 0x8000
     // For simplicity we just check if at least one side is not negative.
-    KnownBits LHSKnown = computeKnownBits(LHS, /*Depth=*/0, SQ);
-    KnownBits RHSKnown = computeKnownBits(RHS, /*Depth=*/0, SQ);
+    KnownBits LHSKnown = computeKnownBits(LHS, DL, /*Depth=*/0, AC, CxtI, DT,
+                                          UseInstrInfo);
+    KnownBits RHSKnown = computeKnownBits(RHS, DL, /*Depth=*/0, AC, CxtI, DT,
+                                          UseInstrInfo);
     if (LHSKnown.isNonNegative() || RHSKnown.isNonNegative())
       return OverflowResult::NeverOverflows;
   }
   return OverflowResult::MayOverflow;
 }
 
-OverflowResult
-llvm::computeOverflowForUnsignedAdd(const WithCache<const Value *> &LHS,
-                                    const WithCache<const Value *> &RHS,
-                                    const SimplifyQuery &SQ) {
-  ConstantRange LHSRange =
-      computeConstantRangeIncludingKnownBits(LHS, /*ForSigned=*/false, SQ);
-  ConstantRange RHSRange =
-      computeConstantRangeIncludingKnownBits(RHS, /*ForSigned=*/false, SQ);
+OverflowResult llvm::computeOverflowForUnsignedAdd(
+    const Value *LHS, const Value *RHS, const DataLayout &DL,
+    AssumptionCache *AC, const Instruction *CxtI, const DominatorTree *DT,
+    bool UseInstrInfo) {
+  ConstantRange LHSRange = computeConstantRangeIncludingKnownBits(
+      LHS, /*ForSigned=*/false, DL, /*Depth=*/0, AC, CxtI, DT, UseInstrInfo);
+  ConstantRange RHSRange = computeConstantRangeIncludingKnownBits(
+      RHS, /*ForSigned=*/false, DL, /*Depth=*/0, AC, CxtI, DT, UseInstrInfo);
   return mapOverflowResult(LHSRange.unsignedAddMayOverflow(RHSRange));
 }
 
-static OverflowResult
-computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
-                            const WithCache<const Value *> &RHS,
-                            const AddOperator *Add, const SimplifyQuery &SQ) {
+static OverflowResult computeOverflowForSignedAdd(const Value *LHS,
+                                                  const Value *RHS,
+                                                  const AddOperator *Add,
+                                                  const DataLayout &DL,
+                                                  AssumptionCache *AC,
+                                                  const Instruction *CxtI,
+                                                  const DominatorTree *DT) {
   if (Add && Add->hasNoSignedWrap()) {
     return OverflowResult::NeverOverflows;
   }
@@ -6371,14 +6354,14 @@ computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
   //
   // Since the carry into the most significant position is always equal to
   // the carry out of the addition, there is no signed overflow.
-  if (::ComputeNumSignBits(LHS, 0, SQ) > 1 &&
-      ::ComputeNumSignBits(RHS, 0, SQ) > 1)
+  if (ComputeNumSignBits(LHS, DL, 0, AC, CxtI, DT) > 1 &&
+      ComputeNumSignBits(RHS, DL, 0, AC, CxtI, DT) > 1)
     return OverflowResult::NeverOverflows;
 
-  ConstantRange LHSRange =
-      computeConstantRangeIncludingKnownBits(LHS, /*ForSigned=*/true, SQ);
-  ConstantRange RHSRange =
-      computeConstantRangeIncludingKnownBits(RHS, /*ForSigned=*/true, SQ);
+  ConstantRange LHSRange = computeConstantRangeIncludingKnownBits(
+      LHS, /*ForSigned=*/true, DL, /*Depth=*/0, AC, CxtI, DT);
+  ConstantRange RHSRange = computeConstantRangeIncludingKnownBits(
+      RHS, /*ForSigned=*/true, DL, /*Depth=*/0, AC, CxtI, DT);
   OverflowResult OR =
       mapOverflowResult(LHSRange.signedAddMayOverflow(RHSRange));
   if (OR != OverflowResult::MayOverflow)
@@ -6399,7 +6382,9 @@ computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
       (LHSRange.isAllNegative() || RHSRange.isAllNegative());
   if (LHSOrRHSKnownNonNegative || LHSOrRHSKnownNegative) {
     KnownBits AddKnown(LHSRange.getBitWidth());
-    computeKnownBitsFromAssume(Add, AddKnown, /*Depth=*/0, SQ);
+    computeKnownBitsFromAssume(
+        Add, AddKnown, /*Depth=*/0,
+        SimplifyQuery(DL, /*TLI*/ nullptr, DT, AC, CxtI, DT));
     if ((AddKnown.isNonNegative() && LHSOrRHSKnownNonNegative) ||
         (AddKnown.isNegative() && LHSOrRHSKnownNegative))
       return OverflowResult::NeverOverflows;
@@ -6410,7 +6395,10 @@ computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
 
 OverflowResult llvm::computeOverflowForUnsignedSub(const Value *LHS,
                                                    const Value *RHS,
-                                                   const SimplifyQuery &SQ) {
+                                                   const DataLayout &DL,
+                                                   AssumptionCache *AC,
+                                                   const Instruction *CxtI,
+                                                   const DominatorTree *DT) {
   // X - (X % ?)
   // The remainder of a value can't have greater magnitude than itself,
   // so the subtraction can't overflow.
@@ -6424,29 +6412,32 @@ OverflowResult llvm::computeOverflowForUnsignedSub(const Value *LHS,
   //       See simplifyICmpWithBinOpOnLHS() for candidates.
   if (match(RHS, m_URem(m_Specific(LHS), m_Value())) ||
       match(RHS, m_NUWSub(m_Specific(LHS), m_Value())))
-    if (isGuaranteedNotToBeUndefOrPoison(LHS, SQ.AC, SQ.CxtI, SQ.DT))
+    if (isGuaranteedNotToBeUndefOrPoison(LHS, AC, CxtI, DT))
       return OverflowResult::NeverOverflows;
 
   // Checking for conditions implied by dominating conditions may be expensive.
   // Limit it to usub_with_overflow calls for now.
-  if (match(SQ.CxtI,
+  if (match(CxtI,
             m_Intrinsic<Intrinsic::usub_with_overflow>(m_Value(), m_Value())))
-    if (auto C = isImpliedByDomCondition(CmpInst::ICMP_UGE, LHS, RHS, SQ.CxtI,
-                                         SQ.DL)) {
+    if (auto C =
+            isImpliedByDomCondition(CmpInst::ICMP_UGE, LHS, RHS, CxtI, DL)) {
       if (*C)
         return OverflowResult::NeverOverflows;
       return OverflowResult::AlwaysOverflowsLow;
     }
-  ConstantRange LHSRange =
-      computeConstantRangeIncludingKnownBits(LHS, /*ForSigned=*/false, SQ);
-  ConstantRange RHSRange =
-      computeConstantRangeIncludingKnownBits(RHS, /*ForSigned=*/false, SQ);
+  ConstantRange LHSRange = computeConstantRangeIncludingKnownBits(
+      LHS, /*ForSigned=*/false, DL, /*Depth=*/0, AC, CxtI, DT);
+  ConstantRange RHSRange = computeConstantRangeIncludingKnownBits(
+      RHS, /*ForSigned=*/false, DL, /*Depth=*/0, AC, CxtI, DT);
   return mapOverflowResult(LHSRange.unsignedSubMayOverflow(RHSRange));
 }
 
 OverflowResult llvm::computeOverflowForSignedSub(const Value *LHS,
                                                  const Value *RHS,
-                                                 const SimplifyQuery &SQ) {
+                                                 const DataLayout &DL,
+                                                 AssumptionCache *AC,
+                                                 const Instruction *CxtI,
+                                                 const DominatorTree *DT) {
   // X - (X % ?)
   // The remainder of a value can't have greater magnitude than itself,
   // so the subtraction can't overflow.
@@ -6457,19 +6448,19 @@ OverflowResult llvm::computeOverflowForSignedSub(const Value *LHS,
   // then determining no-overflow may allow other transforms.
   if (match(RHS, m_SRem(m_Specific(LHS), m_Value())) ||
       match(RHS, m_NSWSub(m_Specific(LHS), m_Value())))
-    if (isGuaranteedNotToBeUndefOrPoison(LHS, SQ.AC, SQ.CxtI, SQ.DT))
+    if (isGuaranteedNotToBeUndefOrPoison(LHS, AC, CxtI, DT))
       return OverflowResult::NeverOverflows;
 
   // If LHS and RHS each have at least two sign bits, the subtraction
   // cannot overflow.
-  if (::ComputeNumSignBits(LHS, 0, SQ) > 1 &&
-      ::ComputeNumSignBits(RHS, 0, SQ) > 1)
+  if (ComputeNumSignBits(LHS, DL, 0, AC, CxtI, DT) > 1 &&
+      ComputeNumSignBits(RHS, DL, 0, AC, CxtI, DT) > 1)
     return OverflowResult::NeverOverflows;
 
-  ConstantRange LHSRange =
-      computeConstantRangeIncludingKnownBits(LHS, /*ForSigned=*/true, SQ);
-  ConstantRange RHSRange =
-      computeConstantRangeIncludingKnownBits(RHS, /*ForSigned=*/true, SQ);
+  ConstantRange LHSRange = computeConstantRangeIncludingKnownBits(
+      LHS, /*ForSigned=*/true, DL, /*Depth=*/0, AC, CxtI, DT);
+  ConstantRange RHSRange = computeConstantRangeIncludingKnownBits(
+      RHS, /*ForSigned=*/true, DL, /*Depth=*/0, AC, CxtI, DT);
   return mapOverflowResult(LHSRange.signedSubMayOverflow(RHSRange));
 }
 
@@ -6963,16 +6954,21 @@ bool llvm::mustExecuteUBIfPoisonOnPathTo(Instruction *Root,
 }
 
 OverflowResult llvm::computeOverflowForSignedAdd(const AddOperator *Add,
-                                                 const SimplifyQuery &SQ) {
+                                                 const DataLayout &DL,
+                                                 AssumptionCache *AC,
+                                                 const Instruction *CxtI,
+                                                 const DominatorTree *DT) {
   return ::computeOverflowForSignedAdd(Add->getOperand(0), Add->getOperand(1),
-                                       Add, SQ);
+                                       Add, DL, AC, CxtI, DT);
 }
 
-OverflowResult
-llvm::computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
-                                  const WithCache<const Value *> &RHS,
-                                  const SimplifyQuery &SQ) {
-  return ::computeOverflowForSignedAdd(LHS, RHS, nullptr, SQ);
+OverflowResult llvm::computeOverflowForSignedAdd(const Value *LHS,
+                                                 const Value *RHS,
+                                                 const DataLayout &DL,
+                                                 AssumptionCache *AC,
+                                                 const Instruction *CxtI,
+                                                 const DominatorTree *DT) {
+  return ::computeOverflowForSignedAdd(LHS, RHS, nullptr, DL, AC, CxtI, DT);
 }
 
 bool llvm::isGuaranteedToTransferExecutionToSuccessor(const Instruction *I) {
@@ -7837,7 +7833,6 @@ static Value *lookThroughCast(CmpInst *CmpI, Value *V1, Value *V2,
   if (!C)
     return nullptr;
 
-  const DataLayout &DL = CmpI->getModule()->getDataLayout();
   Constant *CastedTo = nullptr;
   switch (*CastOp) {
   case Instruction::ZExt:
@@ -7875,27 +7870,26 @@ static Value *lookThroughCast(CmpInst *CmpI, Value *V1, Value *V2,
       // CmpConst == C is checked below.
       CastedTo = CmpConst;
     } else {
-      unsigned ExtOp = CmpI->isSigned() ? Instruction::SExt : Instruction::ZExt;
-      CastedTo = ConstantFoldCastOperand(ExtOp, C, SrcTy, DL);
+      CastedTo = ConstantExpr::getIntegerCast(C, SrcTy, CmpI->isSigned());
     }
     break;
   case Instruction::FPTrunc:
-    CastedTo = ConstantFoldCastOperand(Instruction::FPExt, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getFPExtend(C, SrcTy, true);
     break;
   case Instruction::FPExt:
-    CastedTo = ConstantFoldCastOperand(Instruction::FPTrunc, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getFPTrunc(C, SrcTy, true);
     break;
   case Instruction::FPToUI:
-    CastedTo = ConstantFoldCastOperand(Instruction::UIToFP, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getUIToFP(C, SrcTy, true);
     break;
   case Instruction::FPToSI:
-    CastedTo = ConstantFoldCastOperand(Instruction::SIToFP, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getSIToFP(C, SrcTy, true);
     break;
   case Instruction::UIToFP:
-    CastedTo = ConstantFoldCastOperand(Instruction::FPToUI, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getFPToUI(C, SrcTy, true);
     break;
   case Instruction::SIToFP:
-    CastedTo = ConstantFoldCastOperand(Instruction::FPToSI, C, SrcTy, DL);
+    CastedTo = ConstantExpr::getFPToSI(C, SrcTy, true);
     break;
   default:
     break;
@@ -7906,8 +7900,8 @@ static Value *lookThroughCast(CmpInst *CmpI, Value *V1, Value *V2,
 
   // Make sure the cast doesn't lose any information.
   Constant *CastedBack =
-      ConstantFoldCastOperand(*CastOp, CastedTo, C->getType(), DL);
-  if (CastedBack && CastedBack != C)
+      ConstantExpr::getCast(*CastOp, CastedTo, C->getType(), true);
+  if (CastedBack != C)
     return nullptr;
 
   return CastedTo;
@@ -8297,29 +8291,6 @@ static std::optional<bool> isImpliedCondICmps(const ICmpInst *LHS,
   if (L0 == R0 && match(L1, m_APInt(LC)) && match(R1, m_APInt(RC)))
     return isImpliedCondCommonOperandWithConstants(LPred, *LC, RPred, *RC);
 
-  // L0 = R0 = L1 + R1, L0 >=u L1 implies R0 >=u R1, L0 <u L1 implies R0 <u R1
-  if (ICmpInst::isUnsigned(LPred) && ICmpInst::isUnsigned(RPred)) {
-    if (L0 == R1) {
-      std::swap(R0, R1);
-      RPred = ICmpInst::getSwappedPredicate(RPred);
-    }
-    if (L1 == R0) {
-      std::swap(L0, L1);
-      LPred = ICmpInst::getSwappedPredicate(LPred);
-    }
-    if (L1 == R1) {
-      std::swap(L0, L1);
-      LPred = ICmpInst::getSwappedPredicate(LPred);
-      std::swap(R0, R1);
-      RPred = ICmpInst::getSwappedPredicate(RPred);
-    }
-    if (L0 == R0 &&
-        (LPred == ICmpInst::ICMP_ULT || LPred == ICmpInst::ICMP_UGE) &&
-        (RPred == ICmpInst::ICMP_ULT || RPred == ICmpInst::ICMP_UGE) &&
-        match(L0, m_c_Add(m_Specific(L1), m_Specific(R1))))
-      return LPred == RPred;
-  }
-
   if (LPred == RPred)
     return isImpliedCondOperands(LPred, L0, L1, R0, R1, DL, Depth);
 
@@ -8529,11 +8500,6 @@ static void setLimitsForBinOp(const BinaryOperator &BO, APInt &Lower,
     if (match(BO.getOperand(1), m_APInt(C)))
       // 'and x, C' produces [0, C].
       Upper = *C + 1;
-    // X & -X is a power of two or zero. So we can cap the value at max power of
-    // two.
-    if (match(BO.getOperand(0), m_Neg(m_Specific(BO.getOperand(1)))) ||
-        match(BO.getOperand(1), m_Neg(m_Specific(BO.getOperand(0)))))
-      Upper = APInt::getSignedMinValue(Width) + 1;
     break;
 
   case Instruction::Or:
@@ -8595,20 +8561,7 @@ static void setLimitsForBinOp(const BinaryOperator &BO, APInt &Lower,
           Lower = *C;
           Upper = C->shl(ShiftAmount) + 1;
         }
-      } else {
-        // If lowbit is set, value can never be zero.
-        if ((*C)[0])
-          Lower = APInt::getOneBitSet(Width, 0);
-        // If we are shifting a constant the largest it can be is if the longest
-        // sequence of consecutive ones is shifted to the highbits (breaking
-        // ties for which sequence is higher). At the moment we take a liberal
-        // upper bound on this by just popcounting the constant.
-        // TODO: There may be a bitwise trick for it longest/highest
-        // consecutative sequence of ones (naive method is O(Width) loop).
-        Upper = APInt::getHighBitsSet(Width, C->popcount()) + 1;
       }
-    } else if (match(BO.getOperand(1), m_APInt(C)) && C->ult(Width)) {
-      Upper = APInt::getBitsSetFrom(Width, C->getZExtValue()) + 1;
     }
     break;
 
@@ -8779,50 +8732,56 @@ static ConstantRange getRangeForIntrinsic(const IntrinsicInst &II) {
   return ConstantRange::getFull(Width);
 }
 
-static ConstantRange getRangeForSelectPattern(const SelectInst &SI,
-                                              const InstrInfoQuery &IIQ) {
-  unsigned BitWidth = SI.getType()->getScalarSizeInBits();
+static void setLimitsForSelectPattern(const SelectInst &SI, APInt &Lower,
+                                      APInt &Upper, const InstrInfoQuery &IIQ) {
   const Value *LHS = nullptr, *RHS = nullptr;
   SelectPatternResult R = matchSelectPattern(&SI, LHS, RHS);
   if (R.Flavor == SPF_UNKNOWN)
-    return ConstantRange::getFull(BitWidth);
+    return;
+
+  unsigned BitWidth = SI.getType()->getScalarSizeInBits();
 
   if (R.Flavor == SelectPatternFlavor::SPF_ABS) {
     // If the negation part of the abs (in RHS) has the NSW flag,
     // then the result of abs(X) is [0..SIGNED_MAX],
     // otherwise it is [0..SIGNED_MIN], as -SIGNED_MIN == SIGNED_MIN.
+    Lower = APInt::getZero(BitWidth);
     if (match(RHS, m_Neg(m_Specific(LHS))) &&
         IIQ.hasNoSignedWrap(cast<Instruction>(RHS)))
-      return ConstantRange::getNonEmpty(APInt::getZero(BitWidth),
-                                        APInt::getSignedMaxValue(BitWidth) + 1);
-
-    return ConstantRange::getNonEmpty(APInt::getZero(BitWidth),
-                                      APInt::getSignedMinValue(BitWidth) + 1);
+      Upper = APInt::getSignedMaxValue(BitWidth) + 1;
+    else
+      Upper = APInt::getSignedMinValue(BitWidth) + 1;
+    return;
   }
 
   if (R.Flavor == SelectPatternFlavor::SPF_NABS) {
     // The result of -abs(X) is <= 0.
-    return ConstantRange::getNonEmpty(APInt::getSignedMinValue(BitWidth),
-                                      APInt(BitWidth, 1));
+    Lower = APInt::getSignedMinValue(BitWidth);
+    Upper = APInt(BitWidth, 1);
+    return;
   }
 
   const APInt *C;
   if (!match(LHS, m_APInt(C)) && !match(RHS, m_APInt(C)))
-    return ConstantRange::getFull(BitWidth);
+    return;
 
   switch (R.Flavor) {
-  case SPF_UMIN:
-    return ConstantRange::getNonEmpty(APInt::getZero(BitWidth), *C + 1);
-  case SPF_UMAX:
-    return ConstantRange::getNonEmpty(*C, APInt::getZero(BitWidth));
-  case SPF_SMIN:
-    return ConstantRange::getNonEmpty(APInt::getSignedMinValue(BitWidth),
-                                      *C + 1);
-  case SPF_SMAX:
-    return ConstantRange::getNonEmpty(*C,
-                                      APInt::getSignedMaxValue(BitWidth) + 1);
-  default:
-    return ConstantRange::getFull(BitWidth);
+    case SPF_UMIN:
+      Upper = *C + 1;
+      break;
+    case SPF_UMAX:
+      Lower = *C;
+      break;
+    case SPF_SMIN:
+      Lower = APInt::getSignedMinValue(BitWidth);
+      Upper = *C + 1;
+      break;
+    case SPF_SMAX:
+      Lower = *C;
+      Upper = APInt::getSignedMaxValue(BitWidth) + 1;
+      break;
+    default:
+      break;
   }
 }
 
@@ -8869,12 +8828,11 @@ ConstantRange llvm::computeConstantRange(const Value *V, bool ForSigned,
   } else if (auto *II = dyn_cast<IntrinsicInst>(V))
     CR = getRangeForIntrinsic(*II);
   else if (auto *SI = dyn_cast<SelectInst>(V)) {
-    ConstantRange CRTrue = computeConstantRange(
-        SI->getTrueValue(), ForSigned, UseInstrInfo, AC, CtxI, DT, Depth + 1);
-    ConstantRange CRFalse = computeConstantRange(
-        SI->getFalseValue(), ForSigned, UseInstrInfo, AC, CtxI, DT, Depth + 1);
-    CR = CRTrue.unionWith(CRFalse);
-    CR = CR.intersectWith(getRangeForSelectPattern(*SI, IIQ));
+    APInt Lower = APInt(BitWidth, 0);
+    APInt Upper = APInt(BitWidth, 0);
+    // TODO: Return ConstantRange.
+    setLimitsForSelectPattern(*SI, Lower, Upper, IIQ);
+    CR = ConstantRange::getNonEmpty(Lower, Upper);
   } else if (isa<FPToUIInst>(V) || isa<FPToSIInst>(V)) {
     APInt Lower = APInt(BitWidth, 0);
     APInt Upper = APInt(BitWidth, 0);

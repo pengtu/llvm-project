@@ -11,6 +11,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+using ::testing::ElementsAre;
+
 namespace clang {
 namespace clangd {
 namespace {

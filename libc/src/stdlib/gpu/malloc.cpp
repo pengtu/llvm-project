@@ -10,7 +10,7 @@
 #include "src/__support/RPC/rpc_client.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(void *, malloc, (size_t size)) {
   void *ptr = nullptr;
@@ -23,4 +23,4 @@ LLVM_LIBC_FUNCTION(void *, malloc, (size_t size)) {
   return ptr;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -41,7 +41,7 @@ public:
   AMDGPUTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, TargetOptions Options,
                       std::optional<Reloc::Model> RM,
-                      std::optional<CodeModel::Model> CM, CodeGenOptLevel OL);
+                      std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL);
   ~AMDGPUTargetMachine() override;
 
   const TargetSubtargetInfo *getSubtargetImpl() const;
@@ -79,7 +79,7 @@ public:
   GCNTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                    StringRef FS, TargetOptions Options,
                    std::optional<Reloc::Model> RM,
-                   std::optional<CodeModel::Model> CM, CodeGenOptLevel OL,
+                   std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
                    bool JIT);
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
@@ -137,7 +137,7 @@ public:
   /// be used given that a pass shall work at an optimization \p Level
   /// minimum.
   bool isPassEnabled(const cl::opt<bool> &Opt,
-                     CodeGenOptLevel Level = CodeGenOptLevel::Default) const {
+                     CodeGenOpt::Level Level = CodeGenOpt::Default) const {
     if (Opt.getNumOccurrences())
       return Opt;
     if (TM->getOptLevel() < Level)

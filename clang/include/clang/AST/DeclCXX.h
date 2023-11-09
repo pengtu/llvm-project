@@ -154,26 +154,22 @@ class CXXBaseSpecifier {
   SourceLocation EllipsisLoc;
 
   /// Whether this is a virtual base class or not.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned Virtual : 1;
 
   /// Whether this is the base of a class (true) or of a struct (false).
   ///
   /// This determines the mapping from the access specifier as written in the
   /// source code to the access specifier used for semantic analysis.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned BaseOfClass : 1;
 
   /// Access specifier as written in the source code (may be AS_none).
   ///
   /// The actual type of data stored here is an AccessSpecifier, but we use
-  /// "unsigned" here to work around Microsoft ABI.
-  LLVM_PREFERRED_TYPE(AccessSpecifier)
+  /// "unsigned" here to work around a VC++ bug.
   unsigned Access : 2;
 
   /// Whether the class contains a using declaration
   /// to inherit the named class's constructors.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned InheritConstructors : 1;
 
   /// The type of the base class.
@@ -294,19 +290,15 @@ private:
     #include "CXXRecordDeclDefinitionBits.def"
 
     /// Whether this class describes a C++ lambda.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsLambda : 1;
 
     /// Whether we are currently parsing base specifiers.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsParsingBaseSpecifiers : 1;
 
     /// True when visible conversion functions are already computed
     /// and are available.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned ComputedVisibleConversions : 1;
 
-    LLVM_PREFERRED_TYPE(bool)
     unsigned HasODRHash : 1;
 
     /// A hash of parts of the class to help in ODR checking.
@@ -391,15 +383,12 @@ private:
     /// lambda will have been created with the enclosing context as its
     /// declaration context, rather than function. This is an unfortunate
     /// artifact of having to parse the default arguments before.
-    LLVM_PREFERRED_TYPE(LambdaDependencyKind)
     unsigned DependencyKind : 2;
 
     /// Whether this lambda is a generic lambda.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned IsGenericLambda : 1;
 
     /// The Default Capture.
-    LLVM_PREFERRED_TYPE(LambdaCaptureDefault)
     unsigned CaptureDefault : 2;
 
     /// The number of captures in this lambda is limited 2^NumCaptures.
@@ -409,7 +398,6 @@ private:
     unsigned NumExplicitCaptures : 12;
 
     /// Has known `internal` linkage.
-    LLVM_PREFERRED_TYPE(bool)
     unsigned HasKnownInternalLinkage : 1;
 
     /// The number used to indicate this lambda expression for name
@@ -1062,12 +1050,6 @@ public:
   LambdaCaptureDefault getLambdaCaptureDefault() const {
     assert(isLambda());
     return static_cast<LambdaCaptureDefault>(getLambdaData().CaptureDefault);
-  }
-
-  bool isCapturelessLambda() const {
-    if (!isLambda())
-      return false;
-    return getLambdaCaptureDefault() == LCD_None && capture_size() == 0;
   }
 
   /// Set the captures for this lambda closure type.
@@ -2079,17 +2061,6 @@ public:
   bool isStatic() const;
   bool isInstance() const { return !isStatic(); }
 
-  /// [C++2b][dcl.fct]/p7
-  /// An explicit object member function is a non-static
-  /// member function with an explicit object parameter. e.g.,
-  ///   void func(this SomeType);
-  bool isExplicitObjectMemberFunction() const;
-
-  /// [C++2b][dcl.fct]/p7
-  /// An implicit object member function is a non-static
-  /// member function without an explicit object parameter.
-  bool isImplicitObjectMemberFunction() const;
-
   /// Returns true if the given operator is implicitly static in a record
   /// context.
   static bool isStaticOverloadedOperator(OverloadedOperatorKind OOK) {
@@ -2198,18 +2169,13 @@ public:
   /// Return the type of the object pointed by \c this.
   ///
   /// See getThisType() for usage restriction.
-
-  QualType getFunctionObjectParameterReferenceType() const;
-  QualType getFunctionObjectParameterType() const {
-    return getFunctionObjectParameterReferenceType().getNonReferenceType();
-  }
-
-  unsigned getNumExplicitParams() const {
-    return getNumParams() - (isExplicitObjectMemberFunction() ? 1 : 0);
-  }
+  QualType getThisObjectType() const;
 
   static QualType getThisType(const FunctionProtoType *FPT,
                               const CXXRecordDecl *Decl);
+
+  static QualType getThisObjectType(const FunctionProtoType *FPT,
+                                    const CXXRecordDecl *Decl);
 
   Qualifiers getMethodQualifiers() const {
     return getType()->castAs<FunctionProtoType>()->getMethodQuals();
@@ -2317,17 +2283,14 @@ class CXXCtorInitializer final {
 
   /// If the initializee is a type, whether that type makes this
   /// a delegating initialization.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IsDelegating : 1;
 
   /// If the initializer is a base initializer, this keeps track
   /// of whether the base is virtual or not.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IsVirtual : 1;
 
   /// Whether or not the initializer is explicitly written
   /// in the sources.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IsWritten : 1;
 
   /// If IsWritten is true, then this number keeps track of the textual order
@@ -2912,12 +2875,6 @@ public:
   static bool classofKind(Kind K) { return K == CXXConversion; }
 };
 
-/// Represents the language in a linkage specification.
-///
-/// The values are part of the serialization ABI for
-/// ASTs and cannot be changed without altering that ABI.
-enum class LinkageSpecLanguageIDs { C = 1, CXX = 2 };
-
 /// Represents a linkage specification.
 ///
 /// For example:
@@ -2928,7 +2885,14 @@ class LinkageSpecDecl : public Decl, public DeclContext {
   virtual void anchor();
   // This class stores some data in DeclContext::LinkageSpecDeclBits to save
   // some space. Use the provided accessors to access it.
+public:
+  /// Represents the language in a linkage specification.
+  ///
+  /// The values are part of the serialization ABI for
+  /// ASTs and cannot be changed without altering that ABI.
+  enum LanguageIDs { lang_c = 1, lang_cxx = 2 };
 
+private:
   /// The source location for the extern keyword.
   SourceLocation ExternLoc;
 
@@ -2936,25 +2900,22 @@ class LinkageSpecDecl : public Decl, public DeclContext {
   SourceLocation RBraceLoc;
 
   LinkageSpecDecl(DeclContext *DC, SourceLocation ExternLoc,
-                  SourceLocation LangLoc, LinkageSpecLanguageIDs lang,
-                  bool HasBraces);
+                  SourceLocation LangLoc, LanguageIDs lang, bool HasBraces);
 
 public:
   static LinkageSpecDecl *Create(ASTContext &C, DeclContext *DC,
                                  SourceLocation ExternLoc,
-                                 SourceLocation LangLoc,
-                                 LinkageSpecLanguageIDs Lang, bool HasBraces);
+                                 SourceLocation LangLoc, LanguageIDs Lang,
+                                 bool HasBraces);
   static LinkageSpecDecl *CreateDeserialized(ASTContext &C, unsigned ID);
 
   /// Return the language specified by this linkage specification.
-  LinkageSpecLanguageIDs getLanguage() const {
-    return static_cast<LinkageSpecLanguageIDs>(LinkageSpecDeclBits.Language);
+  LanguageIDs getLanguage() const {
+    return static_cast<LanguageIDs>(LinkageSpecDeclBits.Language);
   }
 
   /// Set the language specified by this linkage specification.
-  void setLanguage(LinkageSpecLanguageIDs L) {
-    LinkageSpecDeclBits.Language = llvm::to_underlying(L);
-  }
+  void setLanguage(LanguageIDs L) { LinkageSpecDeclBits.Language = L; }
 
   /// Determines whether this linkage specification had braces in
   /// its syntactic form.
@@ -3603,7 +3564,6 @@ class ConstructorUsingShadowDecl final : public UsingShadowDecl {
   /// \c true if the constructor ultimately named by this using shadow
   /// declaration is within a virtual base class subobject of the class that
   /// contains this declaration.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IsVirtual : 1;
 
   ConstructorUsingShadowDecl(ASTContext &C, DeclContext *DC, SourceLocation Loc,

@@ -20,9 +20,12 @@
 #include "gtest/gtest.h"
 
 using ::testing::AllOf;
+using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
+using ::testing::get;
 using ::testing::Pointwise;
+using ::testing::Property;
 
 namespace llvm {
 namespace exegesis {

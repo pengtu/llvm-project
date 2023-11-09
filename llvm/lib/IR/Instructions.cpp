@@ -130,7 +130,7 @@ Value *PHINode::removeIncomingValue(unsigned Idx, bool DeletePHIIfEmpty) {
   // clients might not expect this to happen.  The code as it is thrashes the
   // use/def lists, which is kinda lame.
   std::copy(op_begin() + Idx + 1, op_end(), op_begin() + Idx);
-  copyIncomingBlocks(drop_begin(blocks(), Idx + 1), Idx);
+  copyIncomingBlocks(make_range(block_begin() + Idx + 1, block_end()), Idx);
 
   // Nuke the last value.
   Op<-1>().set(nullptr);
@@ -807,6 +807,198 @@ void CallInst::updateProfWeight(uint64_t S, uint64_t T) {
                            Val.udiv(APT).getLimitedValue())));
     }
   setMetadata(LLVMContext::MD_prof, MDNode::get(getContext(), Vals));
+}
+
+/// IsConstantOne - Return true only if val is constant int 1
+static bool IsConstantOne(Value *val) {
+  assert(val && "IsConstantOne does not work with nullptr val");
+  const ConstantInt *CVal = dyn_cast<ConstantInt>(val);
+  return CVal && CVal->isOne();
+}
+
+static Instruction *createMalloc(Instruction *InsertBefore,
+                                 BasicBlock *InsertAtEnd, Type *IntPtrTy,
+                                 Type *AllocTy, Value *AllocSize,
+                                 Value *ArraySize,
+                                 ArrayRef<OperandBundleDef> OpB,
+                                 Function *MallocF, const Twine &Name) {
+  assert(((!InsertBefore && InsertAtEnd) || (InsertBefore && !InsertAtEnd)) &&
+         "createMalloc needs either InsertBefore or InsertAtEnd");
+
+  // malloc(type) becomes:
+  //       bitcast (i8* malloc(typeSize)) to type*
+  // malloc(type, arraySize) becomes:
+  //       bitcast (i8* malloc(typeSize*arraySize)) to type*
+  if (!ArraySize)
+    ArraySize = ConstantInt::get(IntPtrTy, 1);
+  else if (ArraySize->getType() != IntPtrTy) {
+    if (InsertBefore)
+      ArraySize = CastInst::CreateIntegerCast(ArraySize, IntPtrTy, false,
+                                              "", InsertBefore);
+    else
+      ArraySize = CastInst::CreateIntegerCast(ArraySize, IntPtrTy, false,
+                                              "", InsertAtEnd);
+  }
+
+  if (!IsConstantOne(ArraySize)) {
+    if (IsConstantOne(AllocSize)) {
+      AllocSize = ArraySize;         // Operand * 1 = Operand
+    } else if (Constant *CO = dyn_cast<Constant>(ArraySize)) {
+      Constant *Scale = ConstantExpr::getIntegerCast(CO, IntPtrTy,
+                                                     false /*ZExt*/);
+      // Malloc arg is constant product of type size and array size
+      AllocSize = ConstantExpr::getMul(Scale, cast<Constant>(AllocSize));
+    } else {
+      // Multiply type size by the array size...
+      if (InsertBefore)
+        AllocSize = BinaryOperator::CreateMul(ArraySize, AllocSize,
+                                              "mallocsize", InsertBefore);
+      else
+        AllocSize = BinaryOperator::CreateMul(ArraySize, AllocSize,
+                                              "mallocsize", InsertAtEnd);
+    }
+  }
+
+  assert(AllocSize->getType() == IntPtrTy && "malloc arg is wrong size");
+  // Create the call to Malloc.
+  BasicBlock *BB = InsertBefore ? InsertBefore->getParent() : InsertAtEnd;
+  Module *M = BB->getParent()->getParent();
+  Type *BPTy = PointerType::getUnqual(BB->getContext());
+  FunctionCallee MallocFunc = MallocF;
+  if (!MallocFunc)
+    // prototype malloc as "void *malloc(size_t)"
+    MallocFunc = M->getOrInsertFunction("malloc", BPTy, IntPtrTy);
+  PointerType *AllocPtrType = PointerType::getUnqual(AllocTy);
+  CallInst *MCall = nullptr;
+  Instruction *Result = nullptr;
+  if (InsertBefore) {
+    MCall = CallInst::Create(MallocFunc, AllocSize, OpB, "malloccall",
+                             InsertBefore);
+    Result = MCall;
+    if (Result->getType() != AllocPtrType)
+      // Create a cast instruction to convert to the right type...
+      Result = new BitCastInst(MCall, AllocPtrType, Name, InsertBefore);
+  } else {
+    MCall = CallInst::Create(MallocFunc, AllocSize, OpB, "malloccall");
+    Result = MCall;
+    if (Result->getType() != AllocPtrType) {
+      MCall->insertInto(InsertAtEnd, InsertAtEnd->end());
+      // Create a cast instruction to convert to the right type...
+      Result = new BitCastInst(MCall, AllocPtrType, Name);
+    }
+  }
+  MCall->setTailCall();
+  if (Function *F = dyn_cast<Function>(MallocFunc.getCallee())) {
+    MCall->setCallingConv(F->getCallingConv());
+    if (!F->returnDoesNotAlias())
+      F->setReturnDoesNotAlias();
+  }
+  assert(!MCall->getType()->isVoidTy() && "Malloc has void return type");
+
+  return Result;
+}
+
+/// CreateMalloc - Generate the IR for a call to malloc:
+/// 1. Compute the malloc call's argument as the specified type's size,
+///    possibly multiplied by the array size if the array size is not
+///    constant 1.
+/// 2. Call malloc with that argument.
+/// 3. Bitcast the result of the malloc call to the specified type.
+Instruction *CallInst::CreateMalloc(Instruction *InsertBefore,
+                                    Type *IntPtrTy, Type *AllocTy,
+                                    Value *AllocSize, Value *ArraySize,
+                                    Function *MallocF,
+                                    const Twine &Name) {
+  return createMalloc(InsertBefore, nullptr, IntPtrTy, AllocTy, AllocSize,
+                      ArraySize, std::nullopt, MallocF, Name);
+}
+Instruction *CallInst::CreateMalloc(Instruction *InsertBefore,
+                                    Type *IntPtrTy, Type *AllocTy,
+                                    Value *AllocSize, Value *ArraySize,
+                                    ArrayRef<OperandBundleDef> OpB,
+                                    Function *MallocF,
+                                    const Twine &Name) {
+  return createMalloc(InsertBefore, nullptr, IntPtrTy, AllocTy, AllocSize,
+                      ArraySize, OpB, MallocF, Name);
+}
+
+/// CreateMalloc - Generate the IR for a call to malloc:
+/// 1. Compute the malloc call's argument as the specified type's size,
+///    possibly multiplied by the array size if the array size is not
+///    constant 1.
+/// 2. Call malloc with that argument.
+/// 3. Bitcast the result of the malloc call to the specified type.
+/// Note: This function does not add the bitcast to the basic block, that is the
+/// responsibility of the caller.
+Instruction *CallInst::CreateMalloc(BasicBlock *InsertAtEnd,
+                                    Type *IntPtrTy, Type *AllocTy,
+                                    Value *AllocSize, Value *ArraySize,
+                                    Function *MallocF, const Twine &Name) {
+  return createMalloc(nullptr, InsertAtEnd, IntPtrTy, AllocTy, AllocSize,
+                      ArraySize, std::nullopt, MallocF, Name);
+}
+Instruction *CallInst::CreateMalloc(BasicBlock *InsertAtEnd,
+                                    Type *IntPtrTy, Type *AllocTy,
+                                    Value *AllocSize, Value *ArraySize,
+                                    ArrayRef<OperandBundleDef> OpB,
+                                    Function *MallocF, const Twine &Name) {
+  return createMalloc(nullptr, InsertAtEnd, IntPtrTy, AllocTy, AllocSize,
+                      ArraySize, OpB, MallocF, Name);
+}
+
+static Instruction *createFree(Value *Source,
+                               ArrayRef<OperandBundleDef> Bundles,
+                               Instruction *InsertBefore,
+                               BasicBlock *InsertAtEnd) {
+  assert(((!InsertBefore && InsertAtEnd) || (InsertBefore && !InsertAtEnd)) &&
+         "createFree needs either InsertBefore or InsertAtEnd");
+  assert(Source->getType()->isPointerTy() &&
+         "Can not free something of nonpointer type!");
+
+  BasicBlock *BB = InsertBefore ? InsertBefore->getParent() : InsertAtEnd;
+  Module *M = BB->getParent()->getParent();
+
+  Type *VoidTy = Type::getVoidTy(M->getContext());
+  Type *VoidPtrTy = PointerType::getUnqual(M->getContext());
+  // prototype free as "void free(void*)"
+  FunctionCallee FreeFunc = M->getOrInsertFunction("free", VoidTy, VoidPtrTy);
+  CallInst *Result = nullptr;
+  if (InsertBefore)
+    Result = CallInst::Create(FreeFunc, Source, Bundles, "", InsertBefore);
+  else
+    Result = CallInst::Create(FreeFunc, Source, Bundles, "");
+  Result->setTailCall();
+  if (Function *F = dyn_cast<Function>(FreeFunc.getCallee()))
+    Result->setCallingConv(F->getCallingConv());
+
+  return Result;
+}
+
+/// CreateFree - Generate the IR for a call to the builtin free function.
+Instruction *CallInst::CreateFree(Value *Source, Instruction *InsertBefore) {
+  return createFree(Source, std::nullopt, InsertBefore, nullptr);
+}
+Instruction *CallInst::CreateFree(Value *Source,
+                                  ArrayRef<OperandBundleDef> Bundles,
+                                  Instruction *InsertBefore) {
+  return createFree(Source, Bundles, InsertBefore, nullptr);
+}
+
+/// CreateFree - Generate the IR for a call to the builtin free function.
+/// Note: This function does not add the call to the basic block, that is the
+/// responsibility of the caller.
+Instruction *CallInst::CreateFree(Value *Source, BasicBlock *InsertAtEnd) {
+  Instruction *FreeCall =
+      createFree(Source, std::nullopt, nullptr, InsertAtEnd);
+  assert(FreeCall && "CreateFree did not create a CallInst");
+  return FreeCall;
+}
+Instruction *CallInst::CreateFree(Value *Source,
+                                  ArrayRef<OperandBundleDef> Bundles,
+                                  BasicBlock *InsertAtEnd) {
+  Instruction *FreeCall = createFree(Source, Bundles, nullptr, InsertAtEnd);
+  assert(FreeCall && "CreateFree did not create a CallInst");
+  return FreeCall;
 }
 
 //===----------------------------------------------------------------------===//
@@ -2136,10 +2328,10 @@ static bool isSingleSourceMaskImpl(ArrayRef<int> Mask, int NumOpElts) {
   return UsesLHS || UsesRHS;
 }
 
-bool ShuffleVectorInst::isSingleSourceMask(ArrayRef<int> Mask, int NumSrcElts) {
+bool ShuffleVectorInst::isSingleSourceMask(ArrayRef<int> Mask) {
   // We don't have vector operand size information, so assume operands are the
   // same size as the mask.
-  return isSingleSourceMaskImpl(Mask, NumSrcElts);
+  return isSingleSourceMaskImpl(Mask, Mask.size());
 }
 
 static bool isIdentityMaskImpl(ArrayRef<int> Mask, int NumOpElts) {
@@ -2154,75 +2346,65 @@ static bool isIdentityMaskImpl(ArrayRef<int> Mask, int NumOpElts) {
   return true;
 }
 
-bool ShuffleVectorInst::isIdentityMask(ArrayRef<int> Mask, int NumSrcElts) {
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
-    return false;
+bool ShuffleVectorInst::isIdentityMask(ArrayRef<int> Mask) {
   // We don't have vector operand size information, so assume operands are the
   // same size as the mask.
-  return isIdentityMaskImpl(Mask, NumSrcElts);
+  return isIdentityMaskImpl(Mask, Mask.size());
 }
 
-bool ShuffleVectorInst::isReverseMask(ArrayRef<int> Mask, int NumSrcElts) {
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
-    return false;
-  if (!isSingleSourceMask(Mask, NumSrcElts))
+bool ShuffleVectorInst::isReverseMask(ArrayRef<int> Mask) {
+  if (!isSingleSourceMask(Mask))
     return false;
 
   // The number of elements in the mask must be at least 2.
-  if (NumSrcElts < 2)
+  int NumElts = Mask.size();
+  if (NumElts < 2)
     return false;
 
-  for (int I = 0, E = Mask.size(); I < E; ++I) {
-    if (Mask[I] == -1)
+  for (int i = 0; i < NumElts; ++i) {
+    if (Mask[i] == -1)
       continue;
-    if (Mask[I] != (NumSrcElts - 1 - I) &&
-        Mask[I] != (NumSrcElts + NumSrcElts - 1 - I))
+    if (Mask[i] != (NumElts - 1 - i) && Mask[i] != (NumElts + NumElts - 1 - i))
       return false;
   }
   return true;
 }
 
-bool ShuffleVectorInst::isZeroEltSplatMask(ArrayRef<int> Mask, int NumSrcElts) {
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
+bool ShuffleVectorInst::isZeroEltSplatMask(ArrayRef<int> Mask) {
+  if (!isSingleSourceMask(Mask))
     return false;
-  if (!isSingleSourceMask(Mask, NumSrcElts))
-    return false;
-  for (int I = 0, E = Mask.size(); I < E; ++I) {
-    if (Mask[I] == -1)
+  for (int i = 0, NumElts = Mask.size(); i < NumElts; ++i) {
+    if (Mask[i] == -1)
       continue;
-    if (Mask[I] != 0 && Mask[I] != NumSrcElts)
+    if (Mask[i] != 0 && Mask[i] != NumElts)
       return false;
   }
   return true;
 }
 
-bool ShuffleVectorInst::isSelectMask(ArrayRef<int> Mask, int NumSrcElts) {
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
-    return false;
+bool ShuffleVectorInst::isSelectMask(ArrayRef<int> Mask) {
   // Select is differentiated from identity. It requires using both sources.
-  if (isSingleSourceMask(Mask, NumSrcElts))
+  if (isSingleSourceMask(Mask))
     return false;
-  for (int I = 0, E = Mask.size(); I < E; ++I) {
-    if (Mask[I] == -1)
+  for (int i = 0, NumElts = Mask.size(); i < NumElts; ++i) {
+    if (Mask[i] == -1)
       continue;
-    if (Mask[I] != I && Mask[I] != (NumSrcElts + I))
+    if (Mask[i] != i && Mask[i] != (NumElts + i))
       return false;
   }
   return true;
 }
 
-bool ShuffleVectorInst::isTransposeMask(ArrayRef<int> Mask, int NumSrcElts) {
+bool ShuffleVectorInst::isTransposeMask(ArrayRef<int> Mask) {
   // Example masks that will return true:
   // v1 = <a, b, c, d>
   // v2 = <e, f, g, h>
   // trn1 = shufflevector v1, v2 <0, 4, 2, 6> = <a, e, c, g>
   // trn2 = shufflevector v1, v2 <1, 5, 3, 7> = <b, f, d, h>
 
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
-    return false;
   // 1. The number of elements in the mask must be a power-of-2 and at least 2.
-  int Sz = Mask.size();
-  if (Sz < 2 || !isPowerOf2_32(Sz))
+  int NumElts = Mask.size();
+  if (NumElts < 2 || !isPowerOf2_32(NumElts))
     return false;
 
   // 2. The first element of the mask must be either a 0 or a 1.
@@ -2231,26 +2413,23 @@ bool ShuffleVectorInst::isTransposeMask(ArrayRef<int> Mask, int NumSrcElts) {
 
   // 3. The difference between the first 2 elements must be equal to the
   // number of elements in the mask.
-  if ((Mask[1] - Mask[0]) != NumSrcElts)
+  if ((Mask[1] - Mask[0]) != NumElts)
     return false;
 
   // 4. The difference between consecutive even-numbered and odd-numbered
   // elements must be equal to 2.
-  for (int I = 2; I < Sz; ++I) {
-    int MaskEltVal = Mask[I];
+  for (int i = 2; i < NumElts; ++i) {
+    int MaskEltVal = Mask[i];
     if (MaskEltVal == -1)
       return false;
-    int MaskEltPrevVal = Mask[I - 2];
+    int MaskEltPrevVal = Mask[i - 2];
     if (MaskEltVal - MaskEltPrevVal != 2)
       return false;
   }
   return true;
 }
 
-bool ShuffleVectorInst::isSpliceMask(ArrayRef<int> Mask, int NumSrcElts,
-                                     int &Index) {
-  if (Mask.size() != static_cast<unsigned>(NumSrcElts))
-    return false;
+bool ShuffleVectorInst::isSpliceMask(ArrayRef<int> Mask, int &Index) {
   // Example: shufflevector <4 x n> A, <4 x n> B, <1,2,3,4>
   int StartIndex = -1;
   for (int I = 0, E = Mask.size(); I != E; ++I) {
@@ -2261,7 +2440,7 @@ bool ShuffleVectorInst::isSpliceMask(ArrayRef<int> Mask, int NumSrcElts,
     if (StartIndex == -1) {
       // Don't support a StartIndex that begins in the second input, or if the
       // first non-undef index would access below the StartIndex.
-      if (MaskEltVal < I || NumSrcElts <= (MaskEltVal - I))
+      if (MaskEltVal < I || E <= (MaskEltVal - I))
         return false;
 
       StartIndex = MaskEltVal - I;
@@ -2556,7 +2735,7 @@ bool ShuffleVectorInst::isOneUseSingleSourceMask(int VF) const {
   // case.
   if (isa<ScalableVectorType>(getType()))
     return false;
-  if (!isSingleSourceMask(ShuffleMask, VF))
+  if (!isSingleSourceMask(ShuffleMask))
     return false;
 
   return isOneUseSingleSourceMask(ShuffleMask, VF);
@@ -4606,7 +4785,7 @@ void SwitchInstProfUpdateWrapper::addCase(
            "num of prof branch_weights must accord with num of successors");
 }
 
-Instruction::InstListType::iterator
+SymbolTableList<Instruction>::iterator
 SwitchInstProfUpdateWrapper::eraseFromParent() {
   // Instruction is erased. Mark as unchanged to not touch it in the destructor.
   Changed = false;

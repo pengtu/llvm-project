@@ -14,7 +14,7 @@
 #include <linux/param.h> // For EXEC_PAGESIZE.
 #include <unistd.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(long, sysconf, (int name)) {
   long ret = 0;
@@ -30,4 +30,4 @@ LLVM_LIBC_FUNCTION(long, sysconf, (int name)) {
   return ret;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

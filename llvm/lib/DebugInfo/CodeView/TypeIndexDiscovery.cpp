@@ -470,7 +470,7 @@ static void resolveTypeIndexReferences(ArrayRef<uint8_t> RecordData,
 
   RecordData = RecordData.drop_front(sizeof(RecordPrefix));
 
-  BinaryStreamReader Reader(RecordData, llvm::endianness::little);
+  BinaryStreamReader Reader(RecordData, support::little);
   for (const auto &Ref : Refs) {
     Reader.setOffset(Ref.Offset);
     FixedStreamArray<TypeIndex> Run;

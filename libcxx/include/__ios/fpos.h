@@ -11,7 +11,7 @@
 #define _LIBCPP___IOS_FPOS_H
 
 #include <__config>
-#include <__fwd/ios.h>
+#include <iosfwd>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header

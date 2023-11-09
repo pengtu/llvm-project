@@ -27,18 +27,22 @@ TEST_CONSTEXPR_CXX20 void test(const S& s) {
     assert(T::eq(str[0], typename S::value_type()));
 }
 
-template <class S>
-TEST_CONSTEXPR_CXX20 void test_string() {
-  test(S(""));
-  test(S("abcde"));
-  test(S("abcdefghij"));
-  test(S("abcdefghijklmnopqrst"));
-}
-
 TEST_CONSTEXPR_CXX20 bool test() {
-  test_string<std::string>();
+  {
+    typedef std::string S;
+    test(S(""));
+    test(S("abcde"));
+    test(S("abcdefghij"));
+    test(S("abcdefghijklmnopqrst"));
+  }
 #if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    test(S(""));
+    test(S("abcde"));
+    test(S("abcdefghij"));
+    test(S("abcdefghijklmnopqrst"));
+  }
 #endif
 
   return true;

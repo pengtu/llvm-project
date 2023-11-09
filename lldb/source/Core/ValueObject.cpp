@@ -17,7 +17,6 @@
 #include "lldb/Core/ValueObjectDynamicValue.h"
 #include "lldb/Core/ValueObjectMemory.h"
 #include "lldb/Core/ValueObjectSyntheticFilter.h"
-#include "lldb/Core/ValueObjectVTable.h"
 #include "lldb/DataFormatters/DataVisualization.h"
 #include "lldb/DataFormatters/DumpValueObjectOptions.h"
 #include "lldb/DataFormatters/FormatManager.h"
@@ -335,7 +334,7 @@ bool ValueObject::ResolveValue(Scalar &scalar) {
   {
     ExecutionContext exe_ctx(GetExecutionContextRef());
     Value tmp_value(m_value);
-    scalar = tmp_value.ResolveValue(&exe_ctx, GetModule().get());
+    scalar = tmp_value.ResolveValue(&exe_ctx);
     if (scalar.IsValid()) {
       const uint32_t bitfield_bit_size = GetBitfieldBitSize();
       if (bitfield_bit_size)
@@ -3155,8 +3154,4 @@ ValueObjectSP ValueObject::Persist() {
   persistent_var_sp->m_flags |= ExpressionVariable::EVIsProgramReference;
 
   return persistent_var_sp->GetValueObject();
-}
-
-lldb::ValueObjectSP ValueObject::GetVTable() {
-  return ValueObjectVTable::Create(*this);
 }

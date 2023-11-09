@@ -15,6 +15,7 @@
 #include "llvm/Object/ModuleSymbolTable.h"
 #include "RecordStreamer.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalAlias.h"

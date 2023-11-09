@@ -20,15 +20,10 @@
 #include "min_allocator.h"
 #include "test_macros.h"
 
-template <template <class> class Alloc>
-void test_string() {
-  using S = std::basic_string<char, std::char_traits<char>, Alloc<char> >;
-#ifndef TEST_HAS_NO_WIDE_CHARACTERS
-  using WS = std::basic_string<wchar_t, std::char_traits<wchar_t>, Alloc<wchar_t> >;
-#endif
+int main(int, char**) {
   {
     std::istringstream in(" abc\n  def\n   ghij");
-    S s("initial text");
+    std::string s("initial text");
     std::getline(in, s);
     assert(in.good());
     assert(s == " abc");
@@ -42,7 +37,7 @@ void test_string() {
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
   {
     std::wistringstream in(L" abc\n  def\n   ghij");
-    WS s(L"initial text");
+    std::wstring s(L"initial text");
     std::getline(in, s);
     assert(in.good());
     assert(s == L" abc");
@@ -54,14 +49,45 @@ void test_string() {
     assert(s == L"   ghij");
   }
 #endif
-
+#if TEST_STD_VER >= 11
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    std::istringstream in(" abc\n  def\n   ghij");
+    S s("initial text");
+    std::getline(in, s);
+    assert(in.good());
+    assert(s == " abc");
+    std::getline(in, s);
+    assert(in.good());
+    assert(s == "  def");
+    std::getline(in, s);
+    assert(in.eof());
+    assert(s == "   ghij");
+  }
+#  ifndef TEST_HAS_NO_WIDE_CHARACTERS
+  {
+    typedef std::basic_string<wchar_t, std::char_traits<wchar_t>, min_allocator<wchar_t>> S;
+    std::wistringstream in(L" abc\n  def\n   ghij");
+    S s(L"initial text");
+    std::getline(in, s);
+    assert(in.good());
+    assert(s == L" abc");
+    std::getline(in, s);
+    assert(in.good());
+    assert(s == L"  def");
+    std::getline(in, s);
+    assert(in.eof());
+    assert(s == L"   ghij");
+  }
+#  endif // TEST_HAS_NO_WIDE_CHARACTERS
+#endif   // TEST_STD_VER >= 11
 #ifndef TEST_HAS_NO_EXCEPTIONS
   {
     std::basic_stringbuf<char> sb("hello");
     std::basic_istream<char> is(&sb);
     is.exceptions(std::ios_base::eofbit);
 
-    S s;
+    std::basic_string<char> s;
     bool threw = false;
     try {
       std::getline(is, s);
@@ -81,7 +107,7 @@ void test_string() {
     std::basic_istream<wchar_t> is(&sb);
     is.exceptions(std::ios_base::eofbit);
 
-    WS s;
+    std::basic_string<wchar_t> s;
     bool threw = false;
     try {
       std::getline(is, s);
@@ -102,7 +128,7 @@ void test_string() {
     std::basic_istream<char> is(&sb);
     is.exceptions(std::ios_base::failbit);
 
-    S s;
+    std::basic_string<char> s;
     bool threw = false;
     try {
       std::getline(is, s);
@@ -122,7 +148,7 @@ void test_string() {
     std::basic_istream<wchar_t> is(&sb);
     is.exceptions(std::ios_base::failbit);
 
-    WS s;
+    std::basic_string<wchar_t> s;
     bool threw = false;
     try {
       std::getline(is, s);
@@ -138,13 +164,6 @@ void test_string() {
   }
 #  endif
 #endif // TEST_HAS_NO_EXCEPTIONS
-}
-
-int main(int, char**) {
-  test_string<std::allocator>();
-#if TEST_STD_VER >= 11
-  test_string<min_allocator>();
-#endif
 
   return 0;
 }

@@ -10,11 +10,11 @@
 #include "src/string/bzero.h"
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // Adapt CheckMemset signature to bzero.
 static inline void Adaptor(cpp::span<char> p1, uint8_t value, size_t size) {
-  LIBC_NAMESPACE::bzero(p1.begin(), size);
+  __llvm_libc::bzero(p1.begin(), size);
 }
 
 TEST(LlvmLibcBzeroTest, SizeSweep) {
@@ -26,4 +26,4 @@ TEST(LlvmLibcBzeroTest, SizeSweep) {
   }
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

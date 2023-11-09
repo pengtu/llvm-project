@@ -18,13 +18,9 @@
 #include "llvm/DebugInfo/DWARF/DWARFLocationExpression.h"
 #include <functional>
 
-namespace lldb_private {
-
-namespace plugin {
-namespace dwarf {
 class DWARFUnit;
-} // namespace dwarf
-} // namespace plugin
+
+namespace lldb_private {
 
 /// \class DWARFExpression DWARFExpression.h
 /// "lldb/Expression/DWARFExpression.h" Encapsulates a DWARF location
@@ -49,7 +45,7 @@ public:
   DWARFExpression(const DataExtractor &data);
 
   /// Destructor
-  ~DWARFExpression();
+  virtual ~DWARFExpression();
 
   /// Return true if the location expression contains data
   bool IsValid() const;
@@ -68,20 +64,18 @@ public:
   /// \return
   ///     The address specified by the operation, if the operation exists, or
   ///     LLDB_INVALID_ADDRESS otherwise.
-  lldb::addr_t GetLocation_DW_OP_addr(const plugin::dwarf::DWARFUnit *dwarf_cu,
+  lldb::addr_t GetLocation_DW_OP_addr(const DWARFUnit *dwarf_cu,
                                       bool &error) const;
 
-  bool Update_DW_OP_addr(const plugin::dwarf::DWARFUnit *dwarf_cu,
-                         lldb::addr_t file_addr);
+  bool Update_DW_OP_addr(const DWARFUnit *dwarf_cu, lldb::addr_t file_addr);
 
   void UpdateValue(uint64_t const_value, lldb::offset_t const_value_byte_size,
                    uint8_t addr_byte_size);
 
-  bool
-  ContainsThreadLocalStorage(const plugin::dwarf::DWARFUnit *dwarf_cu) const;
+  bool ContainsThreadLocalStorage(const DWARFUnit *dwarf_cu) const;
 
   bool LinkThreadLocalStorage(
-      const plugin::dwarf::DWARFUnit *dwarf_cu,
+      const DWARFUnit *dwarf_cu,
       std::function<lldb::addr_t(lldb::addr_t file_addr)> const
           &link_address_callback);
 
@@ -134,13 +128,13 @@ public:
   ///     details of the failure are provided through it.
   static bool Evaluate(ExecutionContext *exe_ctx, RegisterContext *reg_ctx,
                        lldb::ModuleSP module_sp, const DataExtractor &opcodes,
-                       const plugin::dwarf::DWARFUnit *dwarf_cu,
+                       const DWARFUnit *dwarf_cu,
                        const lldb::RegisterKind reg_set,
                        const Value *initial_value_ptr,
                        const Value *object_address_ptr, Value &result,
                        Status *error_ptr);
 
-  static bool ParseDWARFLocationList(const plugin::dwarf::DWARFUnit *dwarf_cu,
+  static bool ParseDWARFLocationList(const DWARFUnit *dwarf_cu,
                                      const DataExtractor &data,
                                      DWARFExpressionList *loc_list);
 

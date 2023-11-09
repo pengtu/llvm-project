@@ -213,14 +213,14 @@ static bool filterArch(MachOObjectFile &Obj) {
   Triple ObjTriple(Obj.getArchTriple());
   StringRef ObjArch = ObjTriple.getArchName();
 
-  for (StringRef Arch : ArchFilters) {
+  for (auto Arch : ArchFilters) {
     // Match name.
     if (Arch == ObjArch)
       return true;
 
     // Match architecture number.
     unsigned Value;
-    if (!Arch.getAsInteger(0, Value))
+    if (!StringRef(Arch).getAsInteger(0, Value))
       if (Value == getCPUType(Obj))
         return true;
   }
@@ -370,9 +370,8 @@ static llvm::Error handleObjectFile(ObjectFile &Obj,
     return Err;
 
   // Save the GSYM file to disk.
-  llvm::endianness Endian = Obj.makeTriple().isLittleEndian()
-                                ? llvm::endianness::little
-                                : llvm::endianness::big;
+  support::endianness Endian =
+      Obj.makeTriple().isLittleEndian() ? support::little : support::big;
 
   std::optional<uint64_t> OptSegmentSize;
   if (SegmentSize > 0)
@@ -470,9 +469,10 @@ static llvm::Error convertFileToGSYM(raw_ostream &OS) {
     error(DsymObjectsOrErr.takeError());
   }
 
-  for (StringRef Object : Objects)
-    if (Error Err = handleFileConversionToGSYM(Object, OutFile))
+  for (auto Object : Objects) {
+    if (auto Err = handleFileConversionToGSYM(Object, OutFile))
       return Err;
+  }
   return Error::success();
 }
 

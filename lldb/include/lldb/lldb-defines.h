@@ -44,10 +44,8 @@
 #define LLDB_WATCH_ID_IS_VALID(uid) ((uid) != (LLDB_INVALID_WATCH_ID))
 #define LLDB_WATCH_TYPE_READ (1u << 0)
 #define LLDB_WATCH_TYPE_WRITE (1u << 1)
-#define LLDB_WATCH_TYPE_MODIFY (1u << 2)
 #define LLDB_WATCH_TYPE_IS_VALID(type)                                         \
-  ((type & LLDB_WATCH_TYPE_READ) || (type & LLDB_WATCH_TYPE_WRITE) ||          \
-   (type & LLDB_WATCH_TYPE_MODIFY))
+  ((type & LLDB_WATCH_TYPE_READ) || (type & LLDB_WATCH_TYPE_WRITE))
 
 // Generic Register Numbers
 #define LLDB_REGNUM_GENERIC_PC 0    // Program Counter
@@ -71,9 +69,6 @@
   11 // The register that would contain pointer size or less argument 7 (if any)
 #define LLDB_REGNUM_GENERIC_ARG8                                               \
   12 // The register that would contain pointer size or less argument 8 (if any)
-#define LLDB_REGNUM_GENERIC_TP                                                 \
-  13 // The register that would contain thread specific data, like TLS data and
-     // thread control block pointer
 /// Invalid value definitions
 #define LLDB_INVALID_STOP_ID 0
 #define LLDB_INVALID_ADDRESS UINT64_MAX

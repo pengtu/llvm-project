@@ -16,7 +16,7 @@
 #include <sys/syscall.h> // For syscall numbers.
 #include <time.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // TODO(michaelrj): Move this into time/linux with the other syscalls.
 LLVM_LIBC_FUNCTION(int, clock_gettime,
@@ -32,4 +32,4 @@ LLVM_LIBC_FUNCTION(int, clock_gettime,
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

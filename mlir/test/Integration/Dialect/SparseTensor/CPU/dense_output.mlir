@@ -31,14 +31,16 @@
 // Do the same run, but now with direct IR generation and VLA vectorization.
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | env %{env} %{run_sve} | FileCheck %s %}
 
-!Filename = !llvm.ptr
+!Filename = !llvm.ptr<i8>
 
 #DenseMatrix = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : dense)
+  lvlTypes = [ "dense", "dense" ],
+  dimToLvl = affine_map<(i,j) -> (i,j)>
 }>
 
 #SparseMatrix = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : compressed),
+  lvlTypes = [ "dense", "compressed" ],
+  dimToLvl = affine_map<(i,j) -> (i,j)>
 }>
 
 #trait_assign = {
@@ -71,7 +73,7 @@ module {
     %c2 = arith.constant 2.0 : f64
     %d0 = tensor.dim %arga, %c0 : tensor<?x?xf64, #SparseMatrix>
     %d1 = tensor.dim %arga, %c1 : tensor<?x?xf64, #SparseMatrix>
-    %init = tensor.empty(%d0, %d1) : tensor<?x?xf64, #DenseMatrix>
+    %init = bufferization.alloc_tensor(%d0, %d1) : tensor<?x?xf64, #DenseMatrix>
     %0 = linalg.generic #trait_assign
        ins(%arga: tensor<?x?xf64, #SparseMatrix>)
       outs(%init: tensor<?x?xf64, #DenseMatrix>) {

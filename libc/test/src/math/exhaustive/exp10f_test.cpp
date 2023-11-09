@@ -10,11 +10,11 @@
 #include "src/math/exp10f.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
+namespace mpfr = __llvm_libc::testing::mpfr;
 
 using LlvmLibcExp10fExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Exp10,
-                                      LIBC_NAMESPACE::exp10f>;
+                                      __llvm_libc::exp10f>;
 
 // Range: [0, Inf];
 static constexpr uint32_t POS_START = 0x0000'0000U;

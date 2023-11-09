@@ -11,5 +11,5 @@
 
 TEST(LlvmLibcGetUidTest, SmokeTest) {
   // getuid always succeeds. So, we just call it as a smoke test.
-  LIBC_NAMESPACE::getuid();
+  __llvm_libc::getuid();
 }

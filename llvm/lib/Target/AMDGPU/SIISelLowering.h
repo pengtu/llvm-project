@@ -109,8 +109,6 @@ private:
   SDValue LowerFFREXP(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerTrig(SDValue Op, SelectionDAG &DAG) const;
-  SDValue lowerFSQRTF16(SDValue Op, SelectionDAG &DAG) const;
-  SDValue lowerFSQRTF32(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerFSQRTF64(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerATOMIC_CMP_SWAP(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
@@ -468,11 +466,13 @@ public:
   getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
                                StringRef Constraint, MVT VT) const override;
   ConstraintType getConstraintType(StringRef Constraint) const override;
-  void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+  void LowerAsmOperandForConstraint(SDValue Op,
+                                    std::string &Constraint,
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
   bool getAsmOperandConstVal(SDValue Op, uint64_t &Val) const;
-  bool checkAsmConstraintVal(SDValue Op, StringRef Constraint,
+  bool checkAsmConstraintVal(SDValue Op,
+                             const std::string &Constraint,
                              uint64_t Val) const;
   bool checkAsmConstraintValA(SDValue Op,
                               uint64_t Val,
@@ -546,17 +546,6 @@ public:
                             const SIRegisterInfo &TRI,
                             SIMachineFunctionInfo &Info) const;
 
-  void allocatePreloadKernArgSGPRs(CCState &CCInfo,
-                                   SmallVectorImpl<CCValAssign> &ArgLocs,
-                                   const SmallVectorImpl<ISD::InputArg> &Ins,
-                                   MachineFunction &MF,
-                                   const SIRegisterInfo &TRI,
-                                   SIMachineFunctionInfo &Info) const;
-
-  void allocateLDSKernelId(CCState &CCInfo, MachineFunction &MF,
-                           const SIRegisterInfo &TRI,
-                           SIMachineFunctionInfo &Info) const;
-
   void allocateSystemSGPRs(CCState &CCInfo,
                            MachineFunction &MF,
                            SIMachineFunctionInfo &Info,
@@ -585,10 +574,6 @@ public:
   MachineMemOperand::Flags
   getTargetMMOFlags(const Instruction &I) const override;
 };
-
-// Returns true if argument is a boolean value which is not serialized into
-// memory or argument and does not require v_cndmask_b32 to be deserialized.
-bool isBoolSGPR(SDValue V);
 
 } // End namespace llvm
 

@@ -12,10 +12,10 @@
 #include "src/errno/libc_errno.h"
 #include <stdio.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, fclose, (::FILE * stream)) {
-  int result = reinterpret_cast<LIBC_NAMESPACE::File *>(stream)->close();
+  int result = reinterpret_cast<__llvm_libc::File *>(stream)->close();
   if (result != 0) {
     libc_errno = result;
     return EOF;
@@ -23,4 +23,4 @@ LLVM_LIBC_FUNCTION(int, fclose, (::FILE * stream)) {
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

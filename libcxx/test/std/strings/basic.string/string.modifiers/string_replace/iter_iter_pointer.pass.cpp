@@ -283,23 +283,35 @@ TEST_CONSTEXPR_CXX20 bool test2() {
   return true;
 }
 
-template <class S>
 TEST_CONSTEXPR_CXX20 void test() {
-  test0<S>();
-  test1<S>();
-  test2<S>();
+  {
+    typedef std::string S;
+    test0<S>();
+    test1<S>();
+    test2<S>();
 #if TEST_STD_VER > 17
-  static_assert(test0<S>());
-  static_assert(test1<S>());
-  static_assert(test2<S>());
+    static_assert(test0<S>());
+    static_assert(test1<S>());
+    static_assert(test2<S>());
+#endif
+  }
+#if TEST_STD_VER >= 11
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    test0<S>();
+    test1<S>();
+    test2<S>();
+#  if TEST_STD_VER > 17
+    static_assert(test0<S>());
+    static_assert(test1<S>());
+    static_assert(test2<S>());
+#  endif
+  }
 #endif
 }
 
 int main(int, char**) {
-  test<std::string>();
-#if TEST_STD_VER >= 11
-  test<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
-#endif
+  test();
 
   return 0;
 }

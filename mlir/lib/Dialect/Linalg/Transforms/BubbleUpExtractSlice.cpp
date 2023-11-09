@@ -119,9 +119,9 @@ struct BubbleUpExtractSliceOpPattern
                         /*omitPartialTileCheck=*/true);
 
     SmallVector<Type, 4> resultTensorTypes;
-    for (OpOperand &opOperand : linalgOp.getDpsInitsMutable())
+    for (OpOperand *opOperand : linalgOp.getDpsInitOperands())
       resultTensorTypes.push_back(
-          tiledOperands[opOperand.getOperandNumber()].getType());
+          tiledOperands[opOperand->getOperandNumber()].getType());
 
     Operation *newOp =
         clone(rewriter, linalgOp, resultTensorTypes, tiledOperands);

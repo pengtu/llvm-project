@@ -19,6 +19,6 @@ add_mlir_library(MLIRLLVMTestPasses
   MLIRReconcileUnrealizedCasts
   MLIRSCFToControlFlow
   MLIRTransforms
-  MLIRVectorToLLVMPass
+  MLIRVectorToLLVM
   MLIRVectorToSCF
   )

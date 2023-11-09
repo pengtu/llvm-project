@@ -825,7 +825,9 @@ def : InstRW<[P10W_F2_4C, P10W_DISP_ANY, P10F2_Read, P10F2_Read, P10F2_Read],
 def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read],
       (instrs
     SRADI_rec,
-    SRAWI_rec
+    SRAWI_rec,
+    TABORTDCI,
+    TABORTWCI
 )>;
 
 // Single crack instructions
@@ -833,7 +835,9 @@ def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read],
 def : InstRW<[P10W_F2_4C, P10W_DISP_EVEN, P10W_DISP_ANY, P10F2_Read, P10F2_Read],
       (instrs
     SRAD_rec,
-    SRAW_rec
+    SRAW_rec,
+    TABORTDC,
+    TABORTWC
 )>;
 
 // 2-way crack instructions
@@ -1126,7 +1130,10 @@ def : InstRW<[P10W_FX_3C, P10W_DISP_EVEN, P10W_DISP_ANY],
     MFFSCRNI,
     MFFSL,
     MFVSCR,
-    MTFSB0
+    MTFSB0,
+    TBEGIN,
+    TRECHKPT,
+    TSR
 )>;
 
 // Single crack instructions
@@ -1146,7 +1153,9 @@ def : InstRW<[P10W_FX_3C, P10W_DISP_EVEN, P10W_DISP_ANY, P10FX_Read],
     SUBFME8_rec, SUBFME_rec,
     SUBFME8O_rec, SUBFMEO_rec,
     SUBFZE8_rec, SUBFZE_rec,
-    SUBFZE8O_rec, SUBFZEO_rec
+    SUBFZE8O_rec, SUBFZEO_rec,
+    TABORT,
+    TRECLAIM
 )>;
 
 // Single crack instructions
@@ -1853,6 +1862,8 @@ def : InstRW<[P10W_ST_3C, P10W_DISP_EVEN, P10W_DISP_ANY],
     EnforceIEIO,
     MSGSYNC,
     SLBSYNC,
+    TCHECK,
+    TEND,
     TLBSYNC
 )>;
 

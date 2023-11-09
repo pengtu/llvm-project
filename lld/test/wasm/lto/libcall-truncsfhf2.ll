@@ -17,4 +17,4 @@ define void @_start() {
   ret void
 }
 
-; CHECK: wasm-ld: error: {{.*}}truncsfhf2.o): attempt to add bitcode file after LTO (__truncsfhf2)
+; CHECK: wasm-ld: error: {{.*}}truncsfhf2.o): attempt to add bitcode file after LTO.

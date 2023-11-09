@@ -32,7 +32,7 @@ llvm::SmallVector<MemorySlot> LLVM::AllocaOp::getPromotableSlots() {
   if (!getOperation()->getBlock()->isEntryBlock())
     return {};
 
-  return {MemorySlot{getResult(), getElemType()}};
+  return {MemorySlot{getResult(), getResultPtrElementType()}};
 }
 
 Value LLVM::AllocaOp::getDefaultValue(const MemorySlot &slot,
@@ -61,7 +61,8 @@ SmallVector<DestructurableMemorySlot> LLVM::AllocaOp::getDestructurableSlots() {
   if (!mlir::matchPattern(getArraySize(), m_One()))
     return {};
 
-  auto destructurable = dyn_cast<DestructurableTypeInterface>(getElemType());
+  Type elemType = getResultPtrElementType();
+  auto destructurable = dyn_cast<DestructurableTypeInterface>(elemType);
   if (!destructurable)
     return {};
 
@@ -74,8 +75,7 @@ SmallVector<DestructurableMemorySlot> LLVM::AllocaOp::getDestructurableSlots() {
   for (Attribute index : llvm::make_first_range(destructuredType.value()))
     allocaTypeMap.insert({index, LLVM::LLVMPointerType::get(getContext())});
 
-  return {
-      DestructurableMemorySlot{{getResult(), getElemType()}, {allocaTypeMap}}};
+  return {DestructurableMemorySlot{{getResult(), elemType}, {allocaTypeMap}}};
 }
 
 DenseMap<Attribute, MemorySlot>
@@ -83,9 +83,12 @@ LLVM::AllocaOp::destructure(const DestructurableMemorySlot &slot,
                             const SmallPtrSetImpl<Attribute> &usedIndices,
                             RewriterBase &rewriter) {
   assert(slot.ptr == getResult());
+  Type elemType =
+      getElemType() ? *getElemType() : getResult().getType().getElementType();
+
   rewriter.setInsertionPointAfter(*this);
 
-  auto destructurableType = cast<DestructurableTypeInterface>(getElemType());
+  auto destructurableType = cast<DestructurableTypeInterface>(elemType);
   DenseMap<Attribute, MemorySlot> slotMap;
   for (Attribute index : usedIndices) {
     Type elemType = destructurableType.getTypeAtIndex(index);
@@ -332,6 +335,11 @@ bool LLVM::GEPOp::canRewire(const DestructurableMemorySlot &slot,
                             SmallVectorImpl<MemorySlot> &mustBeSafelyUsed) {
   auto basePtrType = llvm::dyn_cast<LLVM::LLVMPointerType>(getBase().getType());
   if (!basePtrType)
+    return false;
+
+  // Typed pointers are not supported. This should be removed once typed
+  // pointers are removed from the LLVM dialect.
+  if (!basePtrType.isOpaque())
     return false;
 
   if (getBase() != slot.ptr || slot.elemType != getElemType())

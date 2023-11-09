@@ -6,13 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC_STRING_STRCASESTR_H
-#define LLVM_LIBC_SRC_STRING_STRCASESTR_H
+#ifndef LLVM_LIBC_SRC_STRING_STRCASECMP_H
+#define LLVM_LIBC_SRC_STRING_STRCASECMP_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 char *strcasestr(const char *needle, const char *haystack);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC_STRING_STRCASESTR_H
+#endif // LLVM_LIBC_SRC_STRING_STRCASECMP_H

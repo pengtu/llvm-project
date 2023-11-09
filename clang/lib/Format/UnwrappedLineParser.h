@@ -40,29 +40,26 @@ struct UnwrappedLineNode;
 /// \c UnwrappedLineFormatter. The key property is that changing the formatting
 /// within an unwrapped line does not affect any other unwrapped lines.
 struct UnwrappedLine {
-  UnwrappedLine() = default;
+  UnwrappedLine();
 
   /// The \c Tokens comprising this \c UnwrappedLine.
   std::list<UnwrappedLineNode> Tokens;
 
   /// The indent level of the \c UnwrappedLine.
-  unsigned Level = 0;
+  unsigned Level;
 
   /// The \c PPBranchLevel (adjusted for header guards) if this line is a
   /// \c InMacroBody line, and 0 otherwise.
-  unsigned PPLevel = 0;
+  unsigned PPLevel;
 
   /// Whether this \c UnwrappedLine is part of a preprocessor directive.
-  bool InPPDirective = false;
+  bool InPPDirective;
   /// Whether this \c UnwrappedLine is part of a pramga directive.
-  bool InPragmaDirective = false;
+  bool InPragmaDirective;
   /// Whether it is part of a macro body.
-  bool InMacroBody = false;
+  bool InMacroBody;
 
-  bool MustBeDeclaration = false;
-
-  /// Whether the parser has seen \c decltype(auto) in this line.
-  bool SeenDecltypeAuto = false;
+  bool MustBeDeclaration;
 
   /// \c True if this line should be indented by ContinuationIndent in
   /// addition to the normal indention level.
@@ -128,6 +125,8 @@ private:
   void parseFile();
   bool precededByCommentOrPPDirective() const;
   bool parseLevel(const FormatToken *OpeningBrace = nullptr,
+                  bool CanContainBracedList = true,
+                  TokenType NextLBracesType = TT_Unknown,
                   IfStmtKind *IfKind = nullptr,
                   FormatToken **IfLeftBrace = nullptr);
   bool mightFitOnOneLine(UnwrappedLine &Line,
@@ -135,8 +134,11 @@ private:
   FormatToken *parseBlock(bool MustBeDeclaration = false,
                           unsigned AddLevels = 1u, bool MunchSemi = true,
                           bool KeepBraces = true, IfStmtKind *IfKind = nullptr,
-                          bool UnindentWhitesmithsBraces = false);
-  void parseChildBlock();
+                          bool UnindentWhitesmithsBraces = false,
+                          bool CanContainBracedList = true,
+                          TokenType NextLBracesType = TT_Unknown);
+  void parseChildBlock(bool CanContainBracedList = true,
+                       TokenType NextLBracesType = TT_Unknown);
   void parsePPDirective();
   void parsePPDefine();
   void parsePPIf(bool IfDef);
@@ -145,7 +147,8 @@ private:
   void parsePPPragma();
   void parsePPUnknown();
   void readTokenWithJavaScriptASI();
-  void parseStructuralElement(const FormatToken *OpeningBrace = nullptr,
+  void parseStructuralElement(bool IsTopLevel = false,
+                              TokenType NextLBracesType = TT_Unknown,
                               IfStmtKind *IfKind = nullptr,
                               FormatToken **IfLeftBrace = nullptr,
                               bool *HasDoWhile = nullptr,
@@ -243,7 +246,6 @@ private:
   void flushComments(bool NewlineBeforeNext);
   void pushToken(FormatToken *Tok);
   void calculateBraceTypes(bool ExpectClassBody = false);
-  void setPreviousRBraceType(TokenType Type);
 
   // Marks a conditional compilation edge (for example, an '#if', '#ifdef',
   // '#else' or merge conflict marker). If 'Unreachable' is true, assumes
@@ -339,14 +341,6 @@ private:
   // statement contains more than some predefined number of nested statements).
   SmallVector<bool, 8> NestedTooDeep;
 
-  // Keeps a stack of the states of nested lambdas (true if the return type of
-  // the lambda is `decltype(auto)`).
-  SmallVector<bool, 4> NestedLambdas;
-
-  // Whether the parser is parsing the body of a function whose return type is
-  // `decltype(auto)`.
-  bool IsDecltypeAutoFunction = false;
-
   // Represents preprocessor branch type, so we can find matching
   // #if/#else/#endif directives.
   enum PPBranchKind {
@@ -421,6 +415,11 @@ struct UnwrappedLineNode {
   FormatToken *Tok;
   SmallVector<UnwrappedLine, 0> Children;
 };
+
+inline UnwrappedLine::UnwrappedLine()
+    : Level(0), PPLevel(0), InPPDirective(false), InPragmaDirective(false),
+      InMacroBody(false), MustBeDeclaration(false),
+      MatchingOpeningBlockLineIndex(kInvalidIndex) {}
 
 } // end namespace format
 } // end namespace clang

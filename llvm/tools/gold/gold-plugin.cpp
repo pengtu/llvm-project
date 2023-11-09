@@ -868,7 +868,7 @@ static std::unique_ptr<LTO> createLTO(IndexWriteCallback OnIndexWrite,
   Conf.MAttrs = codegen::getMAttrs();
   Conf.RelocModel = RelocationModel;
   Conf.CodeModel = codegen::getExplicitCodeModel();
-  std::optional<CodeGenOptLevel> CGOptLevelOrNone =
+  std::optional<CodeGenOpt::Level> CGOptLevelOrNone =
       CodeGenOpt::getLevel(options::OptLevel);
   assert(CGOptLevelOrNone && "Invalid optimization level");
   Conf.CGOptLevel = *CGOptLevelOrNone;
@@ -924,7 +924,7 @@ static std::unique_ptr<LTO> createLTO(IndexWriteCallback OnIndexWrite,
                             /* UseInputModulePath */ true));
     break;
   case options::OT_ASM_ONLY:
-    Conf.CGFileType = CodeGenFileType::AssemblyFile;
+    Conf.CGFileType = CGFT_AssemblyFile;
     break;
   }
 

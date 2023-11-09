@@ -1,9 +1,8 @@
 # Complex Operations
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 Fortran includes support for complex number types and a set of operators and
@@ -35,7 +34,7 @@ end function pow_self
 ```
 
 **FIR**
-```
+```c
 func.func @_QPpow_self(%arg0: !fir.ref<!fir.complex<4>>) -> !fir.complex<4> {
     %0 = fir.alloca !fir.complex<4>
     %1 = fir.load %arg0 : !fir.ref<!fir.complex<4>>
@@ -67,7 +66,7 @@ libm functions.
 
 Similarly to the numerical lowering through the math dialect, certain MLIR
 optimisations could violate the precise floating point model, so when that is
-requested lowering manually emits calls to libm, rather than going through the
+requested lowering manually emits calls to libm, rather than going through the 
 MLIR complex dialect.
 
 The ComplexToStandard dialect does still call into libm for some floating

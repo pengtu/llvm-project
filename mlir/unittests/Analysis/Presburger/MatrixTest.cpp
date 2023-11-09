@@ -8,7 +8,6 @@
 
 #include "mlir/Analysis/Presburger/Matrix.h"
 #include "./Utils.h"
-#include "mlir/Analysis/Presburger/Fraction.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -16,7 +15,7 @@ using namespace mlir;
 using namespace presburger;
 
 TEST(MatrixTest, ReadWrite) {
-  IntMatrix mat(5, 5);
+  Matrix mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = 10 * row + col;
@@ -26,7 +25,7 @@ TEST(MatrixTest, ReadWrite) {
 }
 
 TEST(MatrixTest, SwapColumns) {
-  IntMatrix mat(5, 5);
+  Matrix mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = col == 3 ? 1 : 0;
@@ -48,7 +47,7 @@ TEST(MatrixTest, SwapColumns) {
 }
 
 TEST(MatrixTest, SwapRows) {
-  IntMatrix mat(5, 5);
+  Matrix mat(5, 5);
   for (unsigned row = 0; row < 5; ++row)
     for (unsigned col = 0; col < 5; ++col)
       mat(row, col) = row == 2 ? 1 : 0;
@@ -70,7 +69,7 @@ TEST(MatrixTest, SwapRows) {
 }
 
 TEST(MatrixTest, resizeVertically) {
-  IntMatrix mat(5, 5);
+  Matrix mat(5, 5);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row)
@@ -95,7 +94,7 @@ TEST(MatrixTest, resizeVertically) {
 }
 
 TEST(MatrixTest, insertColumns) {
-  IntMatrix mat(5, 5, 5, 10);
+  Matrix mat(5, 5, 5, 10);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row)
@@ -132,7 +131,7 @@ TEST(MatrixTest, insertColumns) {
 }
 
 TEST(MatrixTest, insertRows) {
-  IntMatrix mat(5, 5, 5, 10);
+  Matrix mat(5, 5, 5, 10);
   ASSERT_TRUE(mat.hasConsistentState());
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
@@ -170,7 +169,7 @@ TEST(MatrixTest, insertRows) {
 }
 
 TEST(MatrixTest, resize) {
-  IntMatrix mat(5, 5);
+  Matrix mat(5, 5);
   EXPECT_EQ(mat.getNumRows(), 5u);
   EXPECT_EQ(mat.getNumColumns(), 5u);
   for (unsigned row = 0; row < 5; ++row)
@@ -194,8 +193,8 @@ TEST(MatrixTest, resize) {
       EXPECT_EQ(mat(row, col), row >= 3 || col >= 3 ? 0 : int(10 * row + col));
 }
 
-static void checkHermiteNormalForm(const IntMatrix &mat,
-                                   const IntMatrix &hermiteForm) {
+static void checkHermiteNormalForm(const Matrix &mat,
+                                   const Matrix &hermiteForm) {
   auto [h, u] = mat.computeHermiteNormalForm();
 
   for (unsigned row = 0; row < mat.getNumRows(); row++)
@@ -209,104 +208,42 @@ TEST(MatrixTest, computeHermiteNormalForm) {
 
   {
     // Hermite form of a unimodular matrix is the identity matrix.
-    IntMatrix mat = makeIntMatrix(3, 3, {{2, 3, 6}, {3, 2, 3}, {17, 11, 16}});
-    IntMatrix hermiteForm =
-        makeIntMatrix(3, 3, {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
+    Matrix mat = makeMatrix(3, 3, {{2, 3, 6}, {3, 2, 3}, {17, 11, 16}});
+    Matrix hermiteForm = makeMatrix(3, 3, {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}});
     checkHermiteNormalForm(mat, hermiteForm);
   }
 
   {
     // Hermite form of a unimodular is the identity matrix.
-    IntMatrix mat = makeIntMatrix(
+    Matrix mat = makeMatrix(
         4, 4,
         {{-6, -1, -19, -20}, {0, 1, 0, 0}, {-5, 0, -15, -16}, {6, 0, 18, 19}});
-    IntMatrix hermiteForm = makeIntMatrix(
+    Matrix hermiteForm = makeMatrix(
         4, 4, {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}});
     checkHermiteNormalForm(mat, hermiteForm);
   }
 
   {
-    IntMatrix mat = makeIntMatrix(
+    Matrix mat = makeMatrix(
         4, 4, {{3, 3, 1, 4}, {0, 1, 0, 0}, {0, 0, 19, 16}, {0, 0, 0, 3}});
-    IntMatrix hermiteForm = makeIntMatrix(
+    Matrix hermiteForm = makeMatrix(
         4, 4, {{1, 0, 0, 0}, {0, 1, 0, 0}, {1, 0, 3, 0}, {18, 0, 54, 57}});
     checkHermiteNormalForm(mat, hermiteForm);
   }
 
   {
-    IntMatrix mat = makeIntMatrix(
+    Matrix mat = makeMatrix(
         4, 4, {{3, 3, 1, 4}, {0, 1, 0, 0}, {0, 0, 19, 16}, {0, 0, 0, 3}});
-    IntMatrix hermiteForm = makeIntMatrix(
+    Matrix hermiteForm = makeMatrix(
         4, 4, {{1, 0, 0, 0}, {0, 1, 0, 0}, {1, 0, 3, 0}, {18, 0, 54, 57}});
     checkHermiteNormalForm(mat, hermiteForm);
   }
 
   {
-    IntMatrix mat = makeIntMatrix(
-        3, 5, {{0, 2, 0, 7, 1}, {-1, 0, 0, -3, 0}, {0, 4, 1, 0, 8}});
-    IntMatrix hermiteForm = makeIntMatrix(
-        3, 5, {{1, 0, 0, 0, 0}, {0, 1, 0, 0, 0}, {0, 0, 1, 0, 0}});
+    Matrix mat =
+        makeMatrix(3, 5, {{0, 2, 0, 7, 1}, {-1, 0, 0, -3, 0}, {0, 4, 1, 0, 8}});
+    Matrix hermiteForm =
+        makeMatrix(3, 5, {{1, 0, 0, 0, 0}, {0, 1, 0, 0, 0}, {0, 0, 1, 0, 0}});
     checkHermiteNormalForm(mat, hermiteForm);
   }
-}
-
-TEST(MatrixTest, inverse) {
-  FracMatrix mat = makeFracMatrix(
-      2, 2, {{Fraction(2), Fraction(1)}, {Fraction(7), Fraction(0)}});
-  FracMatrix inverse = makeFracMatrix(
-      2, 2, {{Fraction(0), Fraction(1, 7)}, {Fraction(1), Fraction(-2, 7)}});
-
-  FracMatrix inv(2, 2);
-  mat.determinant(&inv);
-
-  EXPECT_EQ_FRAC_MATRIX(inv, inverse);
-
-  mat = makeFracMatrix(
-      2, 2, {{Fraction(0), Fraction(1)}, {Fraction(0), Fraction(2)}});
-  Fraction det = mat.determinant(nullptr);
-
-  EXPECT_EQ(det, Fraction(0));
-
-  mat = makeFracMatrix(3, 3,
-                       {{Fraction(1), Fraction(2), Fraction(3)},
-                        {Fraction(4), Fraction(8), Fraction(6)},
-                        {Fraction(7), Fraction(8), Fraction(6)}});
-  inverse = makeFracMatrix(3, 3,
-                           {{Fraction(0), Fraction(-1, 3), Fraction(1, 3)},
-                            {Fraction(-1, 2), Fraction(5, 12), Fraction(-1, 6)},
-                            {Fraction(2, 3), Fraction(-1, 6), Fraction(0)}});
-
-  mat.determinant(&inv);
-  EXPECT_EQ_FRAC_MATRIX(inv, inverse);
-
-  mat = makeFracMatrix(0, 0, {});
-  mat.determinant(&inv);
-}
-
-TEST(MatrixTest, intInverse) {
-  IntMatrix mat = makeIntMatrix(2, 2, {{2, 1}, {7, 0}});
-  IntMatrix inverse = makeIntMatrix(2, 2, {{0, -1}, {-7, 2}});
-
-  IntMatrix inv(2, 2);
-  mat.determinant(&inv);
-
-  EXPECT_EQ_INT_MATRIX(inv, inverse);
-
-  mat = makeIntMatrix(
-      4, 4, {{4, 14, 11, 3}, {13, 5, 14, 12}, {13, 9, 7, 14}, {2, 3, 12, 7}});
-  inverse = makeIntMatrix(4, 4,
-                          {{155, 1636, -579, -1713},
-                           {725, -743, 537, -111},
-                           {210, 735, -855, 360},
-                           {-715, -1409, 1401, 1482}});
-
-  mat.determinant(&inv);
-
-  EXPECT_EQ_INT_MATRIX(inv, inverse);
-
-  mat = makeIntMatrix(2, 2, {{0, 0}, {1, 2}});
-
-  MPInt det = mat.determinant(&inv);
-
-  EXPECT_EQ(det, 0);
 }

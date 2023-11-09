@@ -69,10 +69,6 @@ public:
   }
 
   unsigned getInliningThresholdMultiplier() const { return 1; }
-  unsigned getInliningCostBenefitAnalysisSavingsMultiplier() const { return 8; }
-  unsigned getInliningCostBenefitAnalysisProfitableMultiplier() const {
-    return 8;
-  }
   unsigned adjustInliningThreshold(const CallBase *CB) const { return 0; }
   unsigned getCallerAllocaCost(const CallBase *CB, const AllocaInst *AI) const {
     return 0;
@@ -443,7 +439,7 @@ public:
   }
 
   TypeSize getRegisterBitWidth(TargetTransformInfo::RegisterKind K) const {
-    return TypeSize::Fixed(32);
+    return TypeSize::getFixed(32);
   }
 
   unsigned getMinVectorRegisterBitWidth() const { return 128; }
@@ -802,11 +798,6 @@ public:
             Callee->getFnAttribute("target-features"));
   }
 
-  unsigned getInlineCallPenalty(const Function *F, const CallBase &Call,
-                                unsigned DefaultCallPenalty) const {
-    return DefaultCallPenalty;
-  }
-
   bool areTypesABICompatible(const Function *Caller, const Function *Callee,
                              const ArrayRef<Type *> &Types) const {
     return (Caller->getFnAttribute("target-cpu") ==
@@ -1029,8 +1020,8 @@ public:
         BaseOffset += DL.getStructLayout(STy)->getElementOffset(Field);
       } else {
         // If this operand is a scalable type, bail out early.
-        // TODO: Make isLegalAddressingMode TypeSize aware.
-        if (TargetType->isScalableTy())
+        // TODO: handle scalable vectors
+        if (isa<ScalableVectorType>(TargetType))
           return TTI::TCC_Basic;
         int64_t ElementSize =
             DL.getTypeAllocSize(GTI.getIndexedType()).getFixedValue();

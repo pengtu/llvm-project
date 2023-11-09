@@ -12,11 +12,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int vfprintf(::FILE *__restrict stream, const char *__restrict format,
              va_list vlist);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_VFPRINTF_H

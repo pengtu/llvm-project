@@ -188,8 +188,8 @@ public:
     if (Reason == PPCallbacks::ExitFile) {
       // At file exit time HeaderSearchInfo is valid and can be used to
       // determine whether the file was a self-contained header or not.
-      if (OptionalFileEntryRef FE = SM.getFileEntryRefForID(PrevFID)) {
-        if (tooling::isSelfContainedHeader(*FE, SM, HeaderInfo))
+      if (const FileEntry *FE = SM.getFileEntryForID(PrevFID)) {
+        if (tooling::isSelfContainedHeader(FE, SM, HeaderInfo))
           Out->NonSelfContainedFiles.erase(FE->getUniqueID());
         else
           Out->NonSelfContainedFiles.insert(FE->getUniqueID());

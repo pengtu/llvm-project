@@ -83,9 +83,7 @@ def _site_initialize():
 
     # If _mlirRegisterEverything is built, then include it as an initializer
     # module.
-    init_module = None
-    if process_initializer_module("_mlirRegisterEverything"):
-        init_module = importlib.import_module(f"._mlirRegisterEverything", __name__)
+    process_initializer_module("_mlirRegisterEverything")
 
     # Load all _site_initialize_{i} modules, where 'i' is a number starting
     # at 0.
@@ -104,11 +102,6 @@ def _site_initialize():
             # all dialects. It is being done here in order to preserve existing
             # behavior. See: https://github.com/llvm/llvm-project/issues/56037
             self.load_all_available_dialects()
-            if init_module:
-                logger.debug(
-                    "Registering translations from initializer %r", init_module
-                )
-                init_module.register_llvm_translations(self)
 
     ir.Context = Context
 

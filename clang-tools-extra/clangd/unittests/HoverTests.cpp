@@ -92,7 +92,6 @@ TEST(Hover, Structured) {
          HI.Offset = 0;
          HI.Size = 8;
          HI.Padding = 56;
-         HI.Align = 8;
          HI.AccessSpecifier = "private";
        }},
       // Union field
@@ -111,7 +110,6 @@ TEST(Hover, Structured) {
          HI.Type = "char";
          HI.Size = 8;
          HI.Padding = 120;
-         HI.Align = 8;
          HI.AccessSpecifier = "public";
        }},
       // Bitfield
@@ -130,7 +128,6 @@ TEST(Hover, Structured) {
          HI.Type = "int";
          HI.Offset = 0;
          HI.Size = 1;
-         HI.Align = 32;
          HI.AccessSpecifier = "public";
        }},
       // Local to class method.
@@ -195,7 +192,6 @@ TEST(Hover, Structured) {
          HI.Type = "char";
          HI.Offset = 0;
          HI.Size = 8;
-         HI.Align = 8;
          HI.AccessSpecifier = "public";
        }},
       // Struct definition shows size.
@@ -208,7 +204,6 @@ TEST(Hover, Structured) {
          HI.Kind = index::SymbolKind::Struct;
          HI.Definition = "struct X {}";
          HI.Size = 8;
-         HI.Align = 8;
        }},
       // Variable with template type
       {R"cpp(
@@ -1380,7 +1375,6 @@ class Foo final {})cpp";
          HI.Offset = 8;
          HI.Size = 1;
          HI.Padding = 23;
-         HI.Align = 8;
          HI.AccessSpecifier = "public";
        }}};
   for (const auto &Case : Cases) {
@@ -1417,7 +1411,6 @@ class Foo final {})cpp";
     EXPECT_EQ(H->Value, Expected.Value);
     EXPECT_EQ(H->Size, Expected.Size);
     EXPECT_EQ(H->Offset, Expected.Offset);
-    EXPECT_EQ(H->Align, Expected.Align);
     EXPECT_EQ(H->AccessSpecifier, Expected.AccessSpecifier);
     EXPECT_EQ(H->CalleeArgInfo, Expected.CalleeArgInfo);
     EXPECT_EQ(H->CallPassType, Expected.CallPassType);
@@ -3455,14 +3448,13 @@ template <typename T, typename C = bool> class Foo {})",
             HI.Size = 32;
             HI.Offset = 96;
             HI.Padding = 32;
-            HI.Align = 32;
           },
           R"(field foo
 
 Type: type (aka can_type)
 Value = value
 Offset: 12 bytes
-Size: 4 bytes (+4 bytes padding), alignment 4 bytes
+Size: 4 bytes (+4 bytes padding)
 
 // In test::Bar
 def)",
@@ -3478,14 +3470,13 @@ def)",
             HI.Size = 25;
             HI.Offset = 35;
             HI.Padding = 4;
-            HI.Align = 64;
           },
           R"(field foo
 
 Type: type (aka can_type)
 Value = value
 Offset: 4 bytes and 3 bits
-Size: 25 bits (+4 bits padding), alignment 8 bytes
+Size: 25 bits (+4 bits padding)
 
 // In test::Bar
 def)",

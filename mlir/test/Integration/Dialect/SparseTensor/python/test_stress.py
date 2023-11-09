@@ -25,6 +25,8 @@ from tools import sparse_compiler
 
 # ===----------------------------------------------------------------------=== #
 
+# TODO: move this boilerplate to its own module, so it can be used by
+# other tests and programs.
 class TypeConverter:
     """Converter between NumPy types and MLIR types."""
 
@@ -76,6 +78,7 @@ class TypeConverter:
     ) -> ir.RankedTensorType:
         """Returns the ir.RankedTensorType of a NumPy array.  Note that NumPy
         arrays can only be converted to/from dense tensors, not sparse tensors."""
+        # TODO: handle strides as well?
         return ir.RankedTensorType.get(
             nparray.shape, self.dtype_to_irtype(nparray.dtype)
         )
@@ -109,6 +112,7 @@ class StressTest:
         with ir.InsertionPoint(self._module.body):
             tp0 = types.pop(0)
             self._roundtripTp = tp0
+            # TODO: assert dense? assert element type is recognised by the TypeConverter?
             types.append(tp0)
             funcTp = ir.FunctionType.get(inputs=[tp0], results=[tp0])
             funcOp = func.FuncOp(name="main", type=funcTp)
@@ -192,7 +196,13 @@ def main():
     # CHECK-LABEL: TEST: test_stress
     print("\nTEST: test_stress")
     with ir.Context() as ctx, ir.Location.unknown():
-        sparsification_options = f"parallelization-strategy=none "
+        # Disable direct sparse2sparse conversion, because it doubles the time!
+        # TODO: While direct s2s is far too slow for per-commit testing,
+        # we should have some framework ensure that we run this test with
+        # `s2s=0` on a regular basis, to ensure that it does continue to work.
+        # TODO: be sure to test s2s=0 together with singletons.
+        s2s = 1
+        sparsification_options = f"parallelization-strategy=none " f"s2s-strategy={s2s}"
         compiler = sparse_compiler.SparseCompiler(
             options=sparsification_options, opt_level=0, shared_libs=[support_lib]
         )
@@ -202,6 +212,8 @@ def main():
         shape = range(2, 3)
         rank = len(shape)
         # All combinations.
+        # TODO: add singleton here too; which requires updating how `np_arg0`
+        # is initialized below.
         levels = list(
             itertools.product(
                 *itertools.repeat(
@@ -221,7 +233,7 @@ def main():
                 for pwidth in bitwidths:
                     for iwidth in bitwidths:
                         attr = st.EncodingAttr.get(
-                            level, ordering, None, pwidth, iwidth
+                            level, ordering, pwidth, iwidth
                         )
                         types.append(ir.RankedTensorType.get(shape, f64, attr))
         #

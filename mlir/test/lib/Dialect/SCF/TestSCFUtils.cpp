@@ -50,22 +50,19 @@ struct TestSCFForUtilsPass
         auto newInitValues = forOp.getInitArgs();
         if (newInitValues.empty())
           return;
-        SmallVector<Value> oldYieldValues =
-            llvm::to_vector(forOp.getYieldedValues());
-        NewYieldValuesFn fn = [&](OpBuilder &b, Location loc,
-                                  ArrayRef<BlockArgument> newBBArgs) {
+        NewYieldValueFn fn = [&](OpBuilder &b, Location loc,
+                                 ArrayRef<BlockArgument> newBBArgs) {
+          Block *block = newBBArgs.front().getOwner();
           SmallVector<Value> newYieldValues;
-          for (auto yieldVal : oldYieldValues) {
+          for (auto yieldVal :
+               cast<scf::YieldOp>(block->getTerminator()).getResults()) {
             newYieldValues.push_back(
                 b.create<arith::AddFOp>(loc, yieldVal, yieldVal));
           }
           return newYieldValues;
         };
-        IRRewriter rewriter(forOp.getContext());
-        if (failed(forOp.replaceWithAdditionalYields(
-                rewriter, newInitValues, /*replaceInitOperandUsesInLoop=*/true,
-                fn)))
-          signalPassFailure();
+        OpBuilder b(forOp);
+        replaceLoopWithNewYields(b, forOp, newInitValues, fn);
       });
     }
   }

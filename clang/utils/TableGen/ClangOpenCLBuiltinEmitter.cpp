@@ -339,7 +339,7 @@ public:
 } // namespace
 
 void BuiltinNameEmitter::Emit() {
-  emitSourceFileHeader("OpenCL Builtin handling", OS, Records);
+  emitSourceFileHeader("OpenCL Builtin handling", OS);
 
   OS << "#include \"llvm/ADT/StringRef.h\"\n";
   OS << "using namespace clang;\n\n";
@@ -1215,7 +1215,7 @@ StringRef OpenCLBuiltinFileEmitterBase::emitTypeExtensionGuards(
 }
 
 void OpenCLBuiltinTestEmitter::emit() {
-  emitSourceFileHeader("OpenCL Builtin exhaustive testing", OS, Records);
+  emitSourceFileHeader("OpenCL Builtin exhaustive testing", OS);
 
   emitExtensionSetup();
 
@@ -1273,7 +1273,7 @@ void OpenCLBuiltinTestEmitter::emit() {
 }
 
 void OpenCLBuiltinHeaderEmitter::emit() {
-  emitSourceFileHeader("OpenCL Builtin declarations", OS, Records);
+  emitSourceFileHeader("OpenCL Builtin declarations", OS);
 
   emitExtensionSetup();
 

@@ -1146,9 +1146,9 @@ Type StructType::getElementType(unsigned index) const {
   return getImpl()->memberTypesAndIsBodySet.getPointer()[index];
 }
 
-TypeRange StructType::getElementTypes() const {
-  return TypeRange(getImpl()->memberTypesAndIsBodySet.getPointer(),
-                   getNumElements());
+StructType::ElementTypeRange StructType::getElementTypes() const {
+  return ElementTypeRange(getImpl()->memberTypesAndIsBodySet.getPointer(),
+                          getNumElements());
 }
 
 bool StructType::hasOffset() const { return getImpl()->offsetInfo; }

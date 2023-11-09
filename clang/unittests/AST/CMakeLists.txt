@@ -5,8 +5,6 @@ set(LLVM_LINK_COMPONENTS
   )
 
 
-add_subdirectory(Interp)
-
 add_clang_unittest(ASTTests
   ASTContextParentMapTest.cpp
   ASTExprTest.cpp

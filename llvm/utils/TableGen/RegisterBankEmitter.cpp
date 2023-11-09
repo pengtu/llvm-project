@@ -244,7 +244,7 @@ void RegisterBankEmitter::emitBaseClassImplementation(
   for (const auto &Bank : Banks) {
     std::string QualifiedBankID =
         (TargetName + "::" + Bank.getEnumeratorName()).str();
-    OS << "constexpr RegisterBank " << Bank.getInstanceVarName() << "(/* ID */ "
+    OS << "const RegisterBank " << Bank.getInstanceVarName() << "(/* ID */ "
        << QualifiedBankID << ", /* Name */ \"" << Bank.getName() << "\", "
        << "/* CoveredRegClasses */ " << Bank.getCoverageArrayName()
        << ", /* NumRegClasses */ "

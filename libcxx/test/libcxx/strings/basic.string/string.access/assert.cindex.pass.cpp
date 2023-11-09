@@ -21,16 +21,20 @@
 #include "check_assertion.h"
 #include "min_allocator.h"
 
-template <class S>
-void test() {
-  const S s;
-  assert(s[0] == 0);
-  TEST_LIBCPP_ASSERT_FAILURE(s[1], "string index out of bounds");
-}
-
 int main(int, char**) {
-  test<std::string>();
-  test<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char> > S;
+    const S s;
+    assert(s[0] == 0);
+    TEST_LIBCPP_ASSERT_FAILURE(s[1], "string index out of bounds");
+  }
+
+  {
+    typedef std::string S;
+    const S s;
+    assert(s[0] == 0);
+    TEST_LIBCPP_ASSERT_FAILURE(s[1], "string index out of bounds");
+  }
 
   return 0;
 }

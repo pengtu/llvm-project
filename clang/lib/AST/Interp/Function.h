@@ -15,8 +15,8 @@
 #ifndef LLVM_CLANG_AST_INTERP_FUNCTION_H
 #define LLVM_CLANG_AST_INTERP_FUNCTION_H
 
+#include "Pointer.h"
 #include "Source.h"
-#include "Descriptor.h"
 #include "clang/AST/ASTLambda.h"
 #include "clang/AST/Decl.h"
 #include "llvm/Support/raw_ostream.h"
@@ -25,7 +25,6 @@ namespace clang {
 namespace interp {
 class Program;
 class ByteCodeEmitter;
-class Pointer;
 enum PrimType : uint32_t;
 
 /// Describes a scope block.
@@ -170,11 +169,6 @@ public:
   /// Checks if the function already has a body attached.
   bool hasBody() const { return HasBody; }
 
-  /// Checks if the function is defined.
-  bool isDefined() const { return Defined; }
-
-  bool isVariadic() const { return Variadic; }
-
   unsigned getBuiltinID() const { return F->getBuiltinID(); }
 
   bool isBuiltin() const { return F->getBuiltinID() != 0; }
@@ -210,7 +204,6 @@ private:
   }
 
   void setIsFullyCompiled(bool FC) { IsFullyCompiled = FC; }
-  void setDefined(bool D) { Defined = D; }
 
 private:
   friend class Program;
@@ -252,8 +245,6 @@ private:
   bool HasRVO = false;
   /// If we've already compiled the function's body.
   bool HasBody = false;
-  bool Defined = false;
-  bool Variadic = false;
 
 public:
   /// Dumps the disassembled bytecode to \c llvm::errs().

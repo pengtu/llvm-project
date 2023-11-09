@@ -1063,11 +1063,10 @@ struct UnrollTransferReadConversion
   /// If the result of the TransferReadOp has exactly one user, which is a
   /// vector::InsertOp, return that operation's indices.
   void getInsertionIndices(TransferReadOp xferOp,
-                           SmallVectorImpl<OpFoldResult> &indices) const {
-    if (auto insertOp = getInsertOp(xferOp)) {
-      auto pos = insertOp.getMixedPosition();
-      indices.append(pos.begin(), pos.end());
-    }
+                           SmallVector<int64_t, 8> &indices) const {
+    if (auto insertOp = getInsertOp(xferOp))
+      indices.assign(insertOp.getPosition().begin(),
+                     insertOp.getPosition().end());
   }
 
   /// Rewrite the op: Unpack one dimension. Can handle masks, out-of-bounds
@@ -1111,9 +1110,9 @@ struct UnrollTransferReadConversion
             getXferIndices(b, xferOp, iv, xferIndices);
 
             // Indices for the new vector.insert op.
-            SmallVector<OpFoldResult, 8> insertionIndices;
+            SmallVector<int64_t, 8> insertionIndices;
             getInsertionIndices(xferOp, insertionIndices);
-            insertionIndices.push_back(rewriter.getIndexAttr(i));
+            insertionIndices.push_back(i);
 
             auto inBoundsAttr = dropFirstElem(b, xferOp.getInBoundsAttr());
             auto newXferOp = b.create<vector::TransferReadOp>(
@@ -1155,12 +1154,12 @@ struct UnrollTransferReadConversion
 /// ```
 /// is rewritten to IR such as (simplified):
 /// ```
-/// %v0 = vector.extract %vec[0] : vector<4xf32> from vector<5x4xf32>
+/// %v0 = vector.extract %vec[0] : vector<5x4xf32>
 /// vector.transfer_write %v0, %A[%a, %b, %c] : vector<4xf32>, memref<...>
-/// %v1 = vector.extract %vec[1] : vector<4xf32> from vector<5x4xf32>
+/// %v1 = vector.extract %vec[1] : vector<5x4xf32>
 /// vector.transfer_write %v1, %A[%a, %b + 1, %c] : vector<4xf32>, memref<...>
 /// ...
-/// %v4 = vector.extract %vec[4] : vector<4xf32> from vector<5x4xf32>
+/// %v4 = vector.extract %vec[4] : vector<5x4xf32>
 /// vector.transfer_write %v4, %A[%a, %b + 4, %c] : vector<4xf32>, memref<...>
 /// ```
 ///
@@ -1196,11 +1195,10 @@ struct UnrollTransferWriteConversion
   /// If the input of the given TransferWriteOp is an ExtractOp, return its
   /// indices.
   void getExtractionIndices(TransferWriteOp xferOp,
-                            SmallVectorImpl<OpFoldResult> &indices) const {
-    if (auto extractOp = getExtractOp(xferOp)) {
-      auto pos = extractOp.getMixedPosition();
-      indices.append(pos.begin(), pos.end());
-    }
+                            SmallVector<int64_t, 8> &indices) const {
+    if (auto extractOp = getExtractOp(xferOp))
+      indices.assign(extractOp.getPosition().begin(),
+                     extractOp.getPosition().end());
   }
 
   /// Rewrite the op: Unpack one dimension. Can handle masks, out-of-bounds
@@ -1237,9 +1235,9 @@ struct UnrollTransferWriteConversion
             getXferIndices(b, xferOp, iv, xferIndices);
 
             // Indices for the new vector.extract op.
-            SmallVector<OpFoldResult, 8> extractionIndices;
+            SmallVector<int64_t, 8> extractionIndices;
             getExtractionIndices(xferOp, extractionIndices);
-            extractionIndices.push_back(b.getI64IntegerAttr(i));
+            extractionIndices.push_back(i);
 
             auto extracted =
                 b.create<vector::ExtractOp>(loc, vec, extractionIndices);

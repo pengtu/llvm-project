@@ -538,11 +538,11 @@ DLLImportDefinitionGenerator::getTargetPointerSize(const Triple &TT) {
   }
 }
 
-Expected<llvm::endianness>
+Expected<support::endianness>
 DLLImportDefinitionGenerator::getTargetEndianness(const Triple &TT) {
   switch (TT.getArch()) {
   case Triple::x86_64:
-    return llvm::endianness::little;
+    return support::endianness::little;
   default:
     return make_error<StringError>(
         "architecture unsupported by DLLImportDefinitionGenerator",

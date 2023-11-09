@@ -530,92 +530,54 @@ TEST(CompletionTest, HeuristicsForMemberFunctionCompletion) {
 
   Annotations Code(R"cpp(
       struct Foo {
-        static int staticMethod(int);
-        int method(int) const;
-        template <typename T, typename U, typename V = int>
-        T generic(U, V);
-        template <typename T, int U>
-        static T staticGeneric();
+        static int staticMethod();
+        int method() const;
         Foo() {
-          this->$canBeCall^
-          $canBeCall^
-          Foo::$canBeCall^
+          this->$keepSnippet^
+          $keepSnippet^
+          Foo::$keepSnippet^
         }
       };
 
       struct Derived : Foo {
-        using Foo::method;
-        using Foo::generic;
         Derived() {
-          Foo::$canBeCall^
+          Foo::$keepSnippet^
         }
       };
 
       struct OtherClass {
         OtherClass() {
           Foo f;
-          Derived d;
-          f.$canBeCall^
-          ; // Prevent parsing as 'f.f'
-          f.Foo::$canBeCall^
-          &Foo::$canNotBeCall^
-          ;
-          d.Foo::$canBeCall^
-          ;
-          d.Derived::$canBeCall^
+          f.$keepSnippet^
+          &Foo::$noSnippet^
         }
       };
 
       int main() {
         Foo f;
-        Derived d;
-        f.$canBeCall^
-        ; // Prevent parsing as 'f.f'
-        f.Foo::$canBeCall^
-        &Foo::$canNotBeCall^
-        ;
-        d.Foo::$canBeCall^
-        ;
-        d.Derived::$canBeCall^
+        f.$keepSnippet^
+        &Foo::$noSnippet^
       }
       )cpp");
   auto TU = TestTU::withCode(Code.code());
 
-  for (const auto &P : Code.points("canNotBeCall")) {
+  for (const auto &P : Code.points("noSnippet")) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
-                Contains(AllOf(named("method"), signature("(int) const"),
-                               snippetSuffix(""))));
-    // We don't have any arguments to deduce against if this isn't a call.
-    // Thus, we should emit these deducible template arguments explicitly.
-    EXPECT_THAT(
-        Results.Completions,
-        Contains(AllOf(named("generic"),
-                       signature("<typename T, typename U>(U, V)"),
-                       snippetSuffix("<${1:typename T}, ${2:typename U}>"))));
+                Contains(AllOf(named("method"), snippetSuffix(""))));
   }
 
-  for (const auto &P : Code.points("canBeCall")) {
+  for (const auto &P : Code.points("keepSnippet")) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
-                Contains(AllOf(named("method"), signature("(int) const"),
-                               snippetSuffix("(${1:int})"))));
-    EXPECT_THAT(
-        Results.Completions,
-        Contains(AllOf(named("generic"), signature("<typename T>(U, V)"),
-                       snippetSuffix("<${1:typename T}>(${2:U}, ${3:V})"))));
+                Contains(AllOf(named("method"), snippetSuffix("()"))));
   }
 
   // static method will always keep the snippet
   for (const auto &P : Code.points()) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
-                Contains(AllOf(named("staticMethod"), signature("(int)"),
-                               snippetSuffix("(${1:int})"))));
-    EXPECT_THAT(Results.Completions,
-                Contains(AllOf(
-                    named("staticGeneric"), signature("<typename T, int U>()"),
-                    snippetSuffix("<${1:typename T}, ${2:int U}>()"))));
+                Contains(AllOf(named("staticMethod"), snippetSuffix("()"))));
   }
 }
 

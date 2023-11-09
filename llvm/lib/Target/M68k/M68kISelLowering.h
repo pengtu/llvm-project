@@ -163,7 +163,7 @@ public:
                                StringRef Constraint, MVT VT) const override;
 
   // Lower operand with C_Immediate and C_Other constraint type
-  void LowerAsmOperandForConstraint(SDValue Op, StringRef Constraint,
+  void LowerAsmOperandForConstraint(SDValue Op, std::string &Constraint,
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
 
@@ -187,8 +187,7 @@ public:
   Register
   getExceptionSelectorRegister(const Constant *PersonalityFn) const override;
 
-  InlineAsm::ConstraintCode
-  getInlineAsmMemConstraint(StringRef ConstraintCode) const override;
+  unsigned getInlineAsmMemConstraint(StringRef ConstraintCode) const override;
 
 private:
   unsigned GetAlignedArgumentStackSize(unsigned StackSize,

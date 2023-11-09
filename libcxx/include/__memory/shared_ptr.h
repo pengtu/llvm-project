@@ -14,11 +14,9 @@
 #include <__compare/compare_three_way.h>
 #include <__compare/ordering.h>
 #include <__config>
-#include <__exception/exception.h>
 #include <__functional/binary_function.h>
 #include <__functional/operations.h>
 #include <__functional/reference_wrapper.h>
-#include <__fwd/ostream.h>
 #include <__iterator/access.h>
 #include <__memory/addressof.h>
 #include <__memory/allocation_guard.h>
@@ -51,7 +49,9 @@
 #include <__utility/swap.h>
 #include <__verbose_abort>
 #include <cstddef>
+#include <iosfwd>
 #include <new>
+#include <stdexcept>
 #include <typeinfo>
 #if !defined(_LIBCPP_HAS_NO_ATOMIC_HEADER)
 #  include <__atomic/memory_order.h>
@@ -126,7 +126,6 @@ class _LIBCPP_EXPORTED_FROM_ABI bad_weak_ptr
 public:
     _LIBCPP_HIDE_FROM_ABI bad_weak_ptr() _NOEXCEPT = default;
     _LIBCPP_HIDE_FROM_ABI bad_weak_ptr(const bad_weak_ptr&) _NOEXCEPT = default;
-    _LIBCPP_HIDE_FROM_ABI bad_weak_ptr& operator=(const bad_weak_ptr&) _NOEXCEPT = default;
     ~bad_weak_ptr() _NOEXCEPT override;
     const char* what() const  _NOEXCEPT override;
 };
@@ -285,23 +284,23 @@ template <class _Tp, class _Alloc>
 struct __shared_ptr_emplace
     : __shared_weak_count
 {
-    template <class... _Args, class _Allocator = _Alloc, __enable_if_t<is_same<typename _Allocator::value_type, __for_overwrite_tag>::value, int> = 0>
-    _LIBCPP_HIDE_FROM_ABI
-    explicit __shared_ptr_emplace(_Alloc __a, _Args&& ...)
-        : __storage_(_VSTD::move(__a))
-    {
-        static_assert(sizeof...(_Args) == 0, "No argument should be provided to the control block when using _for_overwrite");
-        ::new ((void*)__get_elem()) _Tp;
-    }
-
-    template <class... _Args, class _Allocator = _Alloc, __enable_if_t<!is_same<typename _Allocator::value_type, __for_overwrite_tag>::value, int> = 0>
+    template<class ..._Args>
     _LIBCPP_HIDE_FROM_ABI
     explicit __shared_ptr_emplace(_Alloc __a, _Args&& ...__args)
         : __storage_(_VSTD::move(__a))
     {
-        using _TpAlloc = typename __allocator_traits_rebind<_Alloc, _Tp>::type;
-        _TpAlloc __tmp(*__get_alloc());
-        allocator_traits<_TpAlloc>::construct(__tmp, __get_elem(), _VSTD::forward<_Args>(__args)...);
+#if _LIBCPP_STD_VER >= 20
+        if constexpr (is_same_v<typename _Alloc::value_type, __for_overwrite_tag>) {
+            static_assert(sizeof...(_Args) == 0, "No argument should be provided to the control block when using _for_overwrite");
+            ::new ((void*)__get_elem()) _Tp;
+        } else {
+            using _TpAlloc = typename __allocator_traits_rebind<_Alloc, _Tp>::type;
+            _TpAlloc __tmp(*__get_alloc());
+            allocator_traits<_TpAlloc>::construct(__tmp, __get_elem(), _VSTD::forward<_Args>(__args)...);
+        }
+#else
+        ::new ((void*)__get_elem()) _Tp(_VSTD::forward<_Args>(__args)...);
+#endif
     }
 
     _LIBCPP_HIDE_FROM_ABI
@@ -311,20 +310,18 @@ struct __shared_ptr_emplace
     _Tp* __get_elem() _NOEXCEPT { return __storage_.__get_elem(); }
 
 private:
-    template <class _Allocator = _Alloc, __enable_if_t<is_same<typename _Allocator::value_type, __for_overwrite_tag>::value, int> = 0>
-    _LIBCPP_HIDE_FROM_ABI void __on_zero_shared_impl() _NOEXCEPT {
-        __get_elem()->~_Tp();
-    }
-
-    template <class _Allocator = _Alloc, __enable_if_t<!is_same<typename _Allocator::value_type, __for_overwrite_tag>::value, int> = 0>
-    _LIBCPP_HIDE_FROM_ABI void __on_zero_shared_impl() _NOEXCEPT {
-        using _TpAlloc = typename __allocator_traits_rebind<_Allocator, _Tp>::type;
-        _TpAlloc __tmp(*__get_alloc());
-        allocator_traits<_TpAlloc>::destroy(__tmp, __get_elem());
-    }
-
     _LIBCPP_HIDE_FROM_ABI_VIRTUAL void __on_zero_shared() _NOEXCEPT override {
-        __on_zero_shared_impl();
+#if _LIBCPP_STD_VER >= 20
+        if constexpr (is_same_v<typename _Alloc::value_type, __for_overwrite_tag>) {
+            __get_elem()->~_Tp();
+        } else {
+            using _TpAlloc = typename __allocator_traits_rebind<_Alloc, _Tp>::type;
+            _TpAlloc __tmp(*__get_alloc());
+            allocator_traits<_TpAlloc>::destroy(__tmp, __get_elem());
+        }
+#else
+        __get_elem()->~_Tp();
+#endif
     }
 
     _LIBCPP_HIDE_FROM_ABI_VIRTUAL void __on_zero_shared_weak() _NOEXCEPT override {
@@ -1137,8 +1134,7 @@ private:
         __alloc_.~_Alloc();
         size_t __size = __unbounded_array_control_block::__bytes_for(__count_);
         _AlignedStorage* __storage = reinterpret_cast<_AlignedStorage*>(this);
-        allocator_traits<_StorageAlloc>::deallocate(
-            __tmp, _PointerTraits::pointer_to(*__storage), __size / sizeof(_AlignedStorage));
+        allocator_traits<_StorageAlloc>::deallocate(__tmp, _PointerTraits::pointer_to(*__storage), __size);
     }
 
     _LIBCPP_NO_UNIQUE_ADDRESS _Alloc __alloc_;
@@ -1221,7 +1217,7 @@ private:
 
         _ControlBlockAlloc __tmp(__alloc_);
         __alloc_.~_Alloc();
-        allocator_traits<_ControlBlockAlloc>::deallocate(__tmp, _PointerTraits::pointer_to(*this), 1);
+        allocator_traits<_ControlBlockAlloc>::deallocate(__tmp, _PointerTraits::pointer_to(*this), sizeof(*this));
     }
 
     _LIBCPP_NO_UNIQUE_ADDRESS _Alloc __alloc_;
@@ -1728,11 +1724,11 @@ template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
 weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp> const& __r)
          _NOEXCEPT
-    : __ptr_(nullptr),
-      __cntrl_(nullptr)
+    : __ptr_(__r.__ptr_),
+      __cntrl_(__r.__cntrl_)
 {
-    shared_ptr<_Yp> __s = __r.lock();
-    *this = weak_ptr<_Tp>(__s);
+    if (__cntrl_)
+        __cntrl_->__add_weak();
 }
 
 template<class _Tp>
@@ -1750,12 +1746,11 @@ template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
 weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp>&& __r)
          _NOEXCEPT
-    : __ptr_(nullptr),
-      __cntrl_(nullptr)
+    : __ptr_(__r.__ptr_),
+      __cntrl_(__r.__cntrl_)
 {
-    shared_ptr<_Yp> __s = __r.lock();
-    *this = weak_ptr<_Tp>(__s);
-    __r.reset();
+    __r.__ptr_ = nullptr;
+    __r.__cntrl_ = nullptr;
 }
 
 template<class _Tp>
@@ -1985,7 +1980,8 @@ private:
     friend _LIBCPP_EXPORTED_FROM_ABI __sp_mut& __get_sp_mut(const void*);
 };
 
-_LIBCPP_EXPORTED_FROM_ABI __sp_mut& __get_sp_mut(const void*);
+_LIBCPP_EXPORTED_FROM_ABI _LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
+__sp_mut& __get_sp_mut(const void*);
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
@@ -1996,6 +1992,7 @@ atomic_is_lock_free(const shared_ptr<_Tp>*)
 }
 
 template <class _Tp>
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 _LIBCPP_HIDE_FROM_ABI shared_ptr<_Tp>
 atomic_load(const shared_ptr<_Tp>* __p)
 {
@@ -2008,6 +2005,7 @@ atomic_load(const shared_ptr<_Tp>* __p)
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 shared_ptr<_Tp>
 atomic_load_explicit(const shared_ptr<_Tp>* __p, memory_order)
 {
@@ -2015,6 +2013,7 @@ atomic_load_explicit(const shared_ptr<_Tp>* __p, memory_order)
 }
 
 template <class _Tp>
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 _LIBCPP_HIDE_FROM_ABI void
 atomic_store(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
 {
@@ -2026,6 +2025,7 @@ atomic_store(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 void
 atomic_store_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r, memory_order)
 {
@@ -2033,6 +2033,7 @@ atomic_store_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r, memory_order)
 }
 
 template <class _Tp>
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 _LIBCPP_HIDE_FROM_ABI shared_ptr<_Tp>
 atomic_exchange(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
 {
@@ -2045,6 +2046,7 @@ atomic_exchange(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 shared_ptr<_Tp>
 atomic_exchange_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r, memory_order)
 {
@@ -2052,6 +2054,7 @@ atomic_exchange_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r, memory_order
 }
 
 template <class _Tp>
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 _LIBCPP_HIDE_FROM_ABI bool
 atomic_compare_exchange_strong(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v, shared_ptr<_Tp> __w)
 {
@@ -2073,6 +2076,7 @@ atomic_compare_exchange_strong(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v, share
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 bool
 atomic_compare_exchange_weak(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v, shared_ptr<_Tp> __w)
 {
@@ -2081,6 +2085,7 @@ atomic_compare_exchange_weak(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v, shared_
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 bool
 atomic_compare_exchange_strong_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v,
                                         shared_ptr<_Tp> __w, memory_order, memory_order)
@@ -2090,6 +2095,7 @@ atomic_compare_exchange_strong_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* _
 
 template <class _Tp>
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_ATOMIC_SHARED_PTR
 bool
 atomic_compare_exchange_weak_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v,
                                       shared_ptr<_Tp> __w, memory_order, memory_order)

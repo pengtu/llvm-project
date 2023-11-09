@@ -15,11 +15,6 @@
 #include "sanitizer_platform.h"
 #include "sanitizer_redefine_builtins.h"
 
-// GCC does not understand __has_feature.
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-
 #ifndef SANITIZER_DEBUG
 # define SANITIZER_DEBUG 0
 #endif

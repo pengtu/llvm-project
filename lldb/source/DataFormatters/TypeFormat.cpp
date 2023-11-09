@@ -81,9 +81,9 @@ bool TypeFormatImpl_Format::FormatObject(ValueObject *valobj,
               WritableDataBufferSP buffer_sp(
                   new DataBufferHeap(max_len + 1, 0));
               Address address(valobj->GetPointerValue());
-              target_sp->ReadCStringFromMemory(
-                  address, (char *)buffer_sp->GetBytes(), max_len, error);
-              if (error.Success())
+              if (target_sp->ReadCStringFromMemory(
+                      address, (char *)buffer_sp->GetBytes(), max_len, error) &&
+                  error.Success())
                 data.SetData(buffer_sp);
             }
           }

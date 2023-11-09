@@ -51,13 +51,12 @@ static_library("MCTargetDesc") {
   ]
   include_dirs = [ ".." ]
   sources = [
-    "SystemZELFObjectWriter.cpp",
-    "SystemZGOFFObjectWriter.cpp",
     "SystemZInstPrinter.cpp",
     "SystemZMCAsmBackend.cpp",
     "SystemZMCAsmInfo.cpp",
     "SystemZMCCodeEmitter.cpp",
     "SystemZMCExpr.cpp",
+    "SystemZMCObjectWriter.cpp",
     "SystemZMCTargetDesc.cpp",
   ]
 }

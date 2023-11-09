@@ -54,13 +54,16 @@ public:
 
   /// Loads the bitcode files in `fileList`.
   virtual std::optional<SmallVector<std::unique_ptr<llvm::Module>>>
-  loadBitcodeFiles(llvm::Module &module) override;
+  loadBitcodeFiles(llvm::Module &module,
+                   llvm::TargetMachine &targetMachine) override;
 
   /// Adds `oclc` control variables to the LLVM module.
-  void handleModulePreLink(llvm::Module &module) override;
+  void handleModulePreLink(llvm::Module &module,
+                           llvm::TargetMachine &targetMachine) override;
 
   /// Removes unnecessary metadata from the loaded bitcode files.
-  LogicalResult handleBitcodeFile(llvm::Module &module) override;
+  LogicalResult handleBitcodeFile(llvm::Module &module,
+                                  llvm::TargetMachine &targetMachine) override;
 
 protected:
   /// Appends the paths of common ROCm device libraries to `libs`.

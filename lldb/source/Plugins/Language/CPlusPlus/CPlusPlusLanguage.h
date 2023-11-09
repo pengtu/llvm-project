@@ -103,8 +103,6 @@ public:
     return lldb::eLanguageTypeC_plus_plus;
   }
 
-  llvm::StringRef GetUserEntryPointName() const override { return "main"; }
-
   std::unique_ptr<TypeScavenger> GetTypeScavenger() override;
   lldb::TypeCategoryImplSP GetFormatters() override;
 

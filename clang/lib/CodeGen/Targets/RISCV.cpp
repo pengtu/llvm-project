@@ -318,7 +318,7 @@ ABIArgInfo RISCVABIInfo::coerceVLSVector(QualType Ty) const {
   assert(Ty->isVectorType() && "expected vector type!");
 
   const auto *VT = Ty->castAs<VectorType>();
-  assert(VT->getVectorKind() == VectorKind::RVVFixedLengthData &&
+  assert(VT->getVectorKind() == VectorType::RVVFixedLengthDataVector &&
          "Unexpected vector kind");
 
   assert(VT->getElementType()->isBuiltinType() && "expected builtin type!");
@@ -431,7 +431,7 @@ ABIArgInfo RISCVABIInfo::classifyArgumentType(QualType Ty, bool IsFixed,
   }
 
   if (const VectorType *VT = Ty->getAs<VectorType>())
-    if (VT->getVectorKind() == VectorKind::RVVFixedLengthData)
+    if (VT->getVectorKind() == VectorType::RVVFixedLengthDataVector)
       return coerceVLSVector(Ty);
 
   // Aggregates which are <= 2*XLen will be passed in registers if possible,

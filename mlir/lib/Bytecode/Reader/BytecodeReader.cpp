@@ -11,6 +11,7 @@
 #include "mlir/Bytecode/BytecodeImplementation.h"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/Bytecode/Encoding.h"
+#include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/OpImplementation.h"
@@ -19,13 +20,15 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/ScopeExit.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/MemoryBufferRef.h"
+#include "llvm/Support/SaveAndRestore.h"
 #include "llvm/Support/SourceMgr.h"
-
 #include <cstddef>
 #include <list>
 #include <memory>
@@ -90,29 +93,25 @@ namespace {
 class EncodingReader {
 public:
   explicit EncodingReader(ArrayRef<uint8_t> contents, Location fileLoc)
-      : buffer(contents), dataIt(buffer.begin()), fileLoc(fileLoc) {}
+      : dataIt(contents.data()), dataEnd(contents.end()), fileLoc(fileLoc) {}
   explicit EncodingReader(StringRef contents, Location fileLoc)
       : EncodingReader({reinterpret_cast<const uint8_t *>(contents.data()),
                         contents.size()},
                        fileLoc) {}
 
   /// Returns true if the entire section has been read.
-  bool empty() const { return dataIt == buffer.end(); }
+  bool empty() const { return dataIt == dataEnd; }
 
   /// Returns the remaining size of the bytecode.
-  size_t size() const { return buffer.end() - dataIt; }
+  size_t size() const { return dataEnd - dataIt; }
 
   /// Align the current reader position to the specified alignment.
   LogicalResult alignTo(unsigned alignment) {
     if (!llvm::isPowerOf2_32(alignment))
       return emitError("expected alignment to be a power-of-two");
 
-    auto isUnaligned = [&](const uint8_t *ptr) {
-      return ((uintptr_t)ptr & (alignment - 1)) != 0;
-    };
-
     // Shift the reader position to the next alignment boundary.
-    while (isUnaligned(dataIt)) {
+    while (uintptr_t(dataIt) & (uintptr_t(alignment) - 1)) {
       uint8_t padding;
       if (failed(parseByte(padding)))
         return failure();
@@ -124,7 +123,7 @@ public:
 
     // Ensure the data iterator is now aligned. This case is unlikely because we
     // *just* went through the effort to align the data iterator.
-    if (LLVM_UNLIKELY(isUnaligned(dataIt))) {
+    if (LLVM_UNLIKELY(!llvm::isAddrAligned(llvm::Align(alignment), dataIt))) {
       return emitError("expected data iterator aligned to ", alignment,
                        ", but got pointer: '0x" +
                            llvm::utohexstr((uintptr_t)dataIt) + "'");
@@ -312,8 +311,7 @@ private:
 
     // Parse in the remaining bytes of the value.
     llvm::support::ulittle64_t resultLE(result);
-    if (failed(
-            parseBytes(numBytes, reinterpret_cast<uint8_t *>(&resultLE) + 1)))
+    if (failed(parseBytes(numBytes, reinterpret_cast<uint8_t *>(&resultLE) + 1)))
       return failure();
 
     // Shift out the low-order bits that were used to mark how the value was
@@ -322,11 +320,8 @@ private:
     return success();
   }
 
-  /// The bytecode buffer.
-  ArrayRef<uint8_t> buffer;
-
-  /// The current iterator within the 'buffer'.
-  const uint8_t *dataIt;
+  /// The current data iterator, and an iterator to the end of the buffer.
+  const uint8_t *dataIt, *dataEnd;
 
   /// A location for the bytecode used to report errors.
   Location fileLoc;

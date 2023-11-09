@@ -53,11 +53,10 @@ struct M68kIncomingValueHandler : public CallLowering::IncomingValueHandler {
 
 private:
   void assignValueToReg(Register ValVReg, Register PhysReg,
-                        const CCValAssign &VA) override;
+                        CCValAssign VA) override;
 
   void assignValueToAddress(Register ValVReg, Register Addr, LLT MemTy,
-                            const MachinePointerInfo &MPO,
-                            const CCValAssign &VA) override;
+                            MachinePointerInfo &MPO, CCValAssign &VA) override;
 
   Register getStackAddress(uint64_t Size, int64_t Offset,
                            MachinePointerInfo &MPO,
@@ -76,7 +75,7 @@ struct CallReturnHandler : public M68kIncomingValueHandler {
 
 private:
   void assignValueToReg(Register ValVReg, Register PhysReg,
-                        const CCValAssign &VA) override;
+                        CCValAssign VA) override;
 
   MachineInstrBuilder &MIB;
 };

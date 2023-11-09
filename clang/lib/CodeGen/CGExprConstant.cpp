@@ -25,7 +25,6 @@
 #include "clang/Basic/Builtins.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/Sequence.h"
-#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
@@ -1630,8 +1629,13 @@ namespace {
         IndexValues[i] = llvm::ConstantInt::get(CGM.Int32Ty, Indices[i]);
       }
 
-      llvm::Constant *location = llvm::ConstantExpr::getInBoundsGetElementPtr(
-          BaseValueTy, Base, IndexValues);
+      // Form a GEP and then bitcast to the placeholder type so that the
+      // replacement will succeed.
+      llvm::Constant *location =
+        llvm::ConstantExpr::getInBoundsGetElementPtr(BaseValueTy,
+                                                     Base, IndexValues);
+      location = llvm::ConstantExpr::getBitCast(location,
+                                                placeholder->getType());
 
       Locations.insert({placeholder, location});
     }
@@ -1757,10 +1761,7 @@ llvm::Constant *ConstantEmitter::emitForMemory(CodeGenModule &CGM,
   // Zero-extend bool.
   if (C->getType()->isIntegerTy(1) && !destType->isBitIntType()) {
     llvm::Type *boolTy = CGM.getTypes().ConvertTypeForMem(destType);
-    llvm::Constant *Res = llvm::ConstantFoldCastOperand(
-        llvm::Instruction::ZExt, C, boolTy, CGM.getDataLayout());
-    assert(Res && "Constant folding must succeed");
-    return Res;
+    return llvm::ConstantExpr::getZExt(C, boolTy);
   }
 
   return C;
@@ -1770,10 +1771,9 @@ llvm::Constant *ConstantEmitter::tryEmitPrivate(const Expr *E,
                                                 QualType destType) {
   assert(!destType->isVoidType() && "can't emit a void constant");
 
-  if (!destType->isReferenceType())
-    if (llvm::Constant *C =
-            ConstExprEmitter(*this).Visit(const_cast<Expr *>(E), destType))
-      return C;
+  if (llvm::Constant *C =
+          ConstExprEmitter(*this).Visit(const_cast<Expr *>(E), destType))
+    return C;
 
   Expr::EvalResult Result;
 
@@ -1925,9 +1925,8 @@ ConstantLValueEmitter::tryEmitAbsolute(llvm::Type *destTy) {
   // FIXME: signedness depends on the original integer type.
   auto intptrTy = CGM.getDataLayout().getIntPtrType(destPtrTy);
   llvm::Constant *C;
-  C = llvm::ConstantFoldIntegerCast(getOffset(), intptrTy, /*isSigned*/ false,
-                                    CGM.getDataLayout());
-  assert(C && "Must have folded, as Offset is a ConstantInt");
+  C = llvm::ConstantExpr::getIntegerCast(getOffset(), intptrTy,
+                                         /*isSigned*/ false);
   C = llvm::ConstantExpr::getIntToPtr(C, destPtrTy);
   return C;
 }
@@ -2032,6 +2031,8 @@ ConstantLValue
 ConstantLValueEmitter::VisitAddrLabelExpr(const AddrLabelExpr *E) {
   assert(Emitter.CGF && "Invalid address of label expression outside function");
   llvm::Constant *Ptr = Emitter.CGF->GetAddrOfLabel(E->getLabel());
+  Ptr = llvm::ConstantExpr::getBitCast(Ptr,
+                                   CGM.getTypes().ConvertType(E->getType()));
   return Ptr;
 }
 
@@ -2146,9 +2147,6 @@ llvm::Constant *ConstantEmitter::tryEmitPrivate(const APValue &Value,
         Inits[I] = llvm::ConstantInt::get(CGM.getLLVMContext(), Elt.getInt());
       else if (Elt.isFloat())
         Inits[I] = llvm::ConstantFP::get(CGM.getLLVMContext(), Elt.getFloat());
-      else if (Elt.isIndeterminate())
-        Inits[I] = llvm::UndefValue::get(CGM.getTypes().ConvertType(
-            DestType->castAs<VectorType>()->getElementType()));
       else
         llvm_unreachable("unsupported vector element type");
     }

@@ -150,7 +150,8 @@ public:
   MCSymbol *getRnglistsTableBaseSym() const { return RnglistsTableBaseSym; }
   void setRnglistsTableBaseSym(MCSymbol *Sym) { RnglistsTableBaseSym = Sym; }
 
-  void addScopeVariable(LexicalScope *LS, DbgVariable *Var);
+  /// \returns false if the variable was merged with a previous one.
+  bool addScopeVariable(LexicalScope *LS, DbgVariable *Var);
 
   void addScopeLabel(LexicalScope *LS, DbgLabel *Label);
 

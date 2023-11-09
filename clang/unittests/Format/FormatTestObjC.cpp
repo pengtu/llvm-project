@@ -62,33 +62,35 @@ TEST(FormatTestObjCStyle, DetectsObjCInHeaders) {
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "@interface Foo\n@end");
+  Style = getStyle("{}", "a.h", "none", "@interface Foo\n@end\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
   Style = getStyle("{}", "a.h", "none",
-                   "const int interface = 1;\nconst int end = 2;");
+                   "const int interface = 1;\nconst int end = 2;\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "@protocol Foo\n@end");
+  Style = getStyle("{}", "a.h", "none", "@protocol Foo\n@end\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
   Style = getStyle("{}", "a.h", "none",
-                   "const int protocol = 1;\nconst int end = 2;");
+                   "const int protocol = 1;\nconst int end = 2;\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "typedef NS_ENUM(int, Foo) {};");
+  Style = getStyle("{}", "a.h", "none", "typedef NS_ENUM(int, Foo) {};\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "typedef NS_CLOSED_ENUM(int, Foo) {};");
+  Style =
+      getStyle("{}", "a.h", "none", "typedef NS_CLOSED_ENUM(int, Foo) {};\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "typedef NS_ERROR_ENUM(int, Foo) {};");
+  Style =
+      getStyle("{}", "a.h", "none", "typedef NS_ERROR_ENUM(int, Foo) {};\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
@@ -116,43 +118,45 @@ FOUNDATION_EXPORT void DoStuff(void);
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "inline void Foo() { Log(@\"Foo\"); }");
+  Style =
+      getStyle("{}", "a.h", "none", "inline void Foo() { Log(@\"Foo\"); }\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "inline void Foo() { Log(\"Foo\"); }");
+  Style =
+      getStyle("{}", "a.h", "none", "inline void Foo() { Log(\"Foo\"); }\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
   Style =
-      getStyle("{}", "a.h", "none", "inline void Foo() { id = @[1, 2, 3]; }");
+      getStyle("{}", "a.h", "none", "inline void Foo() { id = @[1, 2, 3]; }\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
   Style = getStyle("{}", "a.h", "none",
-                   "inline void Foo() { id foo = @{1: 2, 3: 4, 5: 6}; }");
+                   "inline void Foo() { id foo = @{1: 2, 3: 4, 5: 6}; }\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
   Style = getStyle("{}", "a.h", "none",
-                   "inline void Foo() { int foo[] = {1, 2, 3}; }");
+                   "inline void Foo() { int foo[] = {1, 2, 3}; }\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_Cpp, Style->Language);
 
   // ObjC characteristic types.
-  Style = getStyle("{}", "a.h", "none", "extern NSString *kFoo;");
+  Style = getStyle("{}", "a.h", "none", "extern NSString *kFoo;\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "extern NSInteger Foo();");
+  Style = getStyle("{}", "a.h", "none", "extern NSInteger Foo();\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "NSObject *Foo();");
+  Style = getStyle("{}", "a.h", "none", "NSObject *Foo();\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 
-  Style = getStyle("{}", "a.h", "none", "NSSet *Foo();");
+  Style = getStyle("{}", "a.h", "none", "NSSet *Foo();\n");
   ASSERT_TRUE((bool)Style);
   EXPECT_EQ(FormatStyle::LK_ObjC, Style->Language);
 }
@@ -183,7 +187,7 @@ TEST_F(FormatTestObjC, FormatObjCTryCatch) {
                "  @try {\n"
                "  } @finally {\n"
                "  }\n"
-               "});");
+               "});\n");
 }
 
 TEST_F(FormatTestObjC, FormatObjCAutoreleasepool) {
@@ -192,7 +196,7 @@ TEST_F(FormatTestObjC, FormatObjCAutoreleasepool) {
                "}\n"
                "@autoreleasepool {\n"
                "  f();\n"
-               "}");
+               "}\n");
   Style.BreakBeforeBraces = FormatStyle::BS_Custom;
   Style.BraceWrapping.AfterControlStatement = FormatStyle::BWACS_Always;
   verifyFormat("@autoreleasepool\n"
@@ -202,18 +206,18 @@ TEST_F(FormatTestObjC, FormatObjCAutoreleasepool) {
                "@autoreleasepool\n"
                "{\n"
                "  f();\n"
-               "}");
+               "}\n");
 }
 
 TEST_F(FormatTestObjC, FormatObjCGenerics) {
   Style.ColumnLimit = 40;
   verifyFormat("int aaaaaaaaaaaaaaaa(\n"
                "    NSArray<aaaaaaaaaaaaaaaaaa *>\n"
-               "        aaaaaaaaaaaaaaaaa);");
+               "        aaaaaaaaaaaaaaaaa);\n");
   verifyFormat("int aaaaaaaaaaaaaaaa(\n"
                "    NSArray<aaaaaaaaaaaaaaaaaaa<\n"
                "        aaaaaaaaaaaaaaaa *> *>\n"
-               "        aaaaaaaaaaaaaaaaa);");
+               "        aaaaaaaaaaaaaaaaa);\n");
 }
 
 TEST_F(FormatTestObjC, FormatObjCSynchronized) {
@@ -222,7 +226,7 @@ TEST_F(FormatTestObjC, FormatObjCSynchronized) {
                "}\n"
                "@synchronized(self) {\n"
                "  f();\n"
-               "}");
+               "}\n");
   Style.BreakBeforeBraces = FormatStyle::BS_Custom;
   Style.BraceWrapping.AfterControlStatement = FormatStyle::BWACS_Always;
   verifyFormat("@synchronized(self)\n"
@@ -232,7 +236,7 @@ TEST_F(FormatTestObjC, FormatObjCSynchronized) {
                "@synchronized(self)\n"
                "{\n"
                "  f();\n"
-               "}");
+               "}\n");
 }
 
 TEST_F(FormatTestObjC, FormatObjCInterface) {
@@ -405,7 +409,7 @@ TEST_F(FormatTestObjC, FormatObjCInterface) {
   Style.ColumnLimit = 40;
   // BinPackParameters should be true by default.
   verifyFormat("void eeeeeeee(int eeeee, int eeeee,\n"
-               "              int eeeee, int eeeee);");
+               "              int eeeee, int eeeee);\n");
   // ObjCBinPackProtocolList should be BPS_Never by default.
   verifyFormat("@interface fffffffffffff () <\n"
                "    fffffffffffff,\n"
@@ -507,7 +511,7 @@ TEST_F(FormatTestObjC, FormatObjCProtocol) {
                "@end");
 
   verifyFormat("@protocol Foo;\n"
-               "@protocol Bar;");
+               "@protocol Bar;\n");
 
   verifyFormat("@protocol Foo\n"
                "@end\n"
@@ -526,7 +530,7 @@ TEST_F(FormatTestObjC, FormatObjCProtocol) {
                "- (void)required;\n"
                "@optional\n"
                "@property(assign) int madProp;\n"
-               "@end");
+               "@end\n");
 
   verifyFormat("@property(nonatomic, assign, readonly)\n"
                "    int *looooooooooooooooooooooooooooongNumber;\n"
@@ -558,7 +562,7 @@ TEST_F(FormatTestObjC, FormatObjCMethodDeclarations) {
                "    evenLongerKeyword:(float)theInterval\n"
                "                error:(NSError **)theError {\n"
                "}");
-  verifyFormat("+ (instancetype)new;");
+  verifyFormat("+ (instancetype)new;\n");
   Style.ColumnLimit = 60;
   verifyFormat("- (instancetype)initXxxxxx:(id<x>)x\n"
                "                         y:(id<yyyyyyyyyyyyyyyyyyyy>)y\n"
@@ -569,18 +573,18 @@ TEST_F(FormatTestObjC, FormatObjCMethodDeclarations) {
   Style.ColumnLimit = 40;
   // Make sure selectors with 0, 1, or more arguments are indented when wrapped.
   verifyFormat("- (aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)\n"
-               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa;");
+               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa;\n");
   verifyFormat("- (aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)\n"
-               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;");
+               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;\n");
   verifyFormat("- (aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)\n"
                "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a\n"
-               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;");
+               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;\n");
   verifyFormat("- (aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)\n"
                "     aaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a\n"
-               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;");
+               "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;\n");
   verifyFormat("- (aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)\n"
                "    aaaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a\n"
-               "     aaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;");
+               "     aaaaaaaaaaaaaaaaaaaaaaaaaaa:(int)a;\n");
 
   // Continuation indent width should win over aligning colons if the function
   // name is long.
@@ -614,7 +618,7 @@ TEST_F(FormatTestObjC, FormatObjCMethodDeclarations) {
                "- (void)foo:(id)bar\n"
                "{\n"
                "}\n"
-               "@end");
+               "@end\n");
 }
 
 TEST_F(FormatTestObjC, FormatObjCMethodExpr) {
@@ -1105,30 +1109,30 @@ TEST_F(FormatTestObjC, ObjCForIn) {
 TEST_F(FormatTestObjC, ObjCCxxKeywords) {
   verifyFormat("+ (instancetype)new {\n"
                "  return nil;\n"
-               "}");
+               "}\n");
   verifyFormat("+ (instancetype)myNew {\n"
                "  return [self new];\n"
-               "}");
-  verifyFormat("SEL NewSelector(void) { return @selector(new); }");
-  verifyFormat("SEL MacroSelector(void) { return MACRO(new); }");
+               "}\n");
+  verifyFormat("SEL NewSelector(void) { return @selector(new); }\n");
+  verifyFormat("SEL MacroSelector(void) { return MACRO(new); }\n");
   verifyFormat("+ (instancetype)delete {\n"
                "  return nil;\n"
-               "}");
+               "}\n");
   verifyFormat("+ (instancetype)myDelete {\n"
                "  return [self delete];\n"
-               "}");
-  verifyFormat("SEL DeleteSelector(void) { return @selector(delete); }");
-  verifyFormat("SEL MacroSelector(void) { return MACRO(delete); }");
-  verifyFormat("MACRO(new:)");
-  verifyFormat("MACRO(delete:)");
-  verifyFormat("foo = @{MACRO(new:) : MACRO(delete:)}");
+               "}\n");
+  verifyFormat("SEL DeleteSelector(void) { return @selector(delete); }\n");
+  verifyFormat("SEL MacroSelector(void) { return MACRO(delete); }\n");
+  verifyFormat("MACRO(new:)\n");
+  verifyFormat("MACRO(delete:)\n");
+  verifyFormat("foo = @{MACRO(new:) : MACRO(delete:)}\n");
   verifyFormat("@implementation Foo\n"
                "// Testing\n"
                "- (Class)class {\n"
                "}\n"
                "- (void)foo {\n"
                "}\n"
-               "@end");
+               "@end\n");
   verifyFormat("@implementation Foo\n"
                "- (Class)class {\n"
                "}\n"
@@ -1158,7 +1162,7 @@ TEST_F(FormatTestObjC, ObjCCxxKeywords) {
                "// Testing\n"
                "- (Class)class;\n"
                "- (void)foo;\n"
-               "@end");
+               "@end\n");
   verifyFormat("@interface Foo\n"
                "- (Class)class;\n"
                "- (void)foo;\n"
@@ -1350,7 +1354,7 @@ TEST_F(FormatTestObjC, ObjCArrayLiterals) {
   // (that raises -Wobjc-string-concatenation).
   verifyFormat("NSArray *foo = @[\n"
                "  @\"aaaaaaaaaaaaaaaaaaaaaaaaaa\"\n"
-               "];");
+               "];\n");
 }
 
 TEST_F(FormatTestObjC, BreaksCallStatementWhereSemiJustOverTheLimit) {
@@ -1523,10 +1527,7 @@ TEST_F(FormatTestObjC, IfNotUnlikely) {
                "  [obj func:arg2];");
 }
 
-TEST_F(FormatTestObjC, AttributesOnObjCDecl) {
-  Style.AttributeMacros.push_back("ATTRIBUTE_MACRO");
-
-  // Check '__attribute__' macro directly.
+TEST_F(FormatTestObjC, Attributes) {
   verifyFormat("__attribute__((objc_subclassing_restricted))\n"
                "@interface Foo\n"
                "@end");
@@ -1536,215 +1537,6 @@ TEST_F(FormatTestObjC, AttributesOnObjCDecl) {
   verifyFormat("__attribute__((objc_subclassing_restricted))\n"
                "@implementation Foo\n"
                "@end");
-
-  // Check AttributeMacro gets treated the same, with or without parentheses.
-  verifyFormat("ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-
-  // Indenter also needs to understand multiple attribute macros.
-  // Try each of the three kinds paired with each of the other kind.
-
-  // Column limit, but no reflow.
-  verifyFormat("ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X)) ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO __attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X)) ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO(X) __attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-
-  // Column limit that requires reflow.
-  Style.ColumnLimit = 30;
-  verifyFormat("ATTRIBUTE_MACRO(X)\n"
-               "ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO\n"
-               "ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X))\n"
-               "ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO\n"
-               "__attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X))\n"
-               "ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO(X)\n"
-               "__attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-
-  // No column limit
-  Style.ColumnLimit = 0;
-  verifyFormat("ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X)) ATTRIBUTE_MACRO\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO __attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("__attribute__((X)) ATTRIBUTE_MACRO(X)\n"
-               "@interface Foo\n"
-               "@end");
-  verifyFormat("ATTRIBUTE_MACRO(X) __attribute__((X))\n"
-               "@interface Foo\n"
-               "@end");
-}
-
-TEST_F(FormatTestObjC, AttributesOnObjCMethodDecl) {
-  Style.AttributeMacros.push_back("ATTRIBUTE_MACRO");
-
-  // Check '__attribute__' macro directly.
-  verifyFormat("- (id)init __attribute__((objc_designated_initializer));");
-
-  // Check AttributeMacro gets treated the same, with or without parentheses.
-  verifyFormat("- (id)init ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X);");
-
-  // Indenter also needs to understand multiple attribute macros.
-
-  // Column limit (default), but no reflow.
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init __attribute__((X)) ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO __attribute__((X));");
-  verifyFormat("- (id)init __attribute__((X)) ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X) __attribute__((X));");
-
-  // Column limit that requires reflow.
-  Style.ColumnLimit = 30;
-
-  // Reflow after method name.
-  verifyFormat("- (id)initWithReallyLongName\n"
-               "    __attribute__((X))\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)initWithReallyLongName\n"
-               "    ATTRIBUTE_MACRO(X)\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)initWithReallyLongName\n"
-               "    ATTRIBUTE_MACRO\n"
-               "    ATTRIBUTE_MACRO;");
-  // Reflow after first macro.
-  // FIXME: these should indent but don't.
-#if 0
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X)\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO\n"
-               "    ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init __attribute__((X))\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO\n"
-               "    __attribute__((X));");
-  verifyFormat("- (id)init __attribute__((X))\n"
-               "    ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X)\n"
-               "    __attribute__((X));");
-#endif
-
-  // No column limit.
-  Style.ColumnLimit = 0;
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init __attribute__((X)) ATTRIBUTE_MACRO;");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO __attribute__((X));");
-  verifyFormat("- (id)init __attribute__((X)) ATTRIBUTE_MACRO(X);");
-  verifyFormat("- (id)init ATTRIBUTE_MACRO(X) __attribute__((X));");
-}
-
-TEST_F(FormatTestObjC, AttributesOnObjCProperty) {
-  Style.AttributeMacros.push_back("ATTRIBUTE_MACRO");
-
-  // Check '__attribute__' macro directly.
-  verifyFormat("@property(weak) id delegate "
-               "__attribute__((objc_designated_initializer));");
-
-  // Check AttributeMacro gets treated the same, with or without parentheses.
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO;");
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO(X);");
-
-  // Indenter also needs to understand multiple attribute macros.
-
-  // Column limit (default), but no reflow.
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO;");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X);");
-  verifyFormat(
-      "@property(weak) id delegate __attribute__((X)) ATTRIBUTE_MACRO;");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO __attribute__((X));");
-  verifyFormat(
-      "@property(weak) id delegate __attribute__((X)) ATTRIBUTE_MACRO(X);");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO(X) __attribute__((X));");
-
-  // Column limit that requires reflow.
-  Style.ColumnLimit = 50;
-
-  // Reflow after method name.
-  verifyFormat("@property(weak) id delegateWithLongName\n"
-               "    __attribute__((X)) ATTRIBUTE_MACRO;");
-  verifyFormat("@property(weak) id delegateWithLongName\n"
-               "    ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO;");
-  verifyFormat("@property(weak) id delegateWithLongName\n"
-               "    ATTRIBUTE_MACRO ATTRIBUTE_MACRO;");
-  // Reflow after first macro.
-  // FIXME: these should indent but don't.
-#if 0
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO(X)\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO\n"
-               "    ATTRIBUTE_MACRO(X);");
-  verifyFormat("@property(weak) id delegate __attribute__((X))\n"
-               "    ATTRIBUTE_MACRO;");
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO\n"
-               "    __attribute__((X));");
-  verifyFormat("@property(weak) id delegate __attribute__((X))\n"
-               "    ATTRIBUTE_MACRO(X);");
-  verifyFormat("@property(weak) id delegate ATTRIBUTE_MACRO(X)\n"
-               "    __attribute__((X));");
-#endif
-
-  // No column limit.
-  Style.ColumnLimit = 0;
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO(X) ATTRIBUTE_MACRO;");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO ATTRIBUTE_MACRO(X);");
-  verifyFormat(
-      "@property(weak) id delegate __attribute__((X)) ATTRIBUTE_MACRO;");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO __attribute__((X));");
-  verifyFormat(
-      "@property(weak) id delegate __attribute__((X)) ATTRIBUTE_MACRO(X);");
-  verifyFormat(
-      "@property(weak) id delegate ATTRIBUTE_MACRO(X) __attribute__((X));");
 }
 
 } // end namespace

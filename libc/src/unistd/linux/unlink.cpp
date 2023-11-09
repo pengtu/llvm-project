@@ -15,13 +15,13 @@
 #include <fcntl.h>
 #include <sys/syscall.h> // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, unlink, (const char *path)) {
 #ifdef SYS_unlink
-  int ret = LIBC_NAMESPACE::syscall_impl<int>(SYS_unlink, path);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_unlink, path);
 #elif defined(SYS_unlinkat)
-  int ret = LIBC_NAMESPACE::syscall_impl<int>(SYS_unlinkat, AT_FDCWD, path, 0);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_unlinkat, AT_FDCWD, path, 0);
 #else
 #error "unlink and unlinkat syscalls not available."
 #endif
@@ -33,4 +33,4 @@ LLVM_LIBC_FUNCTION(int, unlink, (const char *path)) {
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

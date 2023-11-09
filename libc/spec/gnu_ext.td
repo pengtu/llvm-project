@@ -69,7 +69,7 @@ def GnuExtensions : StandardSpec<"GNUExtensions"> {
         FunctionSpec<
             "memrchr",
             RetValSpec<VoidPtr>,
-            [ArgSpec<ConstVoidPtr>, ArgSpec<IntType>, ArgSpec<SizeTType>]
+            [ArgSpec<VoidPtr>, ArgSpec<IntType>, ArgSpec<SizeTType>]
         >,
         FunctionSpec<
             "strerror_r",

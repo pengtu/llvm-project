@@ -24,10 +24,7 @@ bool llvm::isWidenableCondition(const Value *V) {
 }
 
 bool llvm::isWidenableBranch(const User *U) {
-  Value *Condition, *WidenableCondition;
-  BasicBlock *GuardedBB, *DeoptBB;
-  return parseWidenableBranch(U, Condition, WidenableCondition, GuardedBB,
-                              DeoptBB);
+  return extractWidenableCondition(U) != nullptr;
 }
 
 bool llvm::isGuardAsWidenableBranch(const User *U) {

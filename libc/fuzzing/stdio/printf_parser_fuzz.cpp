@@ -10,13 +10,17 @@
 ///
 //===----------------------------------------------------------------------===//
 
+#ifndef LIBC_COPT_MOCK_ARG_LIST
+#error The printf Parser Fuzzer must be compiled with LIBC_COPT_MOCK_ARG_LIST, and the parser itself must also be compiled with that option when it's linked against the fuzzer.
+#endif
+
 #include "src/__support/arg_list.h"
 #include "src/stdio/printf_core/parser.h"
 
 #include <stdarg.h>
 #include <stdint.h>
 
-using namespace LIBC_NAMESPACE;
+using namespace __llvm_libc;
 
 // The design for the printf parser fuzzer is fairly simple. The parser uses a
 // mock arg list that will never fail, and is passed a randomized string. The
@@ -33,8 +37,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
   auto mock_arg_list = internal::MockArgList();
 
-  auto parser =
-      printf_core::Parser<internal::MockArgList>(in_str, mock_arg_list);
+  auto parser = printf_core::Parser(in_str, mock_arg_list);
 
   int str_percent_count = 0;
 

@@ -92,7 +92,7 @@ public:
 
   AMDGPUDAGToDAGISel() = delete;
 
-  explicit AMDGPUDAGToDAGISel(TargetMachine &TM, CodeGenOptLevel OptLevel);
+  explicit AMDGPUDAGToDAGISel(TargetMachine &TM, CodeGenOpt::Level OptLevel);
   ~AMDGPUDAGToDAGISel() override = default;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
@@ -273,7 +273,6 @@ private:
   bool isCBranchSCC(const SDNode *N) const;
   void SelectBRCOND(SDNode *N);
   void SelectFMAD_FMA(SDNode *N);
-  void SelectFP_EXTEND(SDNode *N);
   void SelectDSAppendConsume(SDNode *N, unsigned IntrID);
   void SelectDSBvhStackIntrinsic(SDNode *N);
   void SelectDS_GWS(SDNode *N, unsigned IntrID);

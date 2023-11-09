@@ -28,15 +28,15 @@ findGeneratorByName(llvm::StringRef Format) {
 
 std::string getTagType(TagTypeKind AS) {
   switch (AS) {
-  case TagTypeKind::Class:
+  case TagTypeKind::TTK_Class:
     return "class";
-  case TagTypeKind::Union:
+  case TagTypeKind::TTK_Union:
     return "union";
-  case TagTypeKind::Interface:
+  case TagTypeKind::TTK_Interface:
     return "interface";
-  case TagTypeKind::Struct:
+  case TagTypeKind::TTK_Struct:
     return "struct";
-  case TagTypeKind::Enum:
+  case TagTypeKind::TTK_Enum:
     return "enum";
   }
   llvm_unreachable("Unknown TagTypeKind");

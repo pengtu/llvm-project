@@ -345,6 +345,7 @@ TEST_F(QualifierFixerTest, RightQualifier) {
       "bool tools::addXRayRuntime(const ToolChain&TC, const ArgList &Args) {",
       Style);
   verifyFormat("Foo<Foo<int> const> P;", "Foo<const Foo<int>> P;", Style);
+  verifyFormat("Foo<Foo<int> const> P;\n", "Foo<const Foo<int>> P;\n", Style);
   verifyFormat("Foo<Foo<int> const> P;\n#if 0\n#else\n#endif",
                "Foo<const Foo<int>> P;\n#if 0\n#else\n#endif", Style);
 
@@ -1253,17 +1254,17 @@ TEST_F(QualifierFixerTest, DisableRegions) {
   ReplacementCount = 0;
   verifyFormat("// clang-format off\n"
                "int const inline static a = 0;\n"
-               "// clang-format on",
+               "// clang-format on\n",
                Style);
   EXPECT_EQ(ReplacementCount, 0);
   verifyFormat("// clang-format off\n"
                "int const inline static a = 0;\n"
                "// clang-format on\n"
-               "inline static const int a = 0;",
+               "inline static const int a = 0;\n",
                "// clang-format off\n"
                "int const inline static a = 0;\n"
                "// clang-format on\n"
-               "int const inline static a = 0;",
+               "int const inline static a = 0;\n",
                Style);
 }
 

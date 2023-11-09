@@ -120,6 +120,8 @@ public:
   static unsigned getNumUnpackedValues(MemRefType type);
 
 private:
+  bool useOpaquePointers();
+
   // Cached index type.
   Type indexType;
 };

@@ -15,12 +15,12 @@
 #include <sys/stat.h>
 #include <sys/syscall.h> // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, fchmodat,
                    (int dirfd, const char *path, mode_t mode, int flags)) {
   int ret =
-      LIBC_NAMESPACE::syscall_impl<int>(SYS_fchmodat, dirfd, path, mode, flags);
+      __llvm_libc::syscall_impl<int>(SYS_fchmodat, dirfd, path, mode, flags);
   if (ret < 0) {
     libc_errno = -ret;
     return -1;
@@ -28,4 +28,4 @@ LLVM_LIBC_FUNCTION(int, fchmodat,
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

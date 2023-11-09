@@ -59,36 +59,29 @@ struct HeaderFileInfo {
   // TODO: Whether the file was imported is not a property of the file itself.
   // It's a preprocessor state, move it there.
   /// True if this is a \#import'd file.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned isImport : 1;
 
   /// True if this is a \#pragma once file.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned isPragmaOnce : 1;
 
   /// Keep track of whether this is a system header, and if so,
   /// whether it is C++ clean or not.  This can be set by the include paths or
   /// by \#pragma gcc system_header.  This is an instance of
   /// SrcMgr::CharacteristicKind.
-  LLVM_PREFERRED_TYPE(SrcMgr::CharacteristicKind)
   unsigned DirInfo : 3;
 
   /// Whether this header file info was supplied by an external source,
   /// and has not changed since.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned External : 1;
 
   /// Whether this header is part of a module.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned isModuleHeader : 1;
 
   /// Whether this header is part of the module that we are building.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned isCompilingModuleHeader : 1;
 
   /// Whether this structure is considered to already have been
   /// "resolved", meaning that it was loaded from the external source.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned Resolved : 1;
 
   /// Whether this is a header inside a framework that is currently
@@ -98,11 +91,9 @@ struct HeaderFileInfo {
   /// into the appropriate framework subdirectories, and therefore are
   /// provided via a header map. This bit indicates when this is one of
   /// those framework headers.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IndexHeaderMapHeader : 1;
 
   /// Whether this file has been looked up as a header.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned IsValid : 1;
 
   /// The ID number of the controlling macro.
@@ -148,7 +139,7 @@ public:
   /// \returns Header file information for the given file entry, with the
   /// \c External bit set. If the file entry is not known, return a
   /// default-constructed \c HeaderFileInfo.
-  virtual HeaderFileInfo GetHeaderFileInfo(FileEntryRef FE) = 0;
+  virtual HeaderFileInfo GetHeaderFileInfo(const FileEntry *FE) = 0;
 };
 
 /// This structure is used to record entries in our framework cache.
@@ -496,7 +487,7 @@ public:
   OptionalFileEntryRef LookupFile(
       StringRef Filename, SourceLocation IncludeLoc, bool isAngled,
       ConstSearchDirIterator FromDir, ConstSearchDirIterator *CurDir,
-      ArrayRef<std::pair<OptionalFileEntryRef, DirectoryEntryRef>> Includers,
+      ArrayRef<std::pair<const FileEntry *, DirectoryEntryRef>> Includers,
       SmallVectorImpl<char> *SearchPath, SmallVectorImpl<char> *RelativePath,
       Module *RequestingModule, ModuleMap::KnownHeader *SuggestedModule,
       bool *IsMapped, bool *IsFrameworkFound, bool SkipCache = false,
@@ -525,38 +516,39 @@ public:
   ///
   /// \return false if \#including the file will have no effect or true
   /// if we should include it.
-  bool ShouldEnterIncludeFile(Preprocessor &PP, FileEntryRef File,
+  bool ShouldEnterIncludeFile(Preprocessor &PP, const FileEntry *File,
                               bool isImport, bool ModulesEnabled, Module *M,
                               bool &IsFirstIncludeOfFile);
 
   /// Return whether the specified file is a normal header,
   /// a system header, or a C++ friendly system header.
-  SrcMgr::CharacteristicKind getFileDirFlavor(FileEntryRef File) {
+  SrcMgr::CharacteristicKind getFileDirFlavor(const FileEntry *File) {
     return (SrcMgr::CharacteristicKind)getFileInfo(File).DirInfo;
   }
 
   /// Mark the specified file as a "once only" file due to
   /// \#pragma once.
-  void MarkFileIncludeOnce(FileEntryRef File) {
+  void MarkFileIncludeOnce(const FileEntry *File) {
     HeaderFileInfo &FI = getFileInfo(File);
     FI.isPragmaOnce = true;
   }
 
   /// Mark the specified file as a system header, e.g. due to
   /// \#pragma GCC system_header.
-  void MarkFileSystemHeader(FileEntryRef File) {
+  void MarkFileSystemHeader(const FileEntry *File) {
     getFileInfo(File).DirInfo = SrcMgr::C_System;
   }
 
   /// Mark the specified file as part of a module.
-  void MarkFileModuleHeader(FileEntryRef FE, ModuleMap::ModuleHeaderRole Role,
+  void MarkFileModuleHeader(const FileEntry *FE,
+                            ModuleMap::ModuleHeaderRole Role,
                             bool isCompilingModuleHeader);
 
   /// Mark the specified file as having a controlling macro.
   ///
   /// This is used by the multiple-include optimization to eliminate
   /// no-op \#includes.
-  void SetFileControllingMacro(FileEntryRef File,
+  void SetFileControllingMacro(const FileEntry *File,
                                const IdentifierInfo *ControllingMacro) {
     getFileInfo(File).ControllingMacro = ControllingMacro;
   }
@@ -566,10 +558,10 @@ public:
   /// macro.
   ///
   /// This routine does not consider the effect of \#import
-  bool isFileMultipleIncludeGuarded(FileEntryRef File) const;
+  bool isFileMultipleIncludeGuarded(const FileEntry *File) const;
 
   /// Determine whether the given file is known to have ever been \#imported.
-  bool hasFileBeenImported(FileEntryRef File) const {
+  bool hasFileBeenImported(const FileEntry *File) const {
     const HeaderFileInfo *FI = getExistingFileInfo(File);
     return FI && FI->isImport;
   }
@@ -685,7 +677,7 @@ public:
   /// Like \ref findAllModulesForHeader, but do not attempt to infer module
   /// ownership from umbrella headers if we've not already done so.
   ArrayRef<ModuleMap::KnownHeader>
-  findResolvedModulesForHeader(FileEntryRef File) const;
+  findResolvedModulesForHeader(const FileEntry *File) const;
 
   /// Read the contents of the given module map file.
   ///
@@ -814,13 +806,13 @@ public:
 
   /// Return the HeaderFileInfo structure for the specified FileEntry,
   /// in preparation for updating it in some way.
-  HeaderFileInfo &getFileInfo(FileEntryRef FE);
+  HeaderFileInfo &getFileInfo(const FileEntry *FE);
 
   /// Return the HeaderFileInfo structure for the specified FileEntry,
   /// if it has ever been filled in.
   /// \param WantExternal Whether the caller wants purely-external header file
   ///        info (where \p External is true).
-  const HeaderFileInfo *getExistingFileInfo(FileEntryRef FE,
+  const HeaderFileInfo *getExistingFileInfo(const FileEntry *FE,
                                             bool WantExternal = true) const;
 
   SearchDirIterator search_dir_begin() { return {*this, 0}; }

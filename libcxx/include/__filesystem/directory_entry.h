@@ -26,6 +26,7 @@
 #include <__utility/move.h>
 #include <__utility/unreachable.h>
 #include <cstdint>
+#include <iosfwd>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header

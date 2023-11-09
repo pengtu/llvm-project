@@ -19,14 +19,9 @@
 
 #include "check_assertion.h"
 
-template <class S>
-void test() {
-  S s;
-  TEST_LIBCPP_ASSERT_FAILURE(s.pop_back(), "string::pop_back(): string is already empty");
-}
-
 int main(int, char**) {
-  test<std::string>();
+  std::string s;
+  TEST_LIBCPP_ASSERT_FAILURE(s.pop_back(), "string::pop_back(): string is already empty");
 
   return 0;
 }

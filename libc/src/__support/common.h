@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_COMMON_H
-#define LLVM_LIBC_SRC___SUPPORT_COMMON_H
+#ifndef LLVM_LIBC_SUPPORT_COMMON_H
+#define LLVM_LIBC_SUPPORT_COMMON_H
 
 #ifndef LIBC_NAMESPACE
 #error "LIBC_NAMESPACE macro is not defined."
@@ -23,9 +23,9 @@
 // MacOS needs to be excluded because it does not support aliasing.
 #if defined(LIBC_COPT_PUBLIC_PACKAGING) && (!defined(__APPLE__))
 #define LLVM_LIBC_FUNCTION_IMPL(type, name, arglist)                           \
-  LLVM_LIBC_FUNCTION_ATTR decltype(LIBC_NAMESPACE::name)                       \
+  LLVM_LIBC_FUNCTION_ATTR decltype(__llvm_libc::name)                          \
       __##name##_impl__ __asm__(#name);                                        \
-  decltype(LIBC_NAMESPACE::name) name [[gnu::alias(#name)]];                   \
+  decltype(__llvm_libc::name) name [[gnu::alias(#name)]];                      \
   type __##name##_impl__ arglist
 #else
 #define LLVM_LIBC_FUNCTION_IMPL(type, name, arglist) type name arglist
@@ -35,7 +35,7 @@
 #define LLVM_LIBC_FUNCTION(type, name, arglist)                                \
   LLVM_LIBC_FUNCTION_IMPL(type, name, arglist)
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace internal {
 LIBC_INLINE constexpr bool same_string(char const *lhs, char const *rhs) {
   for (; *lhs || *rhs; ++lhs, ++rhs)
@@ -44,10 +44,7 @@ LIBC_INLINE constexpr bool same_string(char const *lhs, char const *rhs) {
   return true;
 }
 } // namespace internal
-} // namespace LIBC_NAMESPACE
-
-#define __LIBC_MACRO_TO_STRING(str) #str
-#define LIBC_MACRO_TO_STRING(str) __LIBC_MACRO_TO_STRING(str)
+} // namespace __llvm_libc
 
 // LLVM_LIBC_IS_DEFINED checks whether a particular macro is defined.
 // Usage: constexpr bool kUseAvx = LLVM_LIBC_IS_DEFINED(__AVX__);
@@ -57,8 +54,8 @@ LIBC_INLINE constexpr bool same_string(char const *lhs, char const *rhs) {
 // is defined, one stringification yields "FOO" while the other yields its
 // stringified value "1".
 #define LLVM_LIBC_IS_DEFINED(macro)                                            \
-  !LIBC_NAMESPACE::internal::same_string(                                      \
+  !__llvm_libc::internal::same_string(                                         \
       LLVM_LIBC_IS_DEFINED__EVAL_AND_STRINGIZE(macro), #macro)
 #define LLVM_LIBC_IS_DEFINED__EVAL_AND_STRINGIZE(s) #s
 
-#endif // LLVM_LIBC_SRC___SUPPORT_COMMON_H
+#endif // LLVM_LIBC_SUPPORT_COMMON_H

@@ -102,8 +102,11 @@ static InFlightDiagnostic &printRegionEdgeName(InFlightDiagnostic &diag,
 }
 
 /// Verify that types match along all region control flow edges originating from
-/// `sourcePoint`. `getInputsTypesForRegion` is a function that returns the
-/// types of the inputs that flow to a successor region.
+/// `sourceNo` (region # if source is a region, std::nullopt if source is parent
+/// op). `getInputsTypesForRegion` is a function that returns the types of the
+/// inputs that flow from `sourceIndex' to the given region, or std::nullopt if
+/// the exact type match verification is not necessary (e.g., if the Op verifies
+/// the match itself).
 static LogicalResult
 verifyTypesAlongAllEdges(Operation *op, RegionBranchPoint sourcePoint,
                          function_ref<FailureOr<TypeRange>(RegionBranchPoint)>
@@ -147,8 +150,8 @@ verifyTypesAlongAllEdges(Operation *op, RegionBranchPoint sourcePoint,
 LogicalResult detail::verifyTypesAlongControlFlowEdges(Operation *op) {
   auto regionInterface = cast<RegionBranchOpInterface>(op);
 
-  auto inputTypesFromParent = [&](RegionBranchPoint point) -> TypeRange {
-    return regionInterface.getEntrySuccessorOperands(point).getTypes();
+  auto inputTypesFromParent = [&](RegionBranchPoint regionNo) -> TypeRange {
+    return regionInterface.getEntrySuccessorOperands(regionNo).getTypes();
   };
 
   // Verify types along control flow edges originating from the parent.
@@ -187,10 +190,11 @@ LogicalResult detail::verifyTypesAlongControlFlowEdges(Operation *op) {
       continue;
 
     auto inputTypesForRegion =
-        [&](RegionBranchPoint point) -> FailureOr<TypeRange> {
+        [&](RegionBranchPoint succRegionNo) -> FailureOr<TypeRange> {
       std::optional<OperandRange> regionReturnOperands;
       for (RegionBranchTerminatorOpInterface regionReturnOp : regionReturnOps) {
-        auto terminatorOperands = regionReturnOp.getSuccessorOperands(point);
+        auto terminatorOperands =
+            regionReturnOp.getSuccessorOperands(succRegionNo);
 
         if (!regionReturnOperands) {
           regionReturnOperands = terminatorOperands;
@@ -202,7 +206,7 @@ LogicalResult detail::verifyTypesAlongControlFlowEdges(Operation *op) {
         if (!areTypesCompatible(regionReturnOperands->getTypes(),
                                 terminatorOperands.getTypes())) {
           InFlightDiagnostic diag = op->emitOpError(" along control flow edge");
-          return printRegionEdgeName(diag, region, point)
+          return printRegionEdgeName(diag, region, succRegionNo)
                  << " operands mismatch between return-like terminators";
         }
       }

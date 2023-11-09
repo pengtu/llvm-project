@@ -10,11 +10,11 @@
 #include "src/math/sinf.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
+namespace mpfr = __llvm_libc::testing::mpfr;
 
 using LlvmLibcSinfExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Sin,
-                                      LIBC_NAMESPACE::sinf>;
+                                      __llvm_libc::sinf>;
 
 // Range: [0, Inf];
 static constexpr uint32_t POS_START = 0x0000'0000U;

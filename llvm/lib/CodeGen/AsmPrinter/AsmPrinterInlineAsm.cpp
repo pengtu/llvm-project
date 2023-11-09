@@ -278,8 +278,8 @@ static void EmitInlineAsmStr(const char *AsmStr, const MachineInstr *MI,
         for (; Val; --Val) {
           if (OpNo >= MI->getNumOperands())
             break;
-          const InlineAsm::Flag F(MI->getOperand(OpNo).getImm());
-          OpNo += F.getNumOperandRegisters() + 1;
+          unsigned OpFlags = MI->getOperand(OpNo).getImm();
+          OpNo += InlineAsm::getNumOperandRegisters(OpFlags) + 1;
         }
 
         // We may have a location metadata attached to the end of the
@@ -288,7 +288,7 @@ static void EmitInlineAsmStr(const char *AsmStr, const MachineInstr *MI,
         if (OpNo >= MI->getNumOperands() || MI->getOperand(OpNo).isMetadata()) {
           Error = true;
         } else {
-          const InlineAsm::Flag F(MI->getOperand(OpNo).getImm());
+          unsigned OpFlags = MI->getOperand(OpNo).getImm();
           ++OpNo; // Skip over the ID number.
 
           // FIXME: Shouldn't arch-independent output template handling go into
@@ -302,7 +302,7 @@ static void EmitInlineAsmStr(const char *AsmStr, const MachineInstr *MI,
           } else if (MI->getOperand(OpNo).isMBB()) {
             const MCSymbol *Sym = MI->getOperand(OpNo).getMBB()->getSymbol();
             Sym->print(OS, AP->MAI);
-          } else if (F.isMemKind()) {
+          } else if (InlineAsm::isMemKind(OpFlags)) {
             Error = AP->PrintAsmMemoryOperand(
                 MI, OpNo, Modifier[0] ? Modifier : nullptr, OS);
           } else {
@@ -379,14 +379,14 @@ void AsmPrinter::emitInlineAsm(const MachineInstr *MI) const {
     const MachineOperand &MO = MI->getOperand(I);
     if (!MO.isImm())
       continue;
-    const InlineAsm::Flag F(MO.getImm());
-    if (F.isClobberKind()) {
+    unsigned Flags = MO.getImm();
+    if (InlineAsm::getKind(Flags) == InlineAsm::Kind::Clobber) {
       Register Reg = MI->getOperand(I + 1).getReg();
       if (!TRI->isAsmClobberable(*MF, Reg))
         RestrRegs.push_back(Reg);
     }
     // Skip to one before the next operand descriptor, if it exists.
-    I += F.getNumOperandRegisters();
+    I += InlineAsm::getNumOperandRegisters(Flags);
   }
 
   if (!RestrRegs.empty()) {
@@ -400,6 +400,7 @@ void AsmPrinter::emitInlineAsm(const MachineInstr *MI) const {
         "Reserved registers on the clobber list may not be "
         "preserved across the asm statement, and clobbering them may "
         "lead to undefined behaviour.";
+    assert(MMI && "MMI can not be nullptr!");
     MMI->getModule()->getContext().diagnose(DiagnosticInfoInlineAsm(
         LocCookie, Msg, DiagnosticSeverity::DS_Warning));
     MMI->getModule()->getContext().diagnose(

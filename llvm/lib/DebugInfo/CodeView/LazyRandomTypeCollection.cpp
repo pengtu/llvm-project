@@ -15,6 +15,7 @@
 #include "llvm/DebugInfo/CodeView/RecordName.h"
 #include "llvm/DebugInfo/CodeView/RecordSerialization.h"
 #include "llvm/Support/BinaryStreamReader.h"
+#include "llvm/Support/Endian.h"
 #include "llvm/Support/Error.h"
 #include <algorithm>
 #include <cassert>
@@ -68,13 +69,13 @@ void LazyRandomTypeCollection::reset(BinaryStreamReader &Reader,
 }
 
 void LazyRandomTypeCollection::reset(StringRef Data, uint32_t RecordCountHint) {
-  BinaryStreamReader Reader(Data, llvm::endianness::little);
+  BinaryStreamReader Reader(Data, support::little);
   reset(Reader, RecordCountHint);
 }
 
 void LazyRandomTypeCollection::reset(ArrayRef<uint8_t> Data,
                                      uint32_t RecordCountHint) {
-  BinaryStreamReader Reader(Data, llvm::endianness::little);
+  BinaryStreamReader Reader(Data, support::little);
   reset(Reader, RecordCountHint);
 }
 

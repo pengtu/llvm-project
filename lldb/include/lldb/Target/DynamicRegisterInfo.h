@@ -93,12 +93,6 @@ public:
     return llvm::iterator_range<reg_collection::const_iterator>(m_regs);
   }
 
-  llvm::iterator_range<reg_collection::iterator> registers_mutable() {
-    return llvm::iterator_range<reg_collection::iterator>(m_regs);
-  }
-
-  void ConfigureOffsets();
-
 protected:
   // Classes that inherit from DynamicRegisterInfo can see and modify these
   typedef std::vector<lldb_private::RegisterSet> set_collection;
@@ -121,6 +115,8 @@ protected:
   void MoveFrom(DynamicRegisterInfo &&info);
 
   void Finalize(const lldb_private::ArchSpec &arch);
+
+  void ConfigureOffsets();
 
   reg_collection m_regs;
   set_collection m_sets;

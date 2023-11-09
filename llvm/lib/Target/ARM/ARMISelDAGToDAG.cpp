@@ -63,7 +63,7 @@ public:
 
   ARMDAGToDAGISel() = delete;
 
-  explicit ARMDAGToDAGISel(ARMBaseTargetMachine &tm, CodeGenOptLevel OptLevel)
+  explicit ARMDAGToDAGISel(ARMBaseTargetMachine &tm, CodeGenOpt::Level OptLevel)
       : SelectionDAGISel(ID, tm, OptLevel) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
@@ -331,8 +331,7 @@ private:
 
   /// SelectInlineAsmMemoryOperand - Implement addressing mode selection for
   /// inline asm expressions.
-  bool SelectInlineAsmMemoryOperand(const SDValue &Op,
-                                    InlineAsm::ConstraintCode ConstraintID,
+  bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
                                     std::vector<SDValue> &OutOps) override;
 
   // Form pairs of consecutive R, S, D, or Q registers.
@@ -499,7 +498,7 @@ void ARMDAGToDAGISel::PreprocessISelDAG() {
 /// node. VFP / NEON fp VMLA / VMLS instructions have special RAW hazards (at
 /// least on current ARM implementations) which should be avoidded.
 bool ARMDAGToDAGISel::hasNoVMLxHazardUse(SDNode *N) const {
-  if (OptLevel == CodeGenOptLevel::None)
+  if (OptLevel == CodeGenOpt::None)
     return true;
 
   if (!Subtarget->hasVMLxHazards())
@@ -5708,7 +5707,8 @@ bool ARMDAGToDAGISel::tryWriteRegister(SDNode *N){
 
 bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
   std::vector<SDValue> AsmNodeOperands;
-  InlineAsm::Flag Flag;
+  unsigned Flag;
+  InlineAsm::Kind Kind;
   bool Changed = false;
   unsigned NumOps = N->getNumOperands();
 
@@ -5732,8 +5732,10 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
     if (i < InlineAsm::Op_FirstOperand)
       continue;
 
-    if (const auto *C = dyn_cast<ConstantSDNode>(N->getOperand(i)))
-      Flag = InlineAsm::Flag(C->getZExtValue());
+    if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(N->getOperand(i))) {
+      Flag = C->getZExtValue();
+      Kind = InlineAsm::getKind(Flag);
+    }
     else
       continue;
 
@@ -5741,13 +5743,13 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
     // two operands. The first is a constant of value InlineAsm::Kind::Imm, and
     // the second is a constant with the value of the immediate. If we get here
     // and we have a Kind::Imm, skip the next operand, and continue.
-    if (Flag.isImmKind()) {
+    if (Kind == InlineAsm::Kind::Imm) {
       SDValue op = N->getOperand(++i);
       AsmNodeOperands.push_back(op);
       continue;
     }
 
-    const unsigned NumRegs = Flag.getNumOperandRegisters();
+    unsigned NumRegs = InlineAsm::getNumOperandRegisters(Flag);
     if (NumRegs)
       OpChanged.push_back(false);
 
@@ -5755,7 +5757,7 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
     bool IsTiedToChangedOp = false;
     // If it's a use that is tied with a previous def, it has no
     // reg class constraint.
-    if (Changed && Flag.isUseOperandTiedToDef(DefIdx))
+    if (Changed && InlineAsm::isUseOperandTiedToDef(Flag, DefIdx))
       IsTiedToChangedOp = OpChanged[DefIdx];
 
     // Memory operands to inline asm in the SelectionDAG are modeled with two
@@ -5763,18 +5765,18 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
     // operand. If we get here and we have a Kind::Mem, skip the next operand
     // (so it doesn't get misinterpreted), and continue. We do this here because
     // it's important to update the OpChanged array correctly before moving on.
-    if (Flag.isMemKind()) {
+    if (Kind == InlineAsm::Kind::Mem) {
       SDValue op = N->getOperand(++i);
       AsmNodeOperands.push_back(op);
       continue;
     }
 
-    if (!Flag.isRegUseKind() && !Flag.isRegDefKind() &&
-        !Flag.isRegDefEarlyClobberKind())
+    if (Kind != InlineAsm::Kind::RegUse && Kind != InlineAsm::Kind::RegDef &&
+        Kind != InlineAsm::Kind::RegDefEarlyClobber)
       continue;
 
     unsigned RC;
-    const bool HasRC = Flag.hasRegClassConstraint(RC);
+    bool HasRC = InlineAsm::hasRegClassConstraint(Flag, RC);
     if ((!IsTiedToChangedOp && (!HasRC || RC != ARM::GPRRegClassID))
         || NumRegs != 2)
       continue;
@@ -5787,7 +5789,8 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
     SDValue PairedReg;
     MachineRegisterInfo &MRI = MF->getRegInfo();
 
-    if (Flag.isRegDefKind() || Flag.isRegDefEarlyClobberKind()) {
+    if (Kind == InlineAsm::Kind::RegDef ||
+        Kind == InlineAsm::Kind::RegDefEarlyClobber) {
       // Replace the two GPRs with 1 GPRPair and copy values from GPRPair to
       // the original GPRs.
 
@@ -5838,11 +5841,11 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
 
     if(PairedReg.getNode()) {
       OpChanged[OpChanged.size() -1 ] = true;
-      Flag = InlineAsm::Flag(Flag.getKind(), 1 /* RegNum*/);
+      Flag = InlineAsm::getFlagWord(Kind, 1 /* RegNum*/);
       if (IsTiedToChangedOp)
-        Flag.setMatchingOp(DefIdx);
+        Flag = InlineAsm::getFlagWordForMatchingOp(Flag, DefIdx);
       else
-        Flag.setRegClass(ARM::GPRPairRegClassID);
+        Flag = InlineAsm::getFlagWordForRegClass(Flag, ARM::GPRPairRegClassID);
       // Replace the current flag.
       AsmNodeOperands[AsmNodeOperands.size() -1] = CurDAG->getTargetConstant(
           Flag, dl, MVT::i32);
@@ -5865,22 +5868,23 @@ bool ARMDAGToDAGISel::tryInlineAsm(SDNode *N){
   return true;
 }
 
-bool ARMDAGToDAGISel::SelectInlineAsmMemoryOperand(
-    const SDValue &Op, InlineAsm::ConstraintCode ConstraintID,
-    std::vector<SDValue> &OutOps) {
+
+bool ARMDAGToDAGISel::
+SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
+                             std::vector<SDValue> &OutOps) {
   switch(ConstraintID) {
   default:
     llvm_unreachable("Unexpected asm memory constraint");
-  case InlineAsm::ConstraintCode::m:
-  case InlineAsm::ConstraintCode::o:
-  case InlineAsm::ConstraintCode::Q:
-  case InlineAsm::ConstraintCode::Um:
-  case InlineAsm::ConstraintCode::Un:
-  case InlineAsm::ConstraintCode::Uq:
-  case InlineAsm::ConstraintCode::Us:
-  case InlineAsm::ConstraintCode::Ut:
-  case InlineAsm::ConstraintCode::Uv:
-  case InlineAsm::ConstraintCode::Uy:
+  case InlineAsm::Constraint_m:
+  case InlineAsm::Constraint_o:
+  case InlineAsm::Constraint_Q:
+  case InlineAsm::Constraint_Um:
+  case InlineAsm::Constraint_Un:
+  case InlineAsm::Constraint_Uq:
+  case InlineAsm::Constraint_Us:
+  case InlineAsm::Constraint_Ut:
+  case InlineAsm::Constraint_Uv:
+  case InlineAsm::Constraint_Uy:
     // Require the address to be in a register.  That is safe for all ARM
     // variants and it is hard to do anything much smarter without knowing
     // how the operand is used.
@@ -5894,6 +5898,6 @@ bool ARMDAGToDAGISel::SelectInlineAsmMemoryOperand(
 /// ARM-specific DAG, ready for instruction scheduling.
 ///
 FunctionPass *llvm::createARMISelDag(ARMBaseTargetMachine &TM,
-                                     CodeGenOptLevel OptLevel) {
+                                     CodeGenOpt::Level OptLevel) {
   return new ARMDAGToDAGISel(TM, OptLevel);
 }

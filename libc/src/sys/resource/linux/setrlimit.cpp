@@ -15,11 +15,11 @@
 #include <sys/resource.h> // For struct rlimit
 #include <sys/syscall.h>  // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, setrlimit, (int res, const struct rlimit *limits)) {
   int ret =
-      LIBC_NAMESPACE::syscall_impl<int>(SYS_prlimit64, 0, res, limits, nullptr);
+      __llvm_libc::syscall_impl<int>(SYS_prlimit64, 0, res, limits, nullptr);
   if (ret < 0) {
     libc_errno = -ret;
     return -1;
@@ -27,4 +27,4 @@ LLVM_LIBC_FUNCTION(int, setrlimit, (int res, const struct rlimit *limits)) {
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

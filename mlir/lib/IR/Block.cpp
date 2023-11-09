@@ -234,15 +234,10 @@ void Block::eraseArguments(function_ref<bool(BlockArgument)> shouldEraseFn) {
 //===----------------------------------------------------------------------===//
 
 /// Get the terminator operation of this block. This function asserts that
-/// the block might have a valid terminator operation.
+/// the block has a valid terminator operation.
 Operation *Block::getTerminator() {
-  assert(mightHaveTerminator());
+  assert(!empty() && back().mightHaveTrait<OpTrait::IsTerminator>());
   return &back();
-}
-
-/// Check whether this block might have a terminator.
-bool Block::mightHaveTerminator() {
-  return !empty() && back().mightHaveTrait<OpTrait::IsTerminator>();
 }
 
 // Indexed successor access.

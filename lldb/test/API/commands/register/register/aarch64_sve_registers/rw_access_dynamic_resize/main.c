@@ -2,9 +2,6 @@
 #include <stdbool.h>
 #include <sys/prctl.h>
 
-// If USE_SSVE is defined, this program will use streaming mode SVE registers
-// instead of non-streaming mode SVE registers.
-
 #ifndef PR_SME_SET_VL
 #define PR_SME_SET_VL 63
 #endif

@@ -261,7 +261,7 @@ bool VirtRegRewriter::runOnMachineFunction(MachineFunction &fn) {
   Indexes = &getAnalysis<SlotIndexes>();
   LIS = &getAnalysis<LiveIntervals>();
   VRM = &getAnalysis<VirtRegMap>();
-  DebugVars = &getAnalysis<LiveDebugVariables>();
+  DebugVars = getAnalysisIfAvailable<LiveDebugVariables>();
   LLVM_DEBUG(dbgs() << "********** REWRITE VIRTUAL REGISTERS **********\n"
                     << "********** Function: " << MF->getName() << '\n');
   LLVM_DEBUG(VRM->dump());
@@ -275,7 +275,7 @@ bool VirtRegRewriter::runOnMachineFunction(MachineFunction &fn) {
   // Rewrite virtual registers.
   rewrite();
 
-  if (ClearVirtRegs) {
+  if (DebugVars && ClearVirtRegs) {
     // Write out new DBG_VALUE instructions.
 
     // We only do this if ClearVirtRegs is specified since this should be the
@@ -312,7 +312,7 @@ void VirtRegRewriter::addLiveInsForSubRanges(const LiveInterval &LI,
 
   // Check all mbb start positions between First and Last while
   // simultaneously advancing an iterator for each subrange.
-  for (SlotIndexes::MBBIndexIterator MBBI = Indexes->getMBBLowerBound(First);
+  for (SlotIndexes::MBBIndexIterator MBBI = Indexes->findMBBIndex(First);
        MBBI != Indexes->MBBIndexEnd() && MBBI->first <= Last; ++MBBI) {
     SlotIndex MBBBegin = MBBI->first;
     // Advance all subrange iterators so that their end position is just
@@ -363,7 +363,7 @@ void VirtRegRewriter::addMBBLiveIns() {
       // sorted by slot indexes.
       SlotIndexes::MBBIndexIterator I = Indexes->MBBIndexBegin();
       for (const auto &Seg : LI) {
-        I = Indexes->getMBBLowerBound(I, Seg.start);
+        I = Indexes->advanceMBBIndex(I, Seg.start);
         for (; I != Indexes->MBBIndexEnd() && I->first < Seg.end; ++I) {
           MachineBasicBlock *MBB = I->second;
           MBB->addLiveIn(PhysReg);

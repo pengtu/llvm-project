@@ -21,10 +21,10 @@ Parts:
       MaxOutputPrimitives: 4092
       MinimumWaveLaneCount: 0
       MaximumWaveLaneCount: 4294967295
-      UsesViewID:      0
+      UsesViewID:      128
       SigPrimVectors:  128
       MeshOutputTopology: 16
-      SigInputVectors: 0
+      SigInputVectors: 64
       SigOutputVectors: [ 8, 16, 32, 64 ]
       ResourceStride:       16
       Resources:
@@ -39,11 +39,6 @@ Parts:
       SigInputElements: []
       SigOutputElements: []
       SigPatchOrPrimElements: []
-      InputOutputMap:
-        - [  ]
-        - [  ]
-        - [  ]
-        - [  ]
   - Name:            DXIL
     Size:            24
     Program:
@@ -67,10 +62,10 @@ Parts:
 # CHECK-NEXT: MaxOutputPrimitives: 4092
 # CHECK-NEXT: MinimumWaveLaneCount: 0
 # CHECK-NEXT: MaximumWaveLaneCount: 4294967295
-# CHECK-NEXT: UsesViewID:      0
+# CHECK-NEXT: UsesViewID:      128
 # CHECK-NEXT: SigPrimVectors:  128
 # CHECK-NEXT: MeshOutputTopology: 16
-# CHECK-NEXT: SigInputVectors: 0
+# CHECK-NEXT: SigInputVectors: 64
 # CHECK-NEXT: SigOutputVectors: [ 8, 16, 32, 64 ]
 # CHECK-NEXT: ResourceStride: 16
 # CHECK-NEXT: Resources:
@@ -85,9 +80,4 @@ Parts:
 # CHECK-NEXT: SigInputElements: []
 # CHECK-NEXT: SigOutputElements: []
 # CHECK-NEXT: SigPatchOrPrimElements: []
-# CHECK-NEXT: InputOutputMap:
-# CHECK-NEXT:   - [  ]
-# CHECK-NEXT:   - [  ]
-# CHECK-NEXT:   - [  ]
-# CHECK-NEXT:   - [  ]
 # CHECK-NEXT: Name

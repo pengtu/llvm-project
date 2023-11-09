@@ -49,6 +49,8 @@
 
 #define DEBUG_TYPE "uniformity"
 
+using namespace llvm;
+
 namespace llvm {
 
 template <typename Range> auto unique(Range &&R) {

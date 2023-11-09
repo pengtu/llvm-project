@@ -10,9 +10,9 @@
 
 #include "test/UnitTest/Test.h"
 
-using LIBC_NAMESPACE::testing::tlog;
+using __llvm_libc::testing::tlog;
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 template <typename T>
@@ -75,4 +75,4 @@ void MemoryMatcher::explainError() {
 }
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

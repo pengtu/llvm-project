@@ -126,7 +126,7 @@ public:
     // new op's regions doesn't remove the child ops from the worklist).
 
     // convertRegionTypes already takes care of 1:N conversion.
-    if (failed(rewriter.convertRegionTypes(&op.getRegion(), *typeConverter)))
+    if (failed(rewriter.convertRegionTypes(&op.getLoopBody(), *typeConverter)))
       return std::nullopt;
 
     // Unpacked the iteration arguments.
@@ -146,8 +146,8 @@ public:
     // We do not need the empty block created by rewriter.
     rewriter.eraseBlock(newOp.getBody(0));
     // Inline the type converted region from the original operation.
-    rewriter.inlineRegionBefore(op.getRegion(), newOp.getRegion(),
-                                newOp.getRegion().end());
+    rewriter.inlineRegionBefore(op.getLoopBody(), newOp.getLoopBody(),
+                                newOp.getLoopBody().end());
 
     return newOp;
   }
@@ -247,15 +247,12 @@ public:
 };
 } // namespace
 
-void mlir::scf::populateSCFStructuralTypeConversions(
-    TypeConverter &typeConverter, RewritePatternSet &patterns) {
+void mlir::scf::populateSCFStructuralTypeConversionsAndLegality(
+    TypeConverter &typeConverter, RewritePatternSet &patterns,
+    ConversionTarget &target) {
   patterns.add<ConvertForOpTypes, ConvertIfOpTypes, ConvertYieldOpTypes,
                ConvertWhileOpTypes, ConvertConditionOpTypes>(
       typeConverter, patterns.getContext());
-}
-
-void mlir::scf::populateSCFStructuralTypeConversionTarget(
-    const TypeConverter &typeConverter, ConversionTarget &target) {
   target.addDynamicallyLegalOp<ForOp, IfOp>([&](Operation *op) {
     return typeConverter.isLegal(op->getResultTypes());
   });
@@ -268,11 +265,4 @@ void mlir::scf::populateSCFStructuralTypeConversionTarget(
   });
   target.addDynamicallyLegalOp<WhileOp, ConditionOp>(
       [&](Operation *op) { return typeConverter.isLegal(op); });
-}
-
-void mlir::scf::populateSCFStructuralTypeConversionsAndLegality(
-    TypeConverter &typeConverter, RewritePatternSet &patterns,
-    ConversionTarget &target) {
-  populateSCFStructuralTypeConversions(typeConverter, patterns);
-  populateSCFStructuralTypeConversionTarget(typeConverter, target);
 }

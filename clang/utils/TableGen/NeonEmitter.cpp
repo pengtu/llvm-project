@@ -736,17 +736,17 @@ Type Type::fromTypedefName(StringRef Name) {
     Name = Name.drop_front();
   }
 
-  if (Name.starts_with("float")) {
+  if (Name.startswith("float")) {
     T.Kind = Float;
     Name = Name.drop_front(5);
-  } else if (Name.starts_with("poly")) {
+  } else if (Name.startswith("poly")) {
     T.Kind = Poly;
     Name = Name.drop_front(4);
-  } else if (Name.starts_with("bfloat")) {
+  } else if (Name.startswith("bfloat")) {
     T.Kind = BFloat16;
     Name = Name.drop_front(6);
   } else {
-    assert(Name.starts_with("int"));
+    assert(Name.startswith("int"));
     Name = Name.drop_front(3);
   }
 
@@ -787,7 +787,7 @@ Type Type::fromTypedefName(StringRef Name) {
     Name = Name.drop_front(I);
   }
 
-  assert(Name.starts_with("_t") && "Malformed typedef!");
+  assert(Name.startswith("_t") && "Malformed typedef!");
   return T;
 }
 
@@ -1655,7 +1655,7 @@ std::pair<Type, std::string> Intrinsic::DagEmitter::emitDagShuffle(DagInit *DI){
   std::string S = "__builtin_shufflevector(" + Arg1.second + ", " + Arg2.second;
   for (auto &E : Elts) {
     StringRef Name = E->getName();
-    assert_with_loc(Name.starts_with("sv"),
+    assert_with_loc(Name.startswith("sv"),
                     "Incorrect element kind in shuffle mask!");
     S += ", " + Name.drop_front(2).str();
   }

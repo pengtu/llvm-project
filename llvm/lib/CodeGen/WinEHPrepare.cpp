@@ -934,9 +934,9 @@ void WinEHPrepare::cloneCommonBlocks(Function &F) {
                               << "\' to block \'" << NewBlock->getName()
                               << "\'.\n");
 
-      llvm::erase(BlocksInFunclet, OldBlock);
+      llvm::erase_value(BlocksInFunclet, OldBlock);
       ColorVector &OldColors = BlockColors[OldBlock];
-      llvm::erase(OldColors, FuncletPadBB);
+      llvm::erase_value(OldColors, FuncletPadBB);
 
       DEBUG_WITH_TYPE("winehprepare-coloring",
                       dbgs() << "  Removed color \'" << FuncletPadBB->getName()

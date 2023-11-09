@@ -185,15 +185,11 @@ TEST(TBDv5, ReadFile) {
 "libraries": []
 })";
 
-  MemoryBufferRef InputBuf = MemoryBufferRef(TBDv5File, "Test.tbd");
-  Expected<FileType> ExpectedFT = TextAPIReader::canRead(InputBuf);
-  EXPECT_TRUE(!!ExpectedFT);
-
-  Expected<TBDFile> Result = TextAPIReader::get(InputBuf);
+  Expected<TBDFile> Result =
+      TextAPIReader::get(MemoryBufferRef(TBDv5File, "Test.tbd"));
   EXPECT_TRUE(!!Result);
   TBDFile File = std::move(Result.get());
   EXPECT_EQ(FileType::TBD_V5, File->getFileType());
-  EXPECT_EQ(*ExpectedFT, File->getFileType());
   EXPECT_EQ(std::string("/S/L/F/Foo.framework/Foo"), File->getInstallName());
 
   TargetList AllTargets = {
@@ -919,8 +915,7 @@ TEST(TBDv5, WriteMultipleDocuments) {
   // against TBDv5File.
   SmallString<4096> Buffer;
   raw_svector_ostream OS(Buffer);
-  Error Result = TextAPIWriter::writeToStream(OS, File, FileType::Invalid,
-                                              /*Compact=*/true);
+  Error Result = TextAPIWriter::writeToStream(OS, File, /*Compact=*/true);
   EXPECT_FALSE(Result);
 
   Expected<TBDFile> Input =

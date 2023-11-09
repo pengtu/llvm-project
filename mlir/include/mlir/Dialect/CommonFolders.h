@@ -93,12 +93,8 @@ Attribute constFoldBinaryOpConditional(ArrayRef<Attribute> operands,
     if (lhs.getType() != rhs.getType())
       return {};
 
-    auto maybeLhsIt = lhs.try_value_begin<ElementValueT>();
-    auto maybeRhsIt = rhs.try_value_begin<ElementValueT>();
-    if (!maybeLhsIt || !maybeRhsIt)
-      return {};
-    auto lhsIt = *maybeLhsIt;
-    auto rhsIt = *maybeRhsIt;
+    auto lhsIt = lhs.value_begin<ElementValueT>();
+    auto rhsIt = rhs.value_begin<ElementValueT>();
     SmallVector<ElementValueT, 4> elementResults;
     elementResults.reserve(lhs.getNumElements());
     for (size_t i = 0, e = lhs.getNumElements(); i < e; ++i, ++lhsIt, ++rhsIt) {
@@ -231,10 +227,7 @@ Attribute constFoldUnaryOpConditional(ArrayRef<Attribute> operands,
     // expanding the values.
     auto op = cast<ElementsAttr>(operands[0]);
 
-    auto maybeOpIt = op.try_value_begin<ElementValueT>();
-    if (!maybeOpIt)
-      return {};
-    auto opIt = *maybeOpIt;
+    auto opIt = op.value_begin<ElementValueT>();
     SmallVector<ElementValueT> elementResults;
     elementResults.reserve(op.getNumElements());
     for (size_t i = 0, e = op.getNumElements(); i < e; ++i, ++opIt) {
@@ -300,14 +293,12 @@ Attribute constFoldCastOp(ArrayRef<Attribute> operands, Type resType,
       return {};
     return DenseElementsAttr::get(cast<ShapedType>(resType), elementResult);
   }
-  if (auto op = dyn_cast<ElementsAttr>(operands[0])) {
+  if (isa<ElementsAttr>(operands[0])) {
     // Operand is ElementsAttr-derived; perform an element-wise fold by
     // expanding the value.
+    auto op = cast<ElementsAttr>(operands[0]);
     bool castStatus = true;
-    auto maybeOpIt = op.try_value_begin<ElementValueT>();
-    if (!maybeOpIt)
-      return {};
-    auto opIt = *maybeOpIt;
+    auto opIt = op.value_begin<ElementValueT>();
     SmallVector<TargetElementValueT> elementResults;
     elementResults.reserve(op.getNumElements());
     for (size_t i = 0, e = op.getNumElements(); i < e; ++i, ++opIt) {

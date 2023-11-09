@@ -30,7 +30,7 @@ public:
                            StringRef FS, const TargetOptions &Options,
                            std::optional<Reloc::Model> RM,
                            std::optional<CodeModel::Model> CM,
-                           CodeGenOptLevel OL, bool JIT);
+                           CodeGenOpt::Level OL, bool JIT);
 
   ~WebAssemblyTargetMachine() override;
 

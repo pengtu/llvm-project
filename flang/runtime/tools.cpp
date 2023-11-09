@@ -15,16 +15,14 @@
 
 namespace Fortran::runtime {
 
-RT_OFFLOAD_API_GROUP_BEGIN
-
-RT_API_ATTRS std::size_t TrimTrailingSpaces(const char *s, std::size_t n) {
+std::size_t TrimTrailingSpaces(const char *s, std::size_t n) {
   while (n > 0 && s[n - 1] == ' ') {
     --n;
   }
   return n;
 }
 
-RT_API_ATTRS OwningPtr<char> SaveDefaultCharacter(
+OwningPtr<char> SaveDefaultCharacter(
     const char *s, std::size_t length, const Terminator &terminator) {
   if (s) {
     auto *p{static_cast<char *>(AllocateMemoryOrCrash(terminator, length + 1))};
@@ -36,7 +34,7 @@ RT_API_ATTRS OwningPtr<char> SaveDefaultCharacter(
   }
 }
 
-static RT_API_ATTRS bool CaseInsensitiveMatch(
+static bool CaseInsensitiveMatch(
     const char *value, std::size_t length, const char *possibility) {
   for (; length-- > 0; ++possibility) {
     char ch{*value++};
@@ -59,7 +57,7 @@ static RT_API_ATTRS bool CaseInsensitiveMatch(
   return *possibility == '\0';
 }
 
-RT_API_ATTRS int IdentifyValue(
+int IdentifyValue(
     const char *value, std::size_t length, const char *possibilities[]) {
   if (value) {
     for (int j{0}; possibilities[j]; ++j) {
@@ -71,9 +69,9 @@ RT_API_ATTRS int IdentifyValue(
   return -1;
 }
 
-RT_API_ATTRS void ToFortranDefaultCharacter(
+void ToFortranDefaultCharacter(
     char *to, std::size_t toLength, const char *from) {
-  std::size_t len{Fortran::runtime::strlen(from)};
+  std::size_t len{std::strlen(from)};
   if (len < toLength) {
     std::memcpy(to, from, len);
     std::memset(to + len, ' ', toLength - len);
@@ -82,7 +80,7 @@ RT_API_ATTRS void ToFortranDefaultCharacter(
   }
 }
 
-RT_API_ATTRS void CheckConformability(const Descriptor &to, const Descriptor &x,
+void CheckConformability(const Descriptor &to, const Descriptor &x,
     Terminator &terminator, const char *funcName, const char *toName,
     const char *xName) {
   if (x.rank() == 0) {
@@ -106,15 +104,14 @@ RT_API_ATTRS void CheckConformability(const Descriptor &to, const Descriptor &x,
   }
 }
 
-RT_API_ATTRS void CheckIntegerKind(
-    Terminator &terminator, int kind, const char *intrinsic) {
+void CheckIntegerKind(Terminator &terminator, int kind, const char *intrinsic) {
   if (kind < 1 || kind > 16 || (kind & (kind - 1)) != 0) {
     terminator.Crash(
         "not yet implemented: %s: KIND=%d argument", intrinsic, kind);
   }
 }
 
-RT_API_ATTRS void ShallowCopyDiscontiguousToDiscontiguous(
+void ShallowCopyDiscontiguousToDiscontiguous(
     const Descriptor &to, const Descriptor &from) {
   SubscriptValue toAt[maxRank], fromAt[maxRank];
   to.GetLowerBounds(toAt);
@@ -127,7 +124,7 @@ RT_API_ATTRS void ShallowCopyDiscontiguousToDiscontiguous(
   }
 }
 
-RT_API_ATTRS void ShallowCopyDiscontiguousToContiguous(
+void ShallowCopyDiscontiguousToContiguous(
     const Descriptor &to, const Descriptor &from) {
   char *toAt{to.OffsetElement()};
   SubscriptValue fromAt[maxRank];
@@ -139,7 +136,7 @@ RT_API_ATTRS void ShallowCopyDiscontiguousToContiguous(
   }
 }
 
-RT_API_ATTRS void ShallowCopyContiguousToDiscontiguous(
+void ShallowCopyContiguousToDiscontiguous(
     const Descriptor &to, const Descriptor &from) {
   SubscriptValue toAt[maxRank];
   to.GetLowerBounds(toAt);
@@ -151,7 +148,7 @@ RT_API_ATTRS void ShallowCopyContiguousToDiscontiguous(
   }
 }
 
-RT_API_ATTRS void ShallowCopy(const Descriptor &to, const Descriptor &from,
+void ShallowCopy(const Descriptor &to, const Descriptor &from,
     bool toIsContiguous, bool fromIsContiguous) {
   if (toIsContiguous) {
     if (fromIsContiguous) {
@@ -169,9 +166,7 @@ RT_API_ATTRS void ShallowCopy(const Descriptor &to, const Descriptor &from,
   }
 }
 
-RT_API_ATTRS void ShallowCopy(const Descriptor &to, const Descriptor &from) {
+void ShallowCopy(const Descriptor &to, const Descriptor &from) {
   ShallowCopy(to, from, to.IsContiguous(), from.IsContiguous());
 }
-
-RT_OFFLOAD_API_GROUP_END
 } // namespace Fortran::runtime

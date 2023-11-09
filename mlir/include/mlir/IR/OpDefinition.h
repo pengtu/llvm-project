@@ -268,11 +268,6 @@ class OpFoldResult : public PointerUnion<Attribute, Value> {
 
 public:
   void dump() const { llvm::errs() << *this << "\n"; }
-
-  MLIRContext *getContext() const {
-    return is<Attribute>() ? get<Attribute>().getContext()
-                           : get<Value>().getContext();
-  }
 };
 
 // Temporarily exit the MLIR namespace to add casting support as later code in
@@ -949,8 +944,7 @@ public:
 template <typename TerminatorOpType>
 struct SingleBlockImplicitTerminator {
   template <typename ConcreteType>
-  class Impl : public TraitBase<ConcreteType, SingleBlockImplicitTerminator<
-                                                  TerminatorOpType>::Impl> {
+  class Impl {
   private:
     /// Builds a terminator operation without relying on OpBuilder APIs to avoid
     /// cyclic header inclusion.
@@ -1001,6 +995,37 @@ struct SingleBlockImplicitTerminator {
                                  Location loc) {
       ::mlir::impl::ensureRegionTerminator(region, builder, loc,
                                            buildTerminator);
+    }
+
+    //===------------------------------------------------------------------===//
+    // Single Region Utilities
+    //===------------------------------------------------------------------===//
+
+    template <typename OpT, typename T = void>
+    using enable_if_single_region =
+        std::enable_if_t<OpT::template hasTrait<OneRegion>(), T>;
+
+    /// Insert the operation into the back of the body, before the terminator.
+    template <typename OpT = ConcreteType>
+    enable_if_single_region<OpT> push_back(Operation *op) {
+      Block *body = static_cast<SingleBlock<ConcreteType> *>(this)->getBody();
+      insert(Block::iterator(body->getTerminator()), op);
+    }
+
+    /// Insert the operation at the given insertion point. Note: The operation
+    /// is never inserted after the terminator, even if the insertion point is
+    /// end().
+    template <typename OpT = ConcreteType>
+    enable_if_single_region<OpT> insert(Operation *insertPt, Operation *op) {
+      insert(Block::iterator(insertPt), op);
+    }
+    template <typename OpT = ConcreteType>
+    enable_if_single_region<OpT> insert(Block::iterator insertPt,
+                                        Operation *op) {
+      Block *body = static_cast<SingleBlock<ConcreteType> *>(this)->getBody();
+      if (insertPt == body->end())
+        insertPt = Block::iterator(body->getTerminator());
+      body->getOperations().insert(insertPt, op);
     }
   };
 };
@@ -1744,10 +1769,9 @@ public:
   /// the namespace where the properties are defined. It can also be overridden
   /// in the derived ConcreteOp.
   template <typename PropertiesTy>
-  static LogicalResult
-  setPropertiesFromAttr(PropertiesTy &prop, Attribute attr,
-                        function_ref<InFlightDiagnostic()> emitError) {
-    return setPropertiesFromAttribute(prop, attr, emitError);
+  static LogicalResult setPropertiesFromAttr(PropertiesTy &prop, Attribute attr,
+                                             InFlightDiagnostic *diag) {
+    return setPropertiesFromAttribute(prop, attr, diag);
   }
   /// Convert the provided properties to an attribute. This default
   /// implementation forwards to a free function `getPropertiesAsAttribute` that

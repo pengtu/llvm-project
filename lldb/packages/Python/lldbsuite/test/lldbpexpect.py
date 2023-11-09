@@ -26,15 +26,9 @@ class PExpectTest(TestBase):
         dimensions=None,
         run_under=None,
         post_spawn=None,
-        encoding=None,
         use_colors=False,
     ):
-        # Using a log file is incompatible with using utf-8 as the encoding.
-        logfile = (
-            getattr(sys.stdout, "buffer", sys.stdout)
-            if (self.TraceOn() and not encoding)
-            else None
-        )
+        logfile = getattr(sys.stdout, "buffer", sys.stdout) if self.TraceOn() else None
 
         args = []
         if run_under is not None:
@@ -64,7 +58,6 @@ class PExpectTest(TestBase):
             timeout=timeout,
             dimensions=dimensions,
             env=env,
-            encoding=encoding,
         )
         self.child.ptyproc.delayafterclose = timeout / 10
         self.child.ptyproc.delayafterterminate = timeout / 10

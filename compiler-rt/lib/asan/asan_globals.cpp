@@ -87,9 +87,11 @@ static void ReportGlobal(const Global &g, const char *prefix) {
       g.module_name, g.has_dynamic_init, (void *)g.odr_indicator);
 
   DataInfo info;
-  if (Symbolizer::GetOrInit()->SymbolizeData(g.beg, &info) && info.line != 0) {
+  Symbolizer::GetOrInit()->SymbolizeData(g.beg, &info);
+  if (info.line != 0) {
     Report("  location: name=%s, %d\n", info.file, static_cast<int>(info.line));
-  } else if (g.gcc_location != 0) {
+  }
+  else if (g.gcc_location != 0) {
     // Fallback to Global::gcc_location
     Report("  location: name=%s, %d\n", g.gcc_location->filename, g.gcc_location->line_no);
   }
@@ -293,24 +295,23 @@ void PrintGlobalNameIfASCII(InternalScopedString *str, const __asan_global &g) {
     if (c == '\0' || !IsASCII(c)) return;
   }
   if (*(char *)(g.beg + g.size - 1) != '\0') return;
-  str->AppendF("  '%s' is ascii string '%s'\n", MaybeDemangleGlobalName(g.name),
-               (char *)g.beg);
+  str->append("  '%s' is ascii string '%s'\n", MaybeDemangleGlobalName(g.name),
+              (char *)g.beg);
 }
 
 void PrintGlobalLocation(InternalScopedString *str, const __asan_global &g) {
   DataInfo info;
-  if (Symbolizer::GetOrInit()->SymbolizeData(g.beg, &info) && info.line != 0) {
-    str->AppendF("%s:%d", info.file, static_cast<int>(info.line));
+  Symbolizer::GetOrInit()->SymbolizeData(g.beg, &info);
+
+  if (info.line != 0) {
+    str->append("%s:%d", info.file, static_cast<int>(info.line));
   } else if (g.gcc_location != 0) {
     // Fallback to Global::gcc_location
-    str->AppendF("%s", g.gcc_location->filename ? g.gcc_location->filename
-                                                : g.module_name);
-    if (g.gcc_location->line_no)
-      str->AppendF(":%d", g.gcc_location->line_no);
-    if (g.gcc_location->column_no)
-      str->AppendF(":%d", g.gcc_location->column_no);
+    str->append("%s", g.gcc_location->filename ? g.gcc_location->filename : g.module_name);
+    if (g.gcc_location->line_no) str->append(":%d", g.gcc_location->line_no);
+    if (g.gcc_location->column_no) str->append(":%d", g.gcc_location->column_no);
   } else {
-    str->AppendF("%s", g.module_name);
+    str->append("%s", g.module_name);
   }
 }
 

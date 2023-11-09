@@ -1,4 +1,4 @@
-// RUN: mlir-opt  -transform-interpreter --split-input-file -canonicalize %s | FileCheck %s
+// RUN: mlir-opt  -test-transform-dialect-interpreter --split-input-file -canonicalize %s | FileCheck %s
 
 // CHECK-LABEL: func @tensor_from_elements_0d(
 //  CHECK-SAME:     %[[arg0:.*]]: index
@@ -10,14 +10,12 @@ func.func @tensor_from_elements_0d(%arg0: index) -> tensor<index> {
   return %0 : tensor<index>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -35,14 +33,12 @@ func.func @tensor_from_elements_1d(%arg0: index, %arg1: index) -> tensor<2xindex
   return %0 : tensor<2xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -66,14 +62,12 @@ func.func @tensor_from_elements_2d(%arg0: index, %arg1: index) -> tensor<3x2xind
   return %0 : tensor<3x2xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.from_elements"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -100,14 +94,12 @@ func.func @tensor_generate(%s1: index, %s2: index) -> tensor<?x?xindex> {
   return %0 : tensor<?x?xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.generate"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.generate"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -143,14 +135,12 @@ func.func @tensor_pad(%t1: tensor<?x10xindex>, %l2: index, %h1: index,
   return %0 : tensor<?x?xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -179,14 +169,12 @@ func.func @tensor_pad_constant(%t1: tensor<?x10xindex>, %l2: index, %h1: index,
   return %0 : tensor<?x?xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -213,14 +201,12 @@ func.func @tensor_pad_invariant(%t1: tensor<?x10xindex>, %l2: index, %h1: index,
   return %0 : tensor<?x?xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }
 
 // -----
@@ -243,12 +229,10 @@ func.func @tensor_pad_nofold(%t1: tensor<?x?xindex>, %padding: index)
   return %0: tensor<?x?xindex>
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
-      : (!transform.any_op) -> !transform.any_op
-    transform.structured.rewrite_in_destination_passing_style %0
-      : (!transform.any_op) -> !transform.any_op
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["tensor.pad"]} in %arg1
+    : (!transform.any_op) -> !transform.any_op
+  transform.structured.rewrite_in_destination_passing_style %0
+    : (!transform.any_op) -> !transform.any_op
 }

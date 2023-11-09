@@ -127,8 +127,7 @@ def TestEffectOpInterface
 }
 
 class TestEffect<string effectName>
-    : SideEffect<TestEffectOpInterface, effectName, DefaultResource, 0,
-                 PartialEffect>;
+    : SideEffect<TestEffectOpInterface, effectName, DefaultResource>;
 
 class TestEffects<list<TestEffect> effects = []>
    : SideEffectsTraitBase<TestEffectOpInterface, effects>;
@@ -145,32 +144,6 @@ def TestOptionallyImplementedOpInterface
 
   let extraClassOf = [{
     return $_op.getImplementsInterface();
-  }];
-}
-
-def TestOptionallyImplementedAttrInterface
-    : AttrInterface<"TestOptionallyImplementedAttrInterface"> {
-  let cppNamespace = "::mlir";
-
-  let methods = [
-    InterfaceMethod<"", "bool", "getImplementsInterface", (ins)>,
-  ];
-
-  let extraClassOf = [{
-    return $_attr.getImplementsInterface();
-  }];
-}
-
-def TestOptionallyImplementedTypeInterface
-    : TypeInterface<"TestOptionallyImplementedTypeInterface"> {
-  let cppNamespace = "::mlir";
-
-  let methods = [
-    InterfaceMethod<"", "bool", "getImplementsInterface", (ins)>,
-  ];
-
-  let extraClassOf = [{
-    return $_type.getImplementsInterface();
   }];
 }
 

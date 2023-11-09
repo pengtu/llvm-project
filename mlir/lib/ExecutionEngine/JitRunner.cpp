@@ -181,9 +181,9 @@ static Error
 compileAndExecute(Options &options, Operation *module, StringRef entryPoint,
                   CompileAndExecuteConfig config, void **args,
                   std::unique_ptr<llvm::TargetMachine> tm = nullptr) {
-  std::optional<llvm::CodeGenOptLevel> jitCodeGenOptLevel;
+  std::optional<llvm::CodeGenOpt::Level> jitCodeGenOptLevel;
   if (auto clOptLevel = getCommandLineOptLevel(options))
-    jitCodeGenOptLevel = static_cast<llvm::CodeGenOptLevel>(*clOptLevel);
+    jitCodeGenOptLevel = static_cast<llvm::CodeGenOpt::Level>(*clOptLevel);
 
   SmallVector<StringRef, 4> sharedLibs(options.clSharedLibs.begin(),
                                        options.clSharedLibs.end());

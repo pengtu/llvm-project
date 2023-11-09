@@ -22,7 +22,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type(ptr %start, i16 %len) {
 ; CHECK-NEXT:    [[C:%.*]] = icmp eq ptr [[PTR_IV]], [[UPPER]]
 ; CHECK-NEXT:    br i1 [[C]], label [[EXIT]], label [[FOR_BODY:%.*]]
 ; CHECK:       for.body:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -72,7 +74,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type_offset_0(ptr %start, i16 %l
 ; CHECK-NEXT:    [[C:%.*]] = icmp eq ptr [[PTR_IV]], [[UPPER]]
 ; CHECK-NEXT:    br i1 [[C]], label [[EXIT]], label [[FOR_BODY:%.*]]
 ; CHECK:       for.body:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -122,8 +126,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type_offset_16(ptr %start, i16 %
 ; CHECK-NEXT:    [[C:%.*]] = icmp eq ptr [[PTR_IV]], [[UPPER]]
 ; CHECK-NEXT:    br i1 [[C]], label [[EXIT]], label [[FOR_BODY:%.*]]
 ; CHECK:       for.body:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -176,7 +181,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type_with_early_exit(ptr %start,
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -233,7 +240,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type_offset_0_with_early_exit(pt
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -290,8 +299,9 @@ define void @test_monotonic_ptr_iv_inc_1_struct_type_offset_16_with_early_exit(p
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -348,7 +358,9 @@ define void @test_monotonic_ptr_iv_inc_2_struct_type_with_early_exit(ptr %start,
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -405,7 +417,9 @@ define void @test_monotonic_ptr_iv_inc_2_struct_type_offset_0_with_early_exit(pt
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -462,8 +476,9 @@ define void @test_monotonic_ptr_iv_inc_2_struct_type_offset_16_with_early_exit(p
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -520,7 +535,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct(ptr %start, i16 %len) {
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -577,8 +594,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_32_step_64(ptr %st
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -635,7 +653,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_32_step_32(ptr %st
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -692,7 +712,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_32_step_16(ptr %st
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -749,7 +771,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_16_plus_32_var_ste
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -806,7 +830,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_16_plus_32_var_ste
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -863,7 +889,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_16_plus_32_var_ste
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -920,7 +948,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_16_plus_32_var_ste
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -977,8 +1007,9 @@ define void @test_monotonic_ptr_iv_inc_1_nested_struct_offset_16_plus_32_var_ste
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -1094,8 +1125,9 @@ define void @test_monotonic_ptr_iv_inc_with_struct_type_with_early_exit_offset_4
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -1152,7 +1184,9 @@ define void @test_monotonic_ptr_iv_inc_with_struct_type_with_early_exit_offset_6
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -1209,8 +1243,9 @@ define void @test_monotonic_ptr_iv_inc_with_struct_type_with_early_exit_offset_8
 ; CHECK-NEXT:    [[C_1:%.*]] = call i1 @cond()
 ; CHECK-NEXT:    br i1 [[C_1]], label [[LOOP_NEXT:%.*]], label [[EXIT]]
 ; CHECK:       loop.next:
+; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 true, [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])

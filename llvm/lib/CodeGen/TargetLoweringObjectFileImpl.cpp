@@ -651,8 +651,8 @@ getELFSectionNameForGlobal(const GlobalObject *GO, SectionKind Kind,
     Name += utostr(EntrySize);
   } else {
     bool IsLarge = false;
-    if (auto *GV = dyn_cast<GlobalVariable>(GO))
-      IsLarge = TM.isLargeData(GV);
+    if (isa<GlobalVariable>(GO))
+      IsLarge = TM.isLargeData();
     Name = getSectionPrefixForGlobal(Kind, IsLarge);
   }
 
@@ -763,25 +763,6 @@ calcUniqueIDUpdateFlagsAndSize(const GlobalObject *GO, StringRef SectionName,
   return NextUniqueID++;
 }
 
-static std::tuple<StringRef, bool, unsigned>
-getGlobalObjectInfo(const GlobalObject *GO, const TargetMachine &TM) {
-  StringRef Group = "";
-  bool IsComdat = false;
-  unsigned Flags = 0;
-  if (const Comdat *C = getELFComdat(GO)) {
-    Flags |= ELF::SHF_GROUP;
-    Group = C->getName();
-    IsComdat = C->getSelectionKind() == Comdat::Any;
-  }
-  if (auto *GV = dyn_cast<GlobalVariable>(GO)) {
-    if (TM.isLargeData(GV)) {
-      assert(TM.getTargetTriple().getArch() == Triple::x86_64);
-      Flags |= ELF::SHF_X86_64_LARGE;
-    }
-  }
-  return {Group, IsComdat, Flags};
-}
-
 static MCSection *selectExplicitSectionGlobal(
     const GlobalObject *GO, SectionKind Kind, const TargetMachine &TM,
     MCContext &Ctx, Mangler &Mang, unsigned &NextUniqueID,
@@ -812,9 +793,14 @@ static MCSection *selectExplicitSectionGlobal(
   // Infer section flags from the section name if we can.
   Kind = getELFKindForNamedSection(SectionName, Kind);
 
+  StringRef Group = "";
+  bool IsComdat = false;
   unsigned Flags = getELFSectionFlags(Kind);
-  auto [Group, IsComdat, ExtraFlags] = getGlobalObjectInfo(GO, TM);
-  Flags |= ExtraFlags;
+  if (const Comdat *C = getELFComdat(GO)) {
+    Group = C->getName();
+    IsComdat = C->getSelectionKind() == Comdat::Any;
+    Flags |= ELF::SHF_GROUP;
+  }
 
   unsigned EntrySize = getEntrySizeForKind(Kind);
   const unsigned UniqueID = calcUniqueIDUpdateFlagsAndSize(
@@ -862,8 +848,19 @@ static MCSectionELF *selectELFSectionForGlobal(
     const TargetMachine &TM, bool EmitUniqueSection, unsigned Flags,
     unsigned *NextUniqueID, const MCSymbolELF *AssociatedSymbol) {
 
-  auto [Group, IsComdat, ExtraFlags] = getGlobalObjectInfo(GO, TM);
-  Flags |= ExtraFlags;
+  StringRef Group = "";
+  bool IsComdat = false;
+  if (const Comdat *C = getELFComdat(GO)) {
+    Flags |= ELF::SHF_GROUP;
+    Group = C->getName();
+    IsComdat = C->getSelectionKind() == Comdat::Any;
+  }
+  if (isa<GlobalVariable>(GO)) {
+    if (TM.isLargeData()) {
+      assert(TM.getTargetTriple().getArch() == Triple::x86_64);
+      Flags |= ELF::SHF_X86_64_LARGE;
+    }
+  }
 
   // Get the section entry size based on the kind.
   unsigned EntrySize = getEntrySizeForKind(Kind);
@@ -1041,32 +1038,21 @@ MCSection *TargetLoweringObjectFileELF::getSectionForMachineBasicBlock(
   // under the .text.eh prefix. For regular sections, we either use a unique
   // name, or a unique ID for the section.
   SmallString<128> Name;
-  StringRef FunctionSectionName = MBB.getParent()->getSection()->getName();
-  if (FunctionSectionName.equals(".text") ||
-      FunctionSectionName.startswith(".text.")) {
-    // Function is in a regular .text section.
-    StringRef FunctionName = MBB.getParent()->getName();
-    if (MBB.getSectionID() == MBBSectionID::ColdSectionID) {
-      Name += BBSectionsColdTextPrefix;
-      Name += FunctionName;
-    } else if (MBB.getSectionID() == MBBSectionID::ExceptionSectionID) {
-      Name += ".text.eh.";
-      Name += FunctionName;
-    } else {
-      Name += FunctionSectionName;
-      if (TM.getUniqueBasicBlockSectionNames()) {
-        if (!Name.endswith("."))
-          Name += ".";
-        Name += MBB.getSymbol()->getName();
-      } else {
-        UniqueID = NextUniqueID++;
-      }
-    }
+  if (MBB.getSectionID() == MBBSectionID::ColdSectionID) {
+    Name += BBSectionsColdTextPrefix;
+    Name += MBB.getParent()->getName();
+  } else if (MBB.getSectionID() == MBBSectionID::ExceptionSectionID) {
+    Name += ".text.eh.";
+    Name += MBB.getParent()->getName();
   } else {
-    // If the original function has a custom non-dot-text section, then emit
-    // all basic block sections into that section too, each with a unique id.
-    Name = FunctionSectionName;
-    UniqueID = NextUniqueID++;
+    Name += MBB.getParent()->getSection()->getName();
+    if (TM.getUniqueBasicBlockSectionNames()) {
+      if (!Name.endswith("."))
+        Name += ".";
+      Name += MBB.getSymbol()->getName();
+    } else {
+      UniqueID = NextUniqueID++;
+    }
   }
 
   unsigned Flags = ELF::SHF_ALLOC | ELF::SHF_EXECINSTR;

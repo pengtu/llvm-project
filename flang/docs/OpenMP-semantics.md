@@ -8,10 +8,9 @@
 
 # OpenMP Semantic Analysis
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 ## OpenMP for F18

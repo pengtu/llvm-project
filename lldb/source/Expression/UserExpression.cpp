@@ -35,6 +35,7 @@
 #include "lldb/Target/Target.h"
 #include "lldb/Target/ThreadPlan.h"
 #include "lldb/Target/ThreadPlanCallUserExpression.h"
+#include "lldb/Utility/ConstString.h"
 #include "lldb/Utility/LLDBLog.h"
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/State.h"
@@ -98,12 +99,13 @@ bool UserExpression::MatchesContext(ExecutionContext &exe_ctx) {
 }
 
 lldb::ValueObjectSP UserExpression::GetObjectPointerValueObject(
-    lldb::StackFrameSP frame_sp, llvm::StringRef object_name, Status &err) {
+    lldb::StackFrameSP frame_sp, ConstString const &object_name, Status &err) {
   err.Clear();
 
   if (!frame_sp) {
-    err.SetErrorStringWithFormatv(
-        "Couldn't load '{0}' because the context is incomplete", object_name);
+    err.SetErrorStringWithFormat(
+        "Couldn't load '%s' because the context is incomplete",
+        object_name.AsCString());
     return {};
   }
 
@@ -111,7 +113,7 @@ lldb::ValueObjectSP UserExpression::GetObjectPointerValueObject(
   lldb::ValueObjectSP valobj_sp;
 
   return frame_sp->GetValueForVariableExpressionPath(
-      object_name, lldb::eNoDynamicValues,
+      object_name.GetStringRef(), lldb::eNoDynamicValues,
       StackFrame::eExpressionPathOptionCheckPtrVsMember |
           StackFrame::eExpressionPathOptionsNoFragileObjcIvar |
           StackFrame::eExpressionPathOptionsNoSyntheticChildren |
@@ -120,7 +122,7 @@ lldb::ValueObjectSP UserExpression::GetObjectPointerValueObject(
 }
 
 lldb::addr_t UserExpression::GetObjectPointer(lldb::StackFrameSP frame_sp,
-                                              llvm::StringRef object_name,
+                                              ConstString &object_name,
                                               Status &err) {
   auto valobj_sp =
       GetObjectPointerValueObject(std::move(frame_sp), object_name, err);
@@ -131,9 +133,9 @@ lldb::addr_t UserExpression::GetObjectPointer(lldb::StackFrameSP frame_sp,
   lldb::addr_t ret = valobj_sp->GetValueAsUnsigned(LLDB_INVALID_ADDRESS);
 
   if (ret == LLDB_INVALID_ADDRESS) {
-    err.SetErrorStringWithFormatv(
-        "Couldn't load '{0}' because its value couldn't be evaluated",
-        object_name);
+    err.SetErrorStringWithFormat(
+        "Couldn't load '%s' because its value couldn't be evaluated",
+        object_name.AsCString());
     return LLDB_INVALID_ADDRESS;
   }
 

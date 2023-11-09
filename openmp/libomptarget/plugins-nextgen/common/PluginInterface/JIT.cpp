@@ -112,10 +112,10 @@ OptimizationLevel getOptLevel(unsigned OptLevel) {
 Expected<std::unique_ptr<TargetMachine>>
 createTargetMachine(Module &M, std::string CPU, unsigned OptLevel) {
   Triple TT(M.getTargetTriple());
-  std::optional<CodeGenOptLevel> CGOptLevelOrNone =
+  std::optional<CodeGenOpt::Level> CGOptLevelOrNone =
       CodeGenOpt::getLevel(OptLevel);
   assert(CGOptLevelOrNone && "Invalid optimization level");
-  CodeGenOptLevel CGOptLevel = *CGOptLevelOrNone;
+  CodeGenOpt::Level CGOptLevel = *CGOptLevelOrNone;
 
   std::string Msg;
   const Target *T = TargetRegistry::lookupTarget(M.getTargetTriple(), Msg);
@@ -182,8 +182,7 @@ void JITEngine::codegen(TargetMachine *TM, TargetLibraryInfoImpl *TLII,
   MachineModuleInfoWrapperPass *MMIWP = new MachineModuleInfoWrapperPass(
       reinterpret_cast<LLVMTargetMachine *>(TM));
   TM->addPassesToEmitFile(PM, OS, nullptr,
-                          TT.isNVPTX() ? CodeGenFileType::AssemblyFile
-                                       : CodeGenFileType::ObjectFile,
+                          TT.isNVPTX() ? CGFT_AssemblyFile : CGFT_ObjectFile,
                           /* DisableVerify */ false, MMIWP);
 
   PM.run(M);

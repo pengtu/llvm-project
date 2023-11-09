@@ -238,12 +238,12 @@ static bool printSymbolizedStackTrace(StringRef Argv0, void **StackTrace,
       if (FunctionName.empty())
         break;
       PrintLineHeader();
-      if (!FunctionName.starts_with("??"))
+      if (!FunctionName.startswith("??"))
         OS << FunctionName << ' ';
       if (CurLine == Lines.end())
         return false;
       StringRef FileLineInfo = *CurLine++;
-      if (!FileLineInfo.starts_with("??"))
+      if (!FileLineInfo.startswith("??"))
         OS << FileLineInfo;
       else
         OS << "(" << Modules[i] << '+' << format_hex(Offsets[i], 0) << ")";

@@ -7,12 +7,11 @@ target triple = "x86_64-apple-macosx10.9.0"
 ; Verify that we generate 512-bit wide vectors for a basic integer memset
 ; loop.
 
-; CHECK-LABEL: _f:
-; CHECK: %vec.epilog.vector.body
-; CHECK: %ymm
-; CHECK: %vector.body
-; CHECK-NOT: %ymm
+; CHECK-LABEL: f:
 ; CHECK: vmovdqu64 %zmm{{.}},
+; CHECK-NOT: %ymm
+; CHECK: epilog
+; CHECK: %ymm
 
 ; Verify that we don't generate 512-bit wide vectors when subtarget feature says not to
 
@@ -47,7 +46,7 @@ for.end:                                          ; preds = %for.end.loopexit, %
 ; Verify that the "prefer-vector-width=256" attribute prevents the use of 512-bit
 ; vectors
 
-; CHECK-LABEL: _g:
+; CHECK-LABEL: g:
 ; CHECK: vmovdqu %ymm{{.}},
 ; CHECK-NOT: %zmm
 
@@ -82,19 +81,17 @@ for.end:                                          ; preds = %for.end.loopexit, %
 ; Verify that the "prefer-vector-width=512" attribute override the subtarget
 ; vectors
 
-; CHECK-LABEL: _h:
-; CHECK: %vec.epilog.vector.body
-; CHECK: %ymm
-; CHECK: %vector.body
+; CHECK-LABEL: h:
 ; CHECK: vmovdqu64 %zmm{{.}},
 ; CHECK-NOT: %ymm
+; CHECK: epilog
+; CHECK: %ymm
 
 ; CHECK-PREFER-AVX256-LABEL: h:
-; CHECK-PREFER-AVX256: %vec.epilog.vector.body
-; CHECK-PREFER-AVX256: %ymm
-; CHECK-PREFER-AVX256: %vector.body
 ; CHECK-PREFER-AVX256: vmovdqu64 %zmm{{.}},
 ; CHECK-PREFER-AVX256-NOT: %ymm
+; CHECK-PREFER-AVX256: epilog
+; CHECK-PREFER-AVX256: %ymm
 
 define void @h(ptr %a, i32 %n) "prefer-vector-width"="512" {
 entry:

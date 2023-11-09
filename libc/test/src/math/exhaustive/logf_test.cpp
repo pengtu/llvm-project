@@ -10,11 +10,11 @@
 #include "src/math/logf.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
+namespace mpfr = __llvm_libc::testing::mpfr;
 
 using LlvmLibcLogfExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Log,
-                                      LIBC_NAMESPACE::logf>;
+                                      __llvm_libc::logf>;
 
 // Range: [0, Inf];
 static constexpr uint32_t POS_START = 0x0000'0000U;

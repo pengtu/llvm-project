@@ -454,10 +454,12 @@ mlir::Value fir::factory::genIsNotAllocatedOrAssociatedTest(
   return builder.genIsNullAddr(loc, addr);
 }
 
-/// Call freemem. This does not check that the
+/// Generate finalizer call and inlined free. This does not check that the
 /// address was allocated.
-static void genFreemem(fir::FirOpBuilder &builder, mlir::Location loc,
-                       mlir::Value addr) {
+static void genFinalizeAndFree(fir::FirOpBuilder &builder, mlir::Location loc,
+                               mlir::Value addr) {
+  // TODO: call finalizer if any.
+
   // A heap (ALLOCATABLE) object may have been converted to a ptr (POINTER),
   // so make sure the heap type is restored before deallocation.
   auto cast = builder.createConvert(
@@ -465,16 +467,16 @@ static void genFreemem(fir::FirOpBuilder &builder, mlir::Location loc,
   builder.create<fir::FreeMemOp>(loc, cast);
 }
 
-void fir::factory::genFreememIfAllocated(fir::FirOpBuilder &builder,
-                                         mlir::Location loc,
-                                         const fir::MutableBoxValue &box) {
+void fir::factory::genFinalization(fir::FirOpBuilder &builder,
+                                   mlir::Location loc,
+                                   const fir::MutableBoxValue &box) {
   auto addr = MutablePropertyReader(builder, loc, box).readBaseAddress();
   auto isAllocated = builder.genIsNotNullAddr(loc, addr);
   auto ifOp = builder.create<fir::IfOp>(loc, isAllocated,
                                         /*withElseRegion=*/false);
   auto insPt = builder.saveInsertionPoint();
   builder.setInsertionPointToStart(&ifOp.getThenRegion().front());
-  ::genFreemem(builder, loc, addr);
+  genFinalizeAndFree(builder, loc, addr);
   builder.restoreInsertionPoint(insPt);
 }
 
@@ -751,11 +753,12 @@ void fir::factory::genInlinedAllocation(
                 fir::MustBeHeapAttr::get(builder.getContext(), mustBeHeap));
 }
 
-mlir::Value fir::factory::genFreemem(fir::FirOpBuilder &builder,
-                                     mlir::Location loc,
-                                     const fir::MutableBoxValue &box) {
+mlir::Value
+fir::factory::genInlinedDeallocate(fir::FirOpBuilder &builder,
+                                   mlir::Location loc,
+                                   const fir::MutableBoxValue &box) {
   auto addr = MutablePropertyReader(builder, loc, box).readBaseAddress();
-  ::genFreemem(builder, loc, addr);
+  genFinalizeAndFree(builder, loc, addr);
   MutablePropertyWriter{builder, loc, box}.setUnallocatedStatus();
   return addr;
 }
@@ -906,7 +909,8 @@ void fir::factory::finalizeRealloc(fir::FirOpBuilder &builder,
         auto heap = fir::getBase(realloc.newValue);
         auto extents = fir::factory::getExtents(loc, builder, realloc.newValue);
         builder.genIfThen(loc, realloc.oldAddressWasAllocated)
-            .genThen([&]() { ::genFreemem(builder, loc, realloc.oldAddress); })
+            .genThen(
+                [&]() { genFinalizeAndFree(builder, loc, realloc.oldAddress); })
             .end();
         MutablePropertyWriter{builder, loc, box}.updateMutableBox(
             heap, lbs, extents, lengths);

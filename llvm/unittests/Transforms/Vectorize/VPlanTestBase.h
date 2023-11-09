@@ -20,7 +20,6 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/AsmParser/Parser.h"
 #include "llvm/IR/Dominators.h"
-#include "llvm/IR/Verifier.h"
 #include "llvm/Support/SourceMgr.h"
 #include "gtest/gtest.h"
 
@@ -63,9 +62,7 @@ protected:
   }
 
   VPlanPtr buildHCFG(BasicBlock *LoopHeader) {
-    Function &F = *LoopHeader->getParent();
-    assert(!verifyFunction(F) && "input function must be valid");
-    doAnalysis(F);
+    doAnalysis(*LoopHeader->getParent());
 
     auto Plan = VPlan::createInitialVPlan(
         SE->getBackedgeTakenCount(LI->getLoopFor(LoopHeader)), *SE);
@@ -76,9 +73,7 @@ protected:
 
   /// Build the VPlan plain CFG for the loop starting from \p LoopHeader.
   VPlanPtr buildPlainCFG(BasicBlock *LoopHeader) {
-    Function &F = *LoopHeader->getParent();
-    assert(!verifyFunction(F) && "input function must be valid");
-    doAnalysis(F);
+    doAnalysis(*LoopHeader->getParent());
 
     auto Plan = VPlan::createInitialVPlan(
         SE->getBackedgeTakenCount(LI->getLoopFor(LoopHeader)), *SE);

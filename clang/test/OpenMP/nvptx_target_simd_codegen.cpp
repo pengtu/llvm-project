@@ -59,9 +59,8 @@ int bar(int n){
 
 #endif
 // CHECK45-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK45-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i64 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK45-64-SAME: (i64 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK45-64-NEXT:  entry:
-// CHECK45-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[N_ADDR:%.*]] = alloca i64, align 8
 // CHECK45-64-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -70,11 +69,10 @@ int bar(int n){
 // CHECK45-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK45-64-NEXT:    store i64 [[N]], ptr [[N_ADDR]], align 8
 // CHECK45-64-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 8
 // CHECK45-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK45-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-64:       user_code.entry:
@@ -93,28 +91,28 @@ int bar(int n){
 // CHECK45-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-64:       omp.inner.for.cond:
-// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-64-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-64-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-64-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-64:       omp.inner.for.body:
-// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-64-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP8]] to i64
 // CHECK45-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK45-64-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-64-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-64:       omp.body.continue:
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-64:       omp.inner.for.inc:
-// CHECK45-64-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-64-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-64-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK45-64-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK45-64:       worker.exit:
 // CHECK45-64-NEXT:    ret void
 // CHECK45-64:       omp.inner.for.end:
@@ -131,9 +129,8 @@ int bar(int n){
 //
 //
 // CHECK45-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK45-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i64 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK45-64-SAME: (i64 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK45-64-NEXT:  entry:
-// CHECK45-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[N_ADDR:%.*]] = alloca i64, align 8
 // CHECK45-64-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -142,11 +139,10 @@ int bar(int n){
 // CHECK45-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK45-64-NEXT:    store i64 [[N]], ptr [[N_ADDR]], align 8
 // CHECK45-64-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 8
 // CHECK45-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 8
-// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK45-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-64:       user_code.entry:
@@ -165,32 +161,32 @@ int bar(int n){
 // CHECK45-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-64:       omp.inner.for.cond:
-// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-64-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-64-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-64:       omp.inner.for.body:
-// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-64-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP8]] to i64
 // CHECK45-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK45-64-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK45-64-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK45-64-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK45-64-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-64:       omp.body.continue:
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-64:       omp.inner.for.inc:
-// CHECK45-64-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-64-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-64-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK45-64-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK45-64:       worker.exit:
 // CHECK45-64-NEXT:    ret void
 // CHECK45-64:       omp.inner.for.end:
@@ -207,45 +203,43 @@ int bar(int n){
 //
 //
 // CHECK45-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK45-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK45-64-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK45-64-NEXT:  entry:
-// CHECK45-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK45-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK45-64-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 8
 // CHECK45-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK45-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-64:       user_code.entry:
 // CHECK45-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-64:       omp.inner.for.cond:
-// CHECK45-64-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK45-64-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK45-64-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK45-64-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-64:       omp.inner.for.body:
-// CHECK45-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK45-64-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP4]] to i64
 // CHECK45-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-64-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-64-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-64:       omp.body.continue:
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-64:       omp.inner.for.inc:
-// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-64-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK45-64-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK45-64:       worker.exit:
 // CHECK45-64-NEXT:    ret void
 // CHECK45-64:       omp.inner.for.end:
@@ -255,21 +249,19 @@ int bar(int n){
 //
 //
 // CHECK45-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK45-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK45-64-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK45-64-NEXT:  entry:
-// CHECK45-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 8
 // CHECK45-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-64-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK45-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK45-64-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 8
 // CHECK45-64-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 8
 // CHECK45-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 8
 // CHECK45-64-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 8
-// CHECK45-64-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-64-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK45-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK45-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-64:       user_code.entry:
@@ -277,28 +269,28 @@ int bar(int n){
 // CHECK45-64-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-64:       omp.inner.for.cond:
-// CHECK45-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK45-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK45-64-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK45-64-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-64:       omp.inner.for.body:
-// CHECK45-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK45-64-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP5]] to i64
 // CHECK45-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-64-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-64-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-64:       omp.body.continue:
 // CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-64:       omp.inner.for.inc:
-// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-64-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK45-64-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK45-64-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK45-64:       worker.exit:
 // CHECK45-64-NEXT:    ret void
 // CHECK45-64:       omp.inner.for.end:
@@ -312,9 +304,8 @@ int bar(int n){
 //
 //
 // CHECK45-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK45-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK45-32-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK45-32-NEXT:  entry:
-// CHECK45-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -323,11 +314,10 @@ int bar(int n){
 // CHECK45-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 4
 // CHECK45-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 4
-// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK45-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32:       user_code.entry:
@@ -346,27 +336,27 @@ int bar(int n){
 // CHECK45-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32:       omp.inner.for.cond:
-// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-32-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-32-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32:       omp.inner.for.body:
-// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-32-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK45-32-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32:       omp.body.continue:
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32:       omp.inner.for.inc:
-// CHECK45-32-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK45-32-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK45-32:       worker.exit:
 // CHECK45-32-NEXT:    ret void
 // CHECK45-32:       omp.inner.for.end:
@@ -383,9 +373,8 @@ int bar(int n){
 //
 //
 // CHECK45-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK45-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK45-32-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK45-32-NEXT:  entry:
-// CHECK45-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -394,11 +383,10 @@ int bar(int n){
 // CHECK45-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 4
 // CHECK45-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 4
-// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK45-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32:       user_code.entry:
@@ -417,31 +405,31 @@ int bar(int n){
 // CHECK45-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32:       omp.inner.for.cond:
-// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-32-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-32-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32:       omp.inner.for.body:
-// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-32-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK45-32-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK45-32-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK45-32-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK45-32-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32:       omp.body.continue:
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32:       omp.inner.for.inc:
-// CHECK45-32-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK45-32-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK45-32:       worker.exit:
 // CHECK45-32-NEXT:    ret void
 // CHECK45-32:       omp.inner.for.end:
@@ -458,44 +446,42 @@ int bar(int n){
 //
 //
 // CHECK45-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK45-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK45-32-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK45-32-NEXT:  entry:
-// CHECK45-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK45-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK45-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
-// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK45-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32:       user_code.entry:
 // CHECK45-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32:       omp.inner.for.cond:
-// CHECK45-32-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK45-32-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK45-32-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK45-32-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32:       omp.inner.for.body:
-// CHECK45-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK45-32-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP4]]
-// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32:       omp.body.continue:
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32:       omp.inner.for.inc:
-// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK45-32-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK45-32:       worker.exit:
 // CHECK45-32-NEXT:    ret void
 // CHECK45-32:       omp.inner.for.end:
@@ -505,21 +491,19 @@ int bar(int n){
 //
 //
 // CHECK45-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK45-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK45-32-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK45-32-NEXT:  entry:
-// CHECK45-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK45-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK45-32-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
 // CHECK45-32-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 4
-// CHECK45-32-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK45-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK45-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32:       user_code.entry:
@@ -527,27 +511,27 @@ int bar(int n){
 // CHECK45-32-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32:       omp.inner.for.cond:
-// CHECK45-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK45-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK45-32-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK45-32-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32:       omp.inner.for.body:
-// CHECK45-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK45-32-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP5]]
-// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32:       omp.body.continue:
 // CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32:       omp.inner.for.inc:
-// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK45-32-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK45-32-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK45-32:       worker.exit:
 // CHECK45-32-NEXT:    ret void
 // CHECK45-32:       omp.inner.for.end:
@@ -561,9 +545,8 @@ int bar(int n){
 //
 //
 // CHECK45-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK45-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK45-32-EX-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK45-32-EX-NEXT:  entry:
-// CHECK45-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -572,11 +555,10 @@ int bar(int n){
 // CHECK45-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 4
-// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK45-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32-EX:       user_code.entry:
@@ -595,27 +577,27 @@ int bar(int n){
 // CHECK45-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32-EX:       omp.inner.for.cond:
-// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-32-EX-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-32-EX-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32-EX:       omp.inner.for.body:
-// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-32-EX-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK45-32-EX-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-EX-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32-EX:       omp.body.continue:
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32-EX:       omp.inner.for.inc:
-// CHECK45-32-EX-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK45-32-EX-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK45-32-EX-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK45-32-EX:       worker.exit:
 // CHECK45-32-EX-NEXT:    ret void
 // CHECK45-32-EX:       omp.inner.for.end:
@@ -632,9 +614,8 @@ int bar(int n){
 //
 //
 // CHECK45-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK45-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK45-32-EX-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK45-32-EX-NEXT:  entry:
-// CHECK45-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -643,11 +624,10 @@ int bar(int n){
 // CHECK45-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK45-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 4
-// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK45-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32-EX:       user_code.entry:
@@ -666,31 +646,31 @@ int bar(int n){
 // CHECK45-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32-EX:       omp.inner.for.cond:
-// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK45-32-EX-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK45-32-EX-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32-EX:       omp.inner.for.body:
-// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK45-32-EX-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK45-32-EX-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK45-32-EX-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK45-32-EX-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK45-32-EX-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32-EX:       omp.body.continue:
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32-EX:       omp.inner.for.inc:
-// CHECK45-32-EX-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK45-32-EX-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK45-32-EX-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK45-32-EX:       worker.exit:
 // CHECK45-32-EX-NEXT:    ret void
 // CHECK45-32-EX:       omp.inner.for.end:
@@ -707,44 +687,42 @@ int bar(int n){
 //
 //
 // CHECK45-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK45-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK45-32-EX-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK45-32-EX-NEXT:  entry:
-// CHECK45-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK45-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
-// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK45-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK45-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32-EX:       user_code.entry:
 // CHECK45-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32-EX:       omp.inner.for.cond:
-// CHECK45-32-EX-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK45-32-EX-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK45-32-EX-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK45-32-EX-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32-EX:       omp.inner.for.body:
-// CHECK45-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK45-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP4]]
-// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-EX-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32-EX:       omp.body.continue:
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32-EX:       omp.inner.for.inc:
-// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK45-32-EX-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK45-32-EX:       worker.exit:
 // CHECK45-32-EX-NEXT:    ret void
 // CHECK45-32-EX:       omp.inner.for.end:
@@ -754,21 +732,19 @@ int bar(int n){
 //
 //
 // CHECK45-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK45-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK45-32-EX-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK45-32-EX-NEXT:  entry:
-// CHECK45-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 4
 // CHECK45-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK45-32-EX-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK45-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
 // CHECK45-32-EX-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 4
-// CHECK45-32-EX-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK45-32-EX-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK45-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK45-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK45-32-EX:       user_code.entry:
@@ -776,27 +752,27 @@ int bar(int n){
 // CHECK45-32-EX-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK45-32-EX:       omp.inner.for.cond:
-// CHECK45-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK45-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK45-32-EX-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK45-32-EX-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK45-32-EX:       omp.inner.for.body:
-// CHECK45-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK45-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK45-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP5]]
-// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-EX-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK45-32-EX:       omp.body.continue:
 // CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK45-32-EX:       omp.inner.for.inc:
-// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK45-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK45-32-EX-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK45-32-EX-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK45-32-EX-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK45-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK45-32-EX:       worker.exit:
 // CHECK45-32-EX-NEXT:    ret void
 // CHECK45-32-EX:       omp.inner.for.end:
@@ -810,9 +786,8 @@ int bar(int n){
 //
 //
 // CHECK-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i64 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK-64-SAME: (i64 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK-64-NEXT:  entry:
-// CHECK-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[N_ADDR:%.*]] = alloca i64, align 8
 // CHECK-64-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -821,11 +796,10 @@ int bar(int n){
 // CHECK-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK-64-NEXT:    store i64 [[N]], ptr [[N_ADDR]], align 8
 // CHECK-64-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 8
 // CHECK-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-64:       user_code.entry:
@@ -844,28 +818,28 @@ int bar(int n){
 // CHECK-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-64:       omp.inner.for.cond:
-// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-64-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-64-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-64-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-64:       omp.inner.for.body:
-// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-64-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP8]] to i64
 // CHECK-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK-64-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-64-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-64:       omp.body.continue:
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-64:       omp.inner.for.inc:
-// CHECK-64-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-64-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-64-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK-64-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK-64-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK-64:       worker.exit:
 // CHECK-64-NEXT:    ret void
 // CHECK-64:       omp.inner.for.end:
@@ -882,9 +856,8 @@ int bar(int n){
 //
 //
 // CHECK-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i64 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK-64-SAME: (i64 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK-64-NEXT:  entry:
-// CHECK-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[N_ADDR:%.*]] = alloca i64, align 8
 // CHECK-64-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -893,11 +866,10 @@ int bar(int n){
 // CHECK-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK-64-NEXT:    store i64 [[N]], ptr [[N_ADDR]], align 8
 // CHECK-64-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 8
 // CHECK-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 8
-// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-64:       user_code.entry:
@@ -916,32 +888,32 @@ int bar(int n){
 // CHECK-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-64:       omp.inner.for.cond:
-// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-64-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-64-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-64:       omp.inner.for.body:
-// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-64-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-64-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP8]] to i64
 // CHECK-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK-64-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK-64-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK-64-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK-64-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-64:       omp.body.continue:
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-64:       omp.inner.for.inc:
-// CHECK-64-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-64-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-64-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK-64-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK-64-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK-64:       worker.exit:
 // CHECK-64-NEXT:    ret void
 // CHECK-64:       omp.inner.for.end:
@@ -958,45 +930,43 @@ int bar(int n){
 //
 //
 // CHECK-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK-64-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK-64-NEXT:  entry:
-// CHECK-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK-64-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 8
 // CHECK-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-64-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-64:       user_code.entry:
 // CHECK-64-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-64:       omp.inner.for.cond:
-// CHECK-64-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK-64-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK-64-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK-64-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-64:       omp.inner.for.body:
-// CHECK-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK-64-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP4]] to i64
 // CHECK-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-64-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK-64-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-64-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-64:       omp.body.continue:
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-64:       omp.inner.for.inc:
-// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-64-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-64-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK-64-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK-64:       worker.exit:
 // CHECK-64-NEXT:    ret void
 // CHECK-64:       omp.inner.for.end:
@@ -1006,21 +976,19 @@ int bar(int n){
 //
 //
 // CHECK-64-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK-64-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK-64-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK-64-NEXT:  entry:
-// CHECK-64-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-64-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-64-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK-64-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 8
 // CHECK-64-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 8
 // CHECK-64-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 8
 // CHECK-64-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 8
 // CHECK-64-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 8
-// CHECK-64-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-64-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK-64-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK-64-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-64:       user_code.entry:
@@ -1028,28 +996,28 @@ int bar(int n){
 // CHECK-64-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-64:       omp.inner.for.cond:
-// CHECK-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK-64-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK-64-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK-64-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-64:       omp.inner.for.body:
-// CHECK-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-64-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-64-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK-64-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-64-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-64-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-64-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP5]] to i64
 // CHECK-64-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i64 0, i64 [[IDXPROM]]
-// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-64-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-64-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-64-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-64-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-64-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-64:       omp.body.continue:
 // CHECK-64-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-64:       omp.inner.for.inc:
-// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-64-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-64-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK-64-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK-64-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-64-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK-64:       worker.exit:
 // CHECK-64-NEXT:    ret void
 // CHECK-64:       omp.inner.for.end:
@@ -1063,9 +1031,8 @@ int bar(int n){
 //
 //
 // CHECK-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK-32-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK-32-NEXT:  entry:
-// CHECK-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -1074,11 +1041,10 @@ int bar(int n){
 // CHECK-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 4
 // CHECK-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 4
-// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32:       user_code.entry:
@@ -1097,27 +1063,27 @@ int bar(int n){
 // CHECK-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32:       omp.inner.for.cond:
-// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-32-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-32-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32:       omp.inner.for.body:
-// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-32-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK-32-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32:       omp.body.continue:
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32:       omp.inner.for.inc:
-// CHECK-32-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK-32-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK-32-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK-32:       worker.exit:
 // CHECK-32-NEXT:    ret void
 // CHECK-32:       omp.inner.for.end:
@@ -1134,9 +1100,8 @@ int bar(int n){
 //
 //
 // CHECK-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK-32-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK-32-NEXT:  entry:
-// CHECK-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -1145,11 +1110,10 @@ int bar(int n){
 // CHECK-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 4
 // CHECK-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 4
-// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32:       user_code.entry:
@@ -1168,31 +1132,31 @@ int bar(int n){
 // CHECK-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32:       omp.inner.for.cond:
-// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-32-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-32-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32:       omp.inner.for.body:
-// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-32-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-32-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK-32-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK-32-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK-32-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK-32-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32:       omp.body.continue:
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32:       omp.inner.for.inc:
-// CHECK-32-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK-32-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK-32-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK-32:       worker.exit:
 // CHECK-32-NEXT:    ret void
 // CHECK-32:       omp.inner.for.end:
@@ -1209,44 +1173,42 @@ int bar(int n){
 //
 //
 // CHECK-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK-32-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK-32-NEXT:  entry:
-// CHECK-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
-// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32:       user_code.entry:
 // CHECK-32-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32:       omp.inner.for.cond:
-// CHECK-32-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK-32-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK-32-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK-32-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32:       omp.inner.for.body:
-// CHECK-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK-32-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP4]]
-// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK-32-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32:       omp.body.continue:
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32:       omp.inner.for.inc:
-// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-32-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK-32-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK-32:       worker.exit:
 // CHECK-32-NEXT:    ret void
 // CHECK-32:       omp.inner.for.end:
@@ -1256,21 +1218,19 @@ int bar(int n){
 //
 //
 // CHECK-32-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK-32-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK-32-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK-32-NEXT:  entry:
-// CHECK-32-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK-32-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK-32-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
 // CHECK-32-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 4
-// CHECK-32-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK-32-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK-32-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32:       user_code.entry:
@@ -1278,27 +1238,27 @@ int bar(int n){
 // CHECK-32-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32:       omp.inner.for.cond:
-// CHECK-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK-32-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK-32-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK-32-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32:       omp.inner.for.body:
-// CHECK-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK-32-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-32-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP5]]
-// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-32-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32:       omp.body.continue:
 // CHECK-32-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32:       omp.inner.for.inc:
-// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK-32-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK-32-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-32-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK-32:       worker.exit:
 // CHECK-32-NEXT:    ret void
 // CHECK-32:       omp.inner.for.end:
@@ -1312,9 +1272,8 @@ int bar(int n){
 //
 //
 // CHECK-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29
-// CHECK-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
+// CHECK-32-EX-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 4 dereferenceable(4000) [[A:%.*]]) #[[ATTR0:[0-9]+]] {
 // CHECK-32-EX-NEXT:  entry:
-// CHECK-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[A_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -1323,11 +1282,10 @@ int bar(int n){
 // CHECK-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store ptr [[A]], ptr [[A_ADDR]], align 4
 // CHECK-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 4
-// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l29_kernel_environment)
 // CHECK-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32-EX:       user_code.entry:
@@ -1346,27 +1304,27 @@ int bar(int n){
 // CHECK-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32-EX:       omp.inner.for.cond:
-// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24:![0-9]+]]
-// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12:![0-9]+]]
+// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-32-EX-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-32-EX-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32-EX:       omp.inner.for.body:
-// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-32-EX-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i32], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK-32-EX-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-EX-NEXT:    store i32 1, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32-EX:       omp.body.continue:
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32-EX:       omp.inner.for.inc:
-// CHECK-32-EX-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
+// CHECK-32-EX-NEXT:    [[TMP9:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
 // CHECK-32-EX-NEXT:    [[ADD6:%.*]] = add nsw i32 [[TMP9]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP24]]
-// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP25:![0-9]+]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD6]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP12]]
+// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP13:![0-9]+]]
 // CHECK-32-EX:       worker.exit:
 // CHECK-32-EX-NEXT:    ret void
 // CHECK-32-EX:       omp.inner.for.end:
@@ -1383,9 +1341,8 @@ int bar(int n){
 //
 //
 // CHECK-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34
-// CHECK-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
+// CHECK-32-EX-SAME: (i32 noundef [[N:%.*]], ptr noundef nonnull align 2 dereferenceable(2000) [[AA:%.*]]) #[[ATTR0]] {
 // CHECK-32-EX-NEXT:  entry:
-// CHECK-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[AA_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
@@ -1394,11 +1351,10 @@ int bar(int n){
 // CHECK-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[I3:%.*]] = alloca i32, align 4
-// CHECK-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store i32 [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store ptr [[AA]], ptr [[AA_ADDR]], align 4
 // CHECK-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[AA_ADDR]], align 4
-// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l34_kernel_environment)
 // CHECK-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32-EX:       user_code.entry:
@@ -1417,31 +1373,31 @@ int bar(int n){
 // CHECK-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32-EX:       omp.inner.for.cond:
-// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28:![0-9]+]]
-// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16:![0-9]+]]
+// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTCAPTURE_EXPR_1]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP6]], 1
 // CHECK-32-EX-NEXT:    [[CMP4:%.*]] = icmp slt i32 [[TMP5]], [[ADD]]
 // CHECK-32-EX-NEXT:    br i1 [[CMP4]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32-EX:       omp.inner.for.body:
-// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP7]], 1
 // CHECK-32-EX-NEXT:    [[ADD5:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD5]], ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-32-EX-NEXT:    [[TMP8:%.*]] = load i32, ptr [[I3]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [1000 x i16], ptr [[TMP0]], i32 0, i32 [[TMP8]]
-// CHECK-32-EX-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    [[TMP9:%.*]] = load i16, ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    [[CONV:%.*]] = sext i16 [[TMP9]] to i32
 // CHECK-32-EX-NEXT:    [[ADD6:%.*]] = add nsw i32 [[CONV]], 1
 // CHECK-32-EX-NEXT:    [[CONV7:%.*]] = trunc i32 [[ADD6]] to i16
-// CHECK-32-EX-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    store i16 [[CONV7]], ptr [[ARRAYIDX]], align 2, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32-EX:       omp.body.continue:
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32-EX:       omp.inner.for.inc:
-// CHECK-32-EX-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
+// CHECK-32-EX-NEXT:    [[TMP10:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
 // CHECK-32-EX-NEXT:    [[ADD8:%.*]] = add nsw i32 [[TMP10]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP28]]
-// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP29:![0-9]+]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD8]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP16]]
+// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP17:![0-9]+]]
 // CHECK-32-EX:       worker.exit:
 // CHECK-32-EX-NEXT:    ret void
 // CHECK-32-EX:       omp.inner.for.end:
@@ -1458,44 +1414,42 @@ int bar(int n){
 //
 //
 // CHECK-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39
-// CHECK-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
+// CHECK-32-EX-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]]) #[[ATTR0]] {
 // CHECK-32-EX-NEXT:  entry:
-// CHECK-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
-// CHECK-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
-// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-EX-NEXT:    [[TMP1:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l39_kernel_environment)
 // CHECK-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP1]], -1
 // CHECK-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32-EX:       user_code.entry:
 // CHECK-32-EX-NEXT:    store i32 0, ptr [[DOTOMP_IV]], align 4
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32-EX:       omp.inner.for.cond:
-// CHECK-32-EX-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31:![0-9]+]]
+// CHECK-32-EX-NEXT:    [[TMP2:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19:![0-9]+]]
 // CHECK-32-EX-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP2]], 10
 // CHECK-32-EX-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32-EX:       omp.inner.for.body:
-// CHECK-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP3]], 1
 // CHECK-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP4]]
-// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-EX-NEXT:    [[ADD1:%.*]] = add nsw i32 [[TMP5]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD1]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32-EX:       omp.body.continue:
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32-EX:       omp.inner.for.inc:
-// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
+// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
 // CHECK-32-EX-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP31]]
-// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP32:![0-9]+]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD2]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP19]]
+// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP20:![0-9]+]]
 // CHECK-32-EX:       worker.exit:
 // CHECK-32-EX-NEXT:    ret void
 // CHECK-32-EX:       omp.inner.for.end:
@@ -1505,21 +1459,19 @@ int bar(int n){
 //
 //
 // CHECK-32-EX-LABEL: define {{[^@]+}}@{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44
-// CHECK-32-EX-SAME: (ptr noalias noundef [[DYN_PTR:%.*]], ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
+// CHECK-32-EX-SAME: (ptr noundef nonnull align 4 dereferenceable(40) [[B:%.*]], ptr noundef nonnull align 4 dereferenceable(4) [[N:%.*]]) #[[ATTR0]] {
 // CHECK-32-EX-NEXT:  entry:
-// CHECK-32-EX-NEXT:    [[DYN_PTR_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[B_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[N_ADDR:%.*]] = alloca ptr, align 4
 // CHECK-32-EX-NEXT:    [[TMP:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[DOTOMP_IV:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[I:%.*]] = alloca i32, align 4
 // CHECK-32-EX-NEXT:    [[N1:%.*]] = alloca i32, align 4
-// CHECK-32-EX-NEXT:    store ptr [[DYN_PTR]], ptr [[DYN_PTR_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store ptr [[B]], ptr [[B_ADDR]], align 4
 // CHECK-32-EX-NEXT:    store ptr [[N]], ptr [[N_ADDR]], align 4
 // CHECK-32-EX-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[B_ADDR]], align 4
 // CHECK-32-EX-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[N_ADDR]], align 4
-// CHECK-32-EX-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment, ptr [[DYN_PTR]])
+// CHECK-32-EX-NEXT:    [[TMP2:%.*]] = call i32 @__kmpc_target_init(ptr @{{__omp_offloading_[0-9a-z]+_[0-9a-z]+}}__Z9ftemplateIiET_i_l44_kernel_environment)
 // CHECK-32-EX-NEXT:    [[EXEC_USER_CODE:%.*]] = icmp eq i32 [[TMP2]], -1
 // CHECK-32-EX-NEXT:    br i1 [[EXEC_USER_CODE]], label [[USER_CODE_ENTRY:%.*]], label [[WORKER_EXIT:%.*]]
 // CHECK-32-EX:       user_code.entry:
@@ -1527,27 +1479,27 @@ int bar(int n){
 // CHECK-32-EX-NEXT:    store i32 0, ptr [[N1]], align 4
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND:%.*]]
 // CHECK-32-EX:       omp.inner.for.cond:
-// CHECK-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34:![0-9]+]]
+// CHECK-32-EX-NEXT:    [[TMP3:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22:![0-9]+]]
 // CHECK-32-EX-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP3]], 10
 // CHECK-32-EX-NEXT:    br i1 [[CMP]], label [[OMP_INNER_FOR_BODY:%.*]], label [[OMP_INNER_FOR_END:%.*]]
 // CHECK-32-EX:       omp.inner.for.body:
-// CHECK-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-EX-NEXT:    [[TMP4:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-EX-NEXT:    [[MUL:%.*]] = mul nsw i32 [[TMP4]], 1
 // CHECK-32-EX-NEXT:    [[ADD:%.*]] = add nsw i32 0, [[MUL]]
-// CHECK-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD]], ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-32-EX-NEXT:    [[TMP5:%.*]] = load i32, ptr [[I]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-EX-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [10 x i32], ptr [[TMP0]], i32 0, i32 [[TMP5]]
-// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-EX-NEXT:    [[TMP6:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-EX-NEXT:    [[ADD2:%.*]] = add nsw i32 [[TMP6]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD2]], ptr [[ARRAYIDX]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-EX-NEXT:    br label [[OMP_BODY_CONTINUE:%.*]]
 // CHECK-32-EX:       omp.body.continue:
 // CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
 // CHECK-32-EX:       omp.inner.for.inc:
-// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
+// CHECK-32-EX-NEXT:    [[TMP7:%.*]] = load i32, ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
 // CHECK-32-EX-NEXT:    [[ADD3:%.*]] = add nsw i32 [[TMP7]], 1
-// CHECK-32-EX-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP34]]
-// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP35:![0-9]+]]
+// CHECK-32-EX-NEXT:    store i32 [[ADD3]], ptr [[DOTOMP_IV]], align 4, !llvm.access.group [[ACC_GRP22]]
+// CHECK-32-EX-NEXT:    br label [[OMP_INNER_FOR_COND]], !llvm.loop [[LOOP23:![0-9]+]]
 // CHECK-32-EX:       worker.exit:
 // CHECK-32-EX-NEXT:    ret void
 // CHECK-32-EX:       omp.inner.for.end:

@@ -42,6 +42,7 @@ void ConvertSPIRVToLLVMPass::runOnOperation() {
   ModuleOp module = getOperation();
 
   LowerToLLVMOptions options(&getContext());
+  options.useOpaquePointers = useOpaquePointers;
 
   LLVMTypeConverter converter(&getContext(), options);
 

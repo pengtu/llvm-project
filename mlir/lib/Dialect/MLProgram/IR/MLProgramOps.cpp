@@ -178,14 +178,8 @@ LogicalResult GlobalOp::verify() {
 //===----------------------------------------------------------------------===//
 
 GlobalOp GlobalLoadOp::getGlobalOp(SymbolTableCollection &symbolTable) {
-  for (auto parent = getOperation()->getParentOp(); parent;
-       parent = parent->getParentOp()) {
-    if (auto nearest = symbolTable.lookupNearestSymbolFrom<GlobalOp>(
-            parent, getGlobalAttr())) {
-      return nearest;
-    }
-  }
-  return {};
+  return symbolTable.lookupNearestSymbolFrom<GlobalOp>(
+      getOperation()->getParentOp(), getGlobalAttr());
 }
 
 LogicalResult
@@ -259,14 +253,8 @@ GlobalLoadGraphOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
 //===----------------------------------------------------------------------===//
 
 GlobalOp GlobalStoreOp::getGlobalOp(SymbolTableCollection &symbolTable) {
-  for (auto parent = getOperation()->getParentOp(); parent;) {
-    if (auto nearest = symbolTable.lookupNearestSymbolFrom<GlobalOp>(
-            parent, getGlobalAttr())) {
-      return nearest;
-    }
-    parent = parent->getParentOp();
-  }
-  return {};
+  return symbolTable.lookupNearestSymbolFrom<GlobalOp>(
+      getOperation()->getParentOp(), getGlobalAttr());
 }
 
 LogicalResult

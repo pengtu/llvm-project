@@ -6,14 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_HIGH_PRECISION_DECIMAL_H
-#define LLVM_LIBC_SRC___SUPPORT_HIGH_PRECISION_DECIMAL_H
+#ifndef LIBC_SRC_SUPPORT_HIGH_PRECISION_DECIMAL_H
+#define LIBC_SRC_SUPPORT_HIGH_PRECISION_DECIMAL_H
 
 #include "src/__support/ctype_utils.h"
 #include "src/__support/str_to_integer.h"
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace internal {
 
 struct LShiftTableEntry {
@@ -411,6 +411,6 @@ public:
 };
 
 } // namespace internal
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_HIGH_PRECISION_DECIMAL_H
+#endif // LIBC_SRC_SUPPORT_HIGH_PRECISION_DECIMAL_H

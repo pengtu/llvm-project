@@ -59,8 +59,8 @@ TEST(StringExtrasTest, isUpper) {
   EXPECT_FALSE(isUpper('\?'));
 }
 
-template <class ContainerT> void testJoin() {
-  ContainerT Items;
+TEST(StringExtrasTest, Join) {
+  std::vector<std::string> Items;
   EXPECT_EQ("", join(Items.begin(), Items.end(), " <sep> "));
 
   Items = {"foo"};
@@ -72,17 +72,6 @@ template <class ContainerT> void testJoin() {
   Items = {"foo", "bar", "baz"};
   EXPECT_EQ("foo <sep> bar <sep> baz",
             join(Items.begin(), Items.end(), " <sep> "));
-}
-
-TEST(StringExtrasTest, Join) {
-  {
-    SCOPED_TRACE("std::vector<std::string>");
-    testJoin<std::vector<std::string>>();
-  }
-  {
-    SCOPED_TRACE("std::vector<const char*>");
-    testJoin<std::vector<const char *>>();
-  }
 }
 
 TEST(StringExtrasTest, JoinItems) {
@@ -184,13 +173,6 @@ TEST(StringExtrasTest, ConvertToSnakeFromCamelCase) {
 
   testConvertToSnakeCase("OpName", "op_name");
   testConvertToSnakeCase("opName", "op_name");
-  testConvertToSnakeCase("OPName", "op_name");
-  testConvertToSnakeCase("Intel_OCL_BI", "intel_ocl_bi");
-  testConvertToSnakeCase("I32Attr", "i32_attr");
-  testConvertToSnakeCase("opNAME", "op_name");
-  testConvertToSnakeCase("opNAMe", "op_na_me");
-  testConvertToSnakeCase("opnameE", "opname_e");
-  testConvertToSnakeCase("OPNameOPName", "op_name_op_name");
   testConvertToSnakeCase("_OpName", "_op_name");
   testConvertToSnakeCase("Op_Name", "op_name");
   testConvertToSnakeCase("", "");
@@ -368,15 +350,4 @@ TEST(StringExtrasTest, splitCharForLoop) {
   for (StringRef x : split("foo,bar,,baz", ','))
     Result.push_back(x);
   EXPECT_THAT(Result, testing::ElementsAre("foo", "bar", "", "baz"));
-}
-
-TEST(StringExtrasTest, arrayToStringRef) {
-  auto roundTripTestString = [](llvm::StringRef Str) {
-    EXPECT_EQ(Str, toStringRef(arrayRefFromStringRef<uint8_t>(Str)));
-    EXPECT_EQ(Str, toStringRef(arrayRefFromStringRef<char>(Str)));
-  };
-  roundTripTestString("");
-  roundTripTestString("foo");
-  roundTripTestString("\0\n");
-  roundTripTestString("\xFF\xFE");
 }

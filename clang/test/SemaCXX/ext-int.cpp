@@ -211,8 +211,8 @@ void ConstexprBitsize() {
   static_assert(is_same<decltype(F), _BitInt(42)>::value, "");
 }
 
-// Not useable as an underlying type.
-enum AsEnumUnderlyingType : _BitInt(33) { // expected-error{{'_BitInt(33)' is an invalid underlying type}}
+// Useable as an underlying type.
+enum AsEnumUnderlyingType : _BitInt(33) {
 };
 
 void overloaded(int);

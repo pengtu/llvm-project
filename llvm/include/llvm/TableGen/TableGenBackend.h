@@ -16,7 +16,6 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ManagedStatic.h"
-#include "llvm/TableGen/Record.h"
 
 namespace llvm {
 
@@ -51,8 +50,7 @@ public:
 
 /// emitSourceFileHeader - Output an LLVM style file header to the specified
 /// raw_ostream.
-void emitSourceFileHeader(StringRef Desc, raw_ostream &OS,
-                          const RecordKeeper &Record = RecordKeeper());
+void emitSourceFileHeader(StringRef Desc, raw_ostream &OS);
 
 } // End llvm namespace
 

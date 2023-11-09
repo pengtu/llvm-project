@@ -15,8 +15,6 @@
 #include "llvm/Support/Error.h"
 #include <optional>
 
-namespace lldb_private::plugin {
-namespace dwarf {
 class DIERef;
 class DWARFASTParser;
 class DWARFAttributes;
@@ -80,7 +78,7 @@ public:
   // correct section data.
   //
   // Clients must validate that this object is valid before calling this.
-  const DWARFDataExtractor &GetData() const;
+  const lldb_private::DWARFDataExtractor &GetData() const;
 
   // Accessing information about a DIE
   dw_tag_t Tag() const;
@@ -126,7 +124,5 @@ protected:
 
 bool operator==(const DWARFBaseDIE &lhs, const DWARFBaseDIE &rhs);
 bool operator!=(const DWARFBaseDIE &lhs, const DWARFBaseDIE &rhs);
-} // namespace dwarf
-} // namespace lldb_private::plugin
 
 #endif // LLDB_SOURCE_PLUGINS_SYMBOLFILE_DWARF_DWARFBASEDIE_H

@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_FPUTIL_FLOATPROPERTIES_H
-#define LLVM_LIBC_SRC___SUPPORT_FPUTIL_FLOATPROPERTIES_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_FPUTIL_FLOAT_PROPERTIES_H
+#define LLVM_LIBC_SRC_SUPPORT_FPUTIL_FLOAT_PROPERTIES_H
 
 #include "PlatformDefs.h"
 
@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace fputil {
 
 template <typename T> struct FloatProperties {};
@@ -194,6 +194,6 @@ template <typename BitsType>
 using FloatTypeT = typename FloatType<BitsType>::Type;
 
 } // namespace fputil
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_FPUTIL_FLOATPROPERTIES_H
+#endif // LLVM_LIBC_SRC_SUPPORT_FPUTIL_FLOAT_PROPERTIES_H

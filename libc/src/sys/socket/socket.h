@@ -6,13 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC_SYS_SOCKET_SOCKET_H
-#define LLVM_LIBC_SRC_SYS_SOCKET_SOCKET_H
+#ifndef LLVM_LIBC_SRC_SYS_SOCKET_SENDFILE_H
+#define LLVM_LIBC_SRC_SYS_SOCKET_SENDFILE_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int socket(int domain, int type, int protocol);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC_SYS_SOCKET_SOCKET_H
+#endif // LLVM_LIBC_SRC_SYS_SOCKET_SENDFILE_H

@@ -195,25 +195,20 @@ class ASTContext : public RefCountedBase<ASTContext> {
       ConstantArrayTypes;
   mutable llvm::FoldingSet<IncompleteArrayType> IncompleteArrayTypes;
   mutable std::vector<VariableArrayType*> VariableArrayTypes;
-  mutable llvm::ContextualFoldingSet<DependentSizedArrayType, ASTContext &>
-      DependentSizedArrayTypes;
-  mutable llvm::ContextualFoldingSet<DependentSizedExtVectorType, ASTContext &>
-      DependentSizedExtVectorTypes;
-  mutable llvm::ContextualFoldingSet<DependentAddressSpaceType, ASTContext &>
+  mutable llvm::FoldingSet<DependentSizedArrayType> DependentSizedArrayTypes;
+  mutable llvm::FoldingSet<DependentSizedExtVectorType>
+    DependentSizedExtVectorTypes;
+  mutable llvm::FoldingSet<DependentAddressSpaceType>
       DependentAddressSpaceTypes;
   mutable llvm::FoldingSet<VectorType> VectorTypes;
-  mutable llvm::ContextualFoldingSet<DependentVectorType, ASTContext &>
-      DependentVectorTypes;
+  mutable llvm::FoldingSet<DependentVectorType> DependentVectorTypes;
   mutable llvm::FoldingSet<ConstantMatrixType> MatrixTypes;
-  mutable llvm::ContextualFoldingSet<DependentSizedMatrixType, ASTContext &>
-      DependentSizedMatrixTypes;
+  mutable llvm::FoldingSet<DependentSizedMatrixType> DependentSizedMatrixTypes;
   mutable llvm::FoldingSet<FunctionNoProtoType> FunctionNoProtoTypes;
   mutable llvm::ContextualFoldingSet<FunctionProtoType, ASTContext&>
     FunctionProtoTypes;
-  mutable llvm::ContextualFoldingSet<DependentTypeOfExprType, ASTContext &>
-      DependentTypeOfExprTypes;
-  mutable llvm::ContextualFoldingSet<DependentDecltypeType, ASTContext &>
-      DependentDecltypeTypes;
+  mutable llvm::FoldingSet<DependentTypeOfExprType> DependentTypeOfExprTypes;
+  mutable llvm::FoldingSet<DependentDecltypeType> DependentDecltypeTypes;
   mutable llvm::FoldingSet<TemplateTypeParmType> TemplateTypeParmTypes;
   mutable llvm::FoldingSet<ObjCTypeParamType> ObjCTypeParamTypes;
   mutable llvm::FoldingSet<SubstTemplateTypeParmType>
@@ -243,8 +238,7 @@ class ASTContext : public RefCountedBase<ASTContext> {
   mutable llvm::FoldingSet<AttributedType> AttributedTypes;
   mutable llvm::FoldingSet<PipeType> PipeTypes;
   mutable llvm::FoldingSet<BitIntType> BitIntTypes;
-  mutable llvm::ContextualFoldingSet<DependentBitIntType, ASTContext &>
-      DependentBitIntTypes;
+  mutable llvm::FoldingSet<DependentBitIntType> DependentBitIntTypes;
   llvm::FoldingSet<BTFTagAttributedType> BTFTagAttributedTypes;
 
   mutable llvm::FoldingSet<QualifiedTemplateName> QualifiedTemplateNames;
@@ -1147,9 +1141,6 @@ public:
   mutable TagDecl *MSGuidTagDecl = nullptr;
 
   /// Keep track of CUDA/HIP device-side variables ODR-used by host code.
-  /// This does not include extern shared variables used by device host
-  /// functions as addresses of shared variables are per warp, therefore
-  /// cannot be accessed by host code.
   llvm::DenseSet<const VarDecl *> CUDADeviceVarODRUsedByHost;
 
   /// Keep track of CUDA/HIP external kernels or device variables ODR-used by
@@ -1197,9 +1188,8 @@ public:
 
   /// Create a new implicit TU-level CXXRecordDecl or RecordDecl
   /// declaration.
-  RecordDecl *buildImplicitRecord(
-      StringRef Name,
-      RecordDecl::TagKind TK = RecordDecl::TagKind::Struct) const;
+  RecordDecl *buildImplicitRecord(StringRef Name,
+                                  RecordDecl::TagKind TK = TTK_Struct) const;
 
   /// Create a new implicit TU-level typedef declaration.
   TypedefDecl *buildImplicitTypedef(QualType T, StringRef Name) const;
@@ -1431,7 +1421,8 @@ public:
   /// Return a non-unique reference to the type for a variable array of
   /// the specified element type.
   QualType getVariableArrayType(QualType EltTy, Expr *NumElts,
-                                ArraySizeModifier ASM, unsigned IndexTypeQuals,
+                                ArrayType::ArraySizeModifier ASM,
+                                unsigned IndexTypeQuals,
                                 SourceRange Brackets) const;
 
   /// Return a non-unique reference to the type for a dependently-sized
@@ -1440,19 +1431,21 @@ public:
   /// FIXME: We will need these to be uniqued, or at least comparable, at some
   /// point.
   QualType getDependentSizedArrayType(QualType EltTy, Expr *NumElts,
-                                      ArraySizeModifier ASM,
+                                      ArrayType::ArraySizeModifier ASM,
                                       unsigned IndexTypeQuals,
                                       SourceRange Brackets) const;
 
   /// Return a unique reference to the type for an incomplete array of
   /// the specified element type.
-  QualType getIncompleteArrayType(QualType EltTy, ArraySizeModifier ASM,
+  QualType getIncompleteArrayType(QualType EltTy,
+                                  ArrayType::ArraySizeModifier ASM,
                                   unsigned IndexTypeQuals) const;
 
   /// Return the unique reference to the type for a constant array of
   /// the specified element type.
   QualType getConstantArrayType(QualType EltTy, const llvm::APInt &ArySize,
-                                const Expr *SizeExpr, ArraySizeModifier ASM,
+                                const Expr *SizeExpr,
+                                ArrayType::ArraySizeModifier ASM,
                                 unsigned IndexTypeQuals) const;
 
   /// Return a type for a constant array for a string literal of the
@@ -1494,12 +1487,12 @@ public:
   ///
   /// \pre \p VectorType must be a built-in type.
   QualType getVectorType(QualType VectorType, unsigned NumElts,
-                         VectorKind VecKind) const;
+                         VectorType::VectorKind VecKind) const;
   /// Return the unique reference to the type for a dependently sized vector of
   /// the specified element type.
   QualType getDependentVectorType(QualType VectorType, Expr *SizeExpr,
                                   SourceLocation AttrLoc,
-                                  VectorKind VecKind) const;
+                                  VectorType::VectorKind VecKind) const;
 
   /// Return the unique reference to an extended vector type
   /// of the specified element type and size.

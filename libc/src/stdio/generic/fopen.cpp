@@ -12,11 +12,11 @@
 #include "src/errno/libc_errno.h"
 #include <stdio.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(::FILE *, fopen,
                    (const char *__restrict name, const char *__restrict mode)) {
-  auto result = LIBC_NAMESPACE::openfile(name, mode);
+  auto result = __llvm_libc::openfile(name, mode);
   if (!result.has_value()) {
     libc_errno = result.error();
     return nullptr;
@@ -24,4 +24,4 @@ LLVM_LIBC_FUNCTION(::FILE *, fopen,
   return reinterpret_cast<::FILE *>(result.value());
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

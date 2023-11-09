@@ -21,11 +21,6 @@
 
 #include "mlir/Dialect/NVGPU/IR/NVGPUEnums.h.inc"
 
-constexpr int kWarpSize = 32;
-
-/// M size of wgmma.mma_async instruction
-constexpr int kWgmmaSizeM = 64;
-
 #define GET_ATTRDEF_CLASSES
 #include "mlir/Dialect/NVGPU/IR/NVGPUAttrDefs.h.inc"
 

@@ -94,8 +94,7 @@ bool RISCVMergeBaseOffsetOpt::detectFoldable(MachineInstr &Hi,
   if (HiOp1.getTargetFlags() != ExpectedFlags)
     return false;
 
-  if (!(HiOp1.isGlobal() || HiOp1.isCPI() || HiOp1.isBlockAddress()) ||
-      HiOp1.getOffset() != 0)
+  if (!(HiOp1.isGlobal() || HiOp1.isCPI()) || HiOp1.getOffset() != 0)
     return false;
 
   Register HiDestReg = Hi.getOperand(0).getReg();
@@ -109,8 +108,7 @@ bool RISCVMergeBaseOffsetOpt::detectFoldable(MachineInstr &Hi,
   const MachineOperand &LoOp2 = Lo->getOperand(2);
   if (Hi.getOpcode() == RISCV::LUI) {
     if (LoOp2.getTargetFlags() != RISCVII::MO_LO ||
-        !(LoOp2.isGlobal() || LoOp2.isCPI() || LoOp2.isBlockAddress()) ||
-        LoOp2.getOffset() != 0)
+        !(LoOp2.isGlobal() || LoOp2.isCPI()) || LoOp2.getOffset() != 0)
       return false;
   } else {
     assert(Hi.getOpcode() == RISCV::AUIPC);
@@ -122,10 +120,8 @@ bool RISCVMergeBaseOffsetOpt::detectFoldable(MachineInstr &Hi,
   if (HiOp1.isGlobal()) {
     LLVM_DEBUG(dbgs() << "  Found lowered global address: "
                       << *HiOp1.getGlobal() << "\n");
-  } else if (HiOp1.isBlockAddress()) {
-    LLVM_DEBUG(dbgs() << "  Found lowered basic address: "
-                      << *HiOp1.getBlockAddress() << "\n");
-  } else if (HiOp1.isCPI()) {
+  } else {
+    assert(HiOp1.isCPI());
     LLVM_DEBUG(dbgs() << "  Found lowered constant pool: " << HiOp1.getIndex()
                       << "\n");
   }

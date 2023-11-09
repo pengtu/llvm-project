@@ -8,10 +8,9 @@
 
 # Flang drivers
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 There are two main drivers in Flang:

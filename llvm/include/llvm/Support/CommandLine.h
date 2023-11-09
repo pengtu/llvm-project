@@ -863,10 +863,7 @@ public:
   ///
   template <class DT>
   void addLiteralOption(StringRef Name, const DT &V, StringRef HelpStr) {
-#ifndef NDEBUG
-    if (findOption(Name) != Values.size())
-      report_fatal_error("Option " + Name + " already exists!");
-#endif
+    assert(findOption(Name) == Values.size() && "Option already exists!");
     OptionInfo X(Name, static_cast<DataType>(V), HelpStr);
     Values.push_back(X);
     AddLiteralOption(Owner, Name);

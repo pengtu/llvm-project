@@ -881,10 +881,6 @@ private:
     B->appendAutomaticObjDtor(VD, S, cfg->getBumpVectorContext());
   }
 
-  void appendCleanupFunction(CFGBlock *B, VarDecl *VD) {
-    B->appendCleanupFunction(VD, cfg->getBumpVectorContext());
-  }
-
   void appendLifetimeEnds(CFGBlock *B, VarDecl *VD, Stmt *S) {
     B->appendLifetimeEnds(VD, S, cfg->getBumpVectorContext());
   }
@@ -1350,8 +1346,7 @@ private:
     return {};
   }
 
-  bool hasTrivialDestructor(const VarDecl *VD) const;
-  bool needsAutomaticDestruction(const VarDecl *VD) const;
+  bool hasTrivialDestructor(VarDecl *VD);
 };
 
 } // namespace
@@ -1866,14 +1861,14 @@ void CFGBuilder::addAutomaticObjDestruction(LocalScope::const_iterator B,
   if (B == E)
     return;
 
-  SmallVector<VarDecl *, 10> DeclsNeedDestruction;
-  DeclsNeedDestruction.reserve(B.distance(E));
+  SmallVector<VarDecl *, 10> DeclsNonTrivial;
+  DeclsNonTrivial.reserve(B.distance(E));
 
   for (VarDecl* D : llvm::make_range(B, E))
-    if (needsAutomaticDestruction(D))
-      DeclsNeedDestruction.push_back(D);
+    if (!hasTrivialDestructor(D))
+      DeclsNonTrivial.push_back(D);
 
-  for (VarDecl *VD : llvm::reverse(DeclsNeedDestruction)) {
+  for (VarDecl *VD : llvm::reverse(DeclsNonTrivial)) {
     if (BuildOpts.AddImplicitDtors) {
       // If this destructor is marked as a no-return destructor, we need to
       // create a new block for the destructor which does not have as a
@@ -1884,8 +1879,7 @@ void CFGBuilder::addAutomaticObjDestruction(LocalScope::const_iterator B,
         Ty = getReferenceInitTemporaryType(VD->getInit());
       Ty = Context->getBaseElementType(Ty);
 
-      const CXXRecordDecl *CRD = Ty->getAsCXXRecordDecl();
-      if (CRD && CRD->isAnyDestructorNoReturn())
+      if (Ty->getAsCXXRecordDecl()->isAnyDestructorNoReturn())
         Block = createNoReturnBlock();
     }
 
@@ -1896,10 +1890,8 @@ void CFGBuilder::addAutomaticObjDestruction(LocalScope::const_iterator B,
     // objects, we end lifetime with scope end.
     if (BuildOpts.AddLifetime)
       appendLifetimeEnds(Block, VD, S);
-    if (BuildOpts.AddImplicitDtors && !hasTrivialDestructor(VD))
+    if (BuildOpts.AddImplicitDtors)
       appendAutomaticObjDtor(Block, VD, S);
-    if (VD->hasAttr<CleanupAttr>())
-      appendCleanupFunction(Block, VD);
   }
 }
 
@@ -1930,7 +1922,7 @@ void CFGBuilder::addScopeExitHandling(LocalScope::const_iterator B,
   // is destroyed, for automatic variables, this happens when the end of the
   // scope is added.
   for (VarDecl* D : llvm::make_range(B, E))
-    if (!needsAutomaticDestruction(D))
+    if (hasTrivialDestructor(D))
       DeclsTrivial.push_back(D);
 
   if (DeclsTrivial.empty())
@@ -2103,11 +2095,7 @@ LocalScope* CFGBuilder::addLocalScopeForDeclStmt(DeclStmt *DS,
   return Scope;
 }
 
-bool CFGBuilder::needsAutomaticDestruction(const VarDecl *VD) const {
-  return !hasTrivialDestructor(VD) || VD->hasAttr<CleanupAttr>();
-}
-
-bool CFGBuilder::hasTrivialDestructor(const VarDecl *VD) const {
+bool CFGBuilder::hasTrivialDestructor(VarDecl *VD) {
   // Check for const references bound to temporary. Set type to pointee.
   QualType QT = VD->getType();
   if (QT->isReferenceType()) {
@@ -2161,7 +2149,7 @@ LocalScope* CFGBuilder::addLocalScopeForVarDecl(VarDecl *VD,
     return Scope;
 
   if (!BuildOpts.AddLifetime && !BuildOpts.AddScopes &&
-      !needsAutomaticDestruction(VD)) {
+      hasTrivialDestructor(VD)) {
     assert(BuildOpts.AddImplicitDtors);
     return Scope;
   }
@@ -5299,7 +5287,6 @@ CFGImplicitDtor::getDestructorDecl(ASTContext &astContext) const {
     case CFGElement::CXXRecordTypedCall:
     case CFGElement::ScopeBegin:
     case CFGElement::ScopeEnd:
-    case CFGElement::CleanupFunction:
       llvm_unreachable("getDestructorDecl should only be used with "
                        "ImplicitDtors");
     case CFGElement::AutomaticObjectDtor: {
@@ -5842,11 +5829,6 @@ static void print_elem(raw_ostream &OS, StmtPrinterHelper &Helper,
     OS << "() (Implicit destructor)\n";
     break;
   }
-
-  case CFGElement::Kind::CleanupFunction:
-    OS << "CleanupFunction ("
-       << E.castAs<CFGCleanupFunction>().getFunctionDecl()->getName() << ")\n";
-    break;
 
   case CFGElement::Kind::LifetimeEnds:
     Helper.handleDecl(E.castAs<CFGLifetimeEnds>().getVarDecl(), OS);

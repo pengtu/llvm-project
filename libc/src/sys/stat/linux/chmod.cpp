@@ -16,14 +16,13 @@
 #include <sys/stat.h>
 #include <sys/syscall.h> // For syscall numbers.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, chmod, (const char *path, mode_t mode)) {
 #ifdef SYS_chmod
-  int ret = LIBC_NAMESPACE::syscall_impl<int>(SYS_chmod, path, mode);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_chmod, path, mode);
 #elif defined(SYS_fchmodat)
-  int ret =
-      LIBC_NAMESPACE::syscall_impl<int>(SYS_fchmodat, AT_FDCWD, path, mode);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_fchmodat, AT_FDCWD, path, mode);
 #else
 #error "chmod and fchmodat syscalls not available."
 #endif
@@ -35,4 +34,4 @@ LLVM_LIBC_FUNCTION(int, chmod, (const char *path, mode_t mode)) {
   return 0;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

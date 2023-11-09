@@ -11,7 +11,7 @@
 
 #include "src/stdlib/abort.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(void, abort, ()) {
   // We want to first make sure the server is listening before we abort.
@@ -20,7 +20,12 @@ LLVM_LIBC_FUNCTION(void, abort, ()) {
   port.send([&](rpc::Buffer *) {});
   port.close();
 
-  gpu::end_program();
+#if defined(LIBC_TARGET_ARCH_IS_NVPTX)
+  LIBC_INLINE_ASM("exit;" ::: "memory");
+#elif defined(LIBC_TARGET_ARCH_IS_AMDGPU)
+  __builtin_amdgcn_endpgm();
+#endif
+  __builtin_unreachable();
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

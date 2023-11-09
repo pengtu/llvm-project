@@ -26,7 +26,6 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Dominators.h"
-#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
@@ -802,7 +801,7 @@ void LazyValueInfoImpl::intersectAssumeOrGuardBlockValueConstantRange(
 
 static ConstantRange getConstantRangeOrFull(const ValueLatticeElement &Val,
                                             Type *Ty, const DataLayout &DL) {
-  if (Val.isConstantRange(/*UndefAllowed*/ false))
+  if (Val.isConstantRange())
     return Val.getConstantRange();
   return ConstantRange::getFull(DL.getTypeSizeInBits(Ty));
 }
@@ -1084,26 +1083,6 @@ static ValueLatticeElement getValueFromSimpleICmpCondition(
   return ValueLatticeElement::getRange(TrueValues.subtract(Offset));
 }
 
-static std::optional<ConstantRange>
-getRangeViaSLT(CmpInst::Predicate Pred, APInt RHS,
-               function_ref<std::optional<ConstantRange>(const APInt &)> Fn) {
-  bool Invert = false;
-  if (Pred == ICmpInst::ICMP_SGT || Pred == ICmpInst::ICMP_SGE) {
-    Pred = ICmpInst::getInversePredicate(Pred);
-    Invert = true;
-  }
-  if (Pred == ICmpInst::ICMP_SLE) {
-    Pred = ICmpInst::ICMP_SLT;
-    if (RHS.isMaxSignedValue())
-      return std::nullopt; // Could also return full/empty here, if we wanted.
-    ++RHS;
-  }
-  assert(Pred == ICmpInst::ICMP_SLT && "Must be signed predicate");
-  if (auto CR = Fn(RHS))
-    return Invert ? CR->inverse() : CR;
-  return std::nullopt;
-}
-
 static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
                                                      bool isTrueDest) {
   Value *LHS = ICI->getOperand(0);
@@ -1167,25 +1146,6 @@ static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
     if (!CR.isEmptySet())
       return ValueLatticeElement::getRange(ConstantRange::getNonEmpty(
           CR.getUnsignedMin().zext(BitWidth), APInt(BitWidth, 0)));
-  }
-
-  // Recognize:
-  // icmp slt (ashr X, ShAmtC), C --> icmp slt X, C << ShAmtC
-  // Preconditions: (C << ShAmtC) >> ShAmtC == C
-  const APInt *ShAmtC;
-  if (CmpInst::isSigned(EdgePred) &&
-      match(LHS, m_AShr(m_Specific(Val), m_APInt(ShAmtC))) &&
-      match(RHS, m_APInt(C))) {
-    auto CR = getRangeViaSLT(
-        EdgePred, *C, [&](const APInt &RHS) -> std::optional<ConstantRange> {
-          APInt New = RHS << *ShAmtC;
-          if ((New.ashr(*ShAmtC)) != RHS)
-            return std::nullopt;
-          return ConstantRange::getNonEmpty(
-              APInt::getSignedMinValue(New.getBitWidth()), New);
-        });
-    if (CR)
-      return ValueLatticeElement::getRange(*CR);
   }
 
   return ValueLatticeElement::getOverdefined();
@@ -2016,22 +1976,22 @@ void LazyValueInfo::threadEdge(BasicBlock *PredBB, BasicBlock *OldSucc,
 
 void LazyValueInfo::forgetValue(Value *V) {
   if (auto *Impl = getImpl())
-    Impl->forgetValue(V);
+    getImpl()->forgetValue(V);
 }
 
 void LazyValueInfo::eraseBlock(BasicBlock *BB) {
   if (auto *Impl = getImpl())
-    Impl->eraseBlock(BB);
+    getImpl()->eraseBlock(BB);
 }
 
 void LazyValueInfo::clear() {
   if (auto *Impl = getImpl())
-    Impl->clear();
+    getImpl()->clear();
 }
 
 void LazyValueInfo::printLVI(Function &F, DominatorTree &DTree, raw_ostream &OS) {
   if (auto *Impl = getImpl())
-    Impl->printLVI(F, DTree, OS);
+    getImpl()->printLVI(F, DTree, OS);
 }
 
 // Print the LVI for the function arguments at the start of each basic block.

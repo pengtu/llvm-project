@@ -22,14 +22,9 @@ AST_MATCHER(CXXRecordDecl, isNotTriviallyCopyable) {
 } // namespace
 
 void UndefinedMemoryManipulationCheck::registerMatchers(MatchFinder *Finder) {
-  const auto HasNotTriviallyCopyableDecl =
-      hasDeclaration(cxxRecordDecl(isNotTriviallyCopyable()));
-  const auto ArrayOfNotTriviallyCopyable =
-      arrayType(hasElementType(HasNotTriviallyCopyableDecl));
-  const auto NotTriviallyCopyableObject = hasType(hasCanonicalType(
-      anyOf(pointsTo(qualType(anyOf(HasNotTriviallyCopyableDecl,
-                                    ArrayOfNotTriviallyCopyable))),
-            ArrayOfNotTriviallyCopyable)));
+  const auto NotTriviallyCopyableObject =
+      hasType(ast_matchers::hasCanonicalType(
+          pointsTo(cxxRecordDecl(isNotTriviallyCopyable()))));
 
   // Check whether destination object is not TriviallyCopyable.
   // Applicable to all three memory manipulation functions.

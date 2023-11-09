@@ -60,9 +60,8 @@ CSKYMCCodeEmitter::getImmOpValueMSBSize(const MCInst &MI, unsigned Idx,
 static void writeData(uint32_t Bin, unsigned Size, SmallVectorImpl<char> &CB) {
   if (Size == 4)
     support::endian::write(CB, static_cast<uint16_t>(Bin >> 16),
-                           llvm::endianness::little);
-  support::endian::write(CB, static_cast<uint16_t>(Bin),
-                         llvm::endianness::little);
+                           support::little);
+  support::endian::write(CB, static_cast<uint16_t>(Bin), support::little);
 }
 
 void CSKYMCCodeEmitter::expandJBTF(const MCInst &MI, SmallVectorImpl<char> &CB,

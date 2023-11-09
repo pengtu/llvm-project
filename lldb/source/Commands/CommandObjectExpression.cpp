@@ -439,11 +439,11 @@ bool CommandObjectExpression::EvaluateExpression(llvm::StringRef expr,
   ExpressionResults success = target.EvaluateExpression(
       expr, frame, result_valobj_sp, eval_options, &m_fixed_expression);
 
-  // Only mention Fix-Its if the expression evaluator applied them.
-  // Compiler errors refer to the final expression after applying Fix-It(s).
+  // We only tell you about the FixIt if we applied it.  The compiler errors
+  // will suggest the FixIt if it parsed.
   if (!m_fixed_expression.empty() && target.GetEnableNotifyAboutFixIts()) {
-    error_stream << "  Evaluated this expression after applying Fix-It(s):\n";
-    error_stream << "    " << m_fixed_expression << "\n";
+    error_stream.Printf("  Fix-it applied, fixed expression was: \n    %s\n",
+                        m_fixed_expression.c_str());
   }
 
   if (result_valobj_sp) {
@@ -594,7 +594,7 @@ GetExprOptions(ExecutionContext &ctx,
   return expr_options;
 }
 
-void CommandObjectExpression::DoExecute(llvm::StringRef command,
+bool CommandObjectExpression::DoExecute(llvm::StringRef command,
                                         CommandReturnObject &result) {
   m_fixed_expression.clear();
   auto exe_ctx = GetCommandInterpreter().GetExecutionContext();
@@ -602,7 +602,7 @@ void CommandObjectExpression::DoExecute(llvm::StringRef command,
 
   if (command.empty()) {
     GetMultilineExpression();
-    return;
+    return result.Succeeded();
   }
 
   OptionsWithRaw args(command);
@@ -610,7 +610,7 @@ void CommandObjectExpression::DoExecute(llvm::StringRef command,
 
   if (args.HasArgs()) {
     if (!ParseOptionsAndNotify(args.GetArgs(), result, m_option_group, exe_ctx))
-      return;
+      return false;
 
     if (m_repl_option.GetOptionValue().GetCurrentValue()) {
       Target &target = GetSelectedOrDummyTarget();
@@ -642,7 +642,7 @@ void CommandObjectExpression::DoExecute(llvm::StringRef command,
                                     nullptr, true);
           if (!repl_error.Success()) {
             result.SetError(repl_error);
-            return;
+            return result.Succeeded();
           }
         }
 
@@ -662,14 +662,14 @@ void CommandObjectExpression::DoExecute(llvm::StringRef command,
               "Couldn't create a REPL for %s",
               Language::GetNameForLanguageType(m_command_options.language));
           result.SetError(repl_error);
-          return;
+          return result.Succeeded();
         }
       }
     }
     // No expression following options
     else if (expr.empty()) {
       GetMultilineExpression();
-      return;
+      return result.Succeeded();
     }
   }
 
@@ -691,7 +691,8 @@ void CommandObjectExpression::DoExecute(llvm::StringRef command,
         fixed_command.append(m_fixed_expression);
       history.AppendString(fixed_command);
     }
-    return;
+    return true;
   }
   result.SetStatus(eReturnStatusFailed);
+  return false;
 }

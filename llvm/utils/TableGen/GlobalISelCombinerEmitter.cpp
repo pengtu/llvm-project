@@ -73,8 +73,6 @@ constexpr StringLiteral CXXApplyPrefix = "GICXXCustomAction_CombineApply";
 constexpr StringLiteral CXXPredPrefix = "GICXXPred_MI_Predicate_";
 constexpr StringLiteral PatFragClassName = "GICombinePatFrag";
 constexpr StringLiteral BuiltinInstClassName = "GIBuiltinInst";
-constexpr StringLiteral SpecialTyClassName = "GISpecialType";
-constexpr StringLiteral TypeOfClassName = "GITypeOf";
 
 std::string getIsEnabledPredicateEnumName(unsigned CombinerRuleID) {
   return "GICXXPred_Simple_IsRule" + to_string(CombinerRuleID) + "Enabled";
@@ -123,6 +121,11 @@ template <typename Container> auto keys(Container &&C) {
 
 template <typename Container> auto values(Container &&C) {
   return map_range(C, [](auto &Entry) -> auto & { return Entry.second; });
+}
+
+LLTCodeGen getLLTCodeGenFromRecord(const Record *Ty) {
+  assert(Ty->isSubClassOf("ValueType"));
+  return LLTCodeGen(*MVTToLLT(getValueType(Ty)));
 }
 
 //===- MatchData Handling -------------------------------------------------===//
@@ -288,116 +291,6 @@ public:
 
 CXXPredicateCode::CXXPredicateCodePool CXXPredicateCode::AllCXXMatchCode;
 CXXPredicateCode::CXXPredicateCodePool CXXPredicateCode::AllCXXApplyCode;
-
-//===- PatternType --------------------------------------------------------===//
-
-/// Represent the type of a Pattern Operand.
-///
-/// Types have two form:
-///   - LLTs, which are straightforward.
-///   - Special types, e.g. GITypeOf
-class PatternType {
-public:
-  PatternType() = default;
-  PatternType(const Record *R) : R(R) {}
-
-  bool isValidType() const { return !R || isLLT() || isSpecial(); }
-
-  bool isLLT() const { return R && R->isSubClassOf("ValueType"); }
-  bool isSpecial() const { return R && R->isSubClassOf(SpecialTyClassName); }
-  bool isTypeOf() const { return R && R->isSubClassOf(TypeOfClassName); }
-
-  StringRef getTypeOfOpName() const;
-  LLTCodeGen getLLTCodeGen() const;
-
-  bool checkSemantics(ArrayRef<SMLoc> DiagLoc) const;
-
-  LLTCodeGenOrTempType getLLTCodeGenOrTempType(RuleMatcher &RM) const;
-
-  explicit operator bool() const { return R != nullptr; }
-
-  bool operator==(const PatternType &Other) const;
-  bool operator!=(const PatternType &Other) const { return !operator==(Other); }
-
-  std::string str() const;
-
-private:
-  StringRef getRawOpName() const { return R->getValueAsString("OpName"); }
-
-  const Record *R = nullptr;
-};
-
-StringRef PatternType::getTypeOfOpName() const {
-  assert(isTypeOf());
-  StringRef Name = getRawOpName();
-  Name.consume_front("$");
-  return Name;
-}
-
-LLTCodeGen PatternType::getLLTCodeGen() const {
-  assert(isLLT());
-  return *MVTToLLT(getValueType(R));
-}
-
-LLTCodeGenOrTempType
-PatternType::getLLTCodeGenOrTempType(RuleMatcher &RM) const {
-  assert(isValidType());
-
-  if (isLLT())
-    return getLLTCodeGen();
-
-  assert(isTypeOf());
-  auto &OM = RM.getOperandMatcher(getTypeOfOpName());
-  return OM.getTempTypeIdx(RM);
-}
-
-bool PatternType::checkSemantics(ArrayRef<SMLoc> DiagLoc) const {
-  if (!isTypeOf())
-    return true;
-
-  auto RawOpName = getRawOpName();
-  if (RawOpName.starts_with("$"))
-    return true;
-
-  PrintError(DiagLoc, "invalid operand name format '" + RawOpName + "' in " +
-                          TypeOfClassName +
-                          ": expected '$' followed by an operand name");
-  return false;
-}
-
-bool PatternType::operator==(const PatternType &Other) const {
-  if (R == Other.R) {
-    if (R && R->getName() != Other.R->getName()) {
-      dbgs() << "Same ptr but: " << R->getName() << " and "
-             << Other.R->getName() << "?\n";
-      assert(false);
-    }
-    return true;
-  }
-
-  if (isTypeOf() && Other.isTypeOf())
-    return getTypeOfOpName() == Other.getTypeOfOpName();
-
-  return false;
-}
-
-std::string PatternType::str() const {
-  if (!R)
-    return "";
-
-  if (!isValidType())
-    return "<invalid>";
-
-  if (isLLT())
-    return R->getName().str();
-
-  assert(isSpecial());
-
-  if (isTypeOf())
-    return (TypeOfClassName + "<$" + getTypeOfOpName() + ">").str();
-
-  llvm_unreachable("Unknown type!");
-}
 
 //===- Pattern Base Class -------------------------------------------------===//
 
@@ -606,15 +499,13 @@ class InstructionOperand {
 public:
   using IntImmTy = int64_t;
 
-  InstructionOperand(IntImmTy Imm, StringRef Name, PatternType Type)
+  InstructionOperand(IntImmTy Imm, StringRef Name, const Record *Type)
       : Value(Imm), Name(insertStrRef(Name)), Type(Type) {
-    assert(Type.isValidType());
+    assert(!Type || Type->isSubClassOf("ValueType"));
   }
 
-  InstructionOperand(StringRef Name, PatternType Type)
-      : Name(insertStrRef(Name)), Type(Type) {
-    assert(Type.isValidType());
-  }
+  InstructionOperand(StringRef Name, const Record *Type)
+      : Name(insertStrRef(Name)), Type(Type) {}
 
   bool isNamedImmediate() const { return hasImmValue() && isNamedOperand(); }
 
@@ -636,12 +527,11 @@ public:
   void setIsDef(bool Value = true) { Def = Value; }
   bool isDef() const { return Def; }
 
-  void setType(PatternType NewType) {
-    assert((!Type || (Type == NewType)) && "Overwriting type!");
-    assert(NewType.isValidType());
-    Type = NewType;
+  void setType(const Record *R) {
+    assert((!Type || (Type == R)) && "Overwriting type!");
+    Type = R;
   }
-  PatternType getType() const { return Type; }
+  const Record *getType() const { return Type; }
 
   std::string describe() const {
     if (!hasImmValue())
@@ -657,11 +547,11 @@ public:
       OS << "<def>";
 
     bool NeedsColon = true;
-    if (Type) {
+    if (const Record *Ty = getType()) {
       if (hasImmValue())
-        OS << "(" << Type.str() << " " << getImmValue() << ")";
+        OS << "(" << Ty->getName() << " " << getImmValue() << ")";
       else
-        OS << Type.str();
+        OS << Ty->getName();
     } else if (hasImmValue())
       OS << getImmValue();
     else
@@ -676,7 +566,7 @@ public:
 private:
   std::optional<int64_t> Value;
   StringRef Name;
-  PatternType Type;
+  const Record *Type = nullptr;
   bool Def = false;
 };
 
@@ -732,10 +622,6 @@ public:
 
   virtual StringRef getInstName() const = 0;
 
-  /// Diagnoses all uses of special types in this Pattern and returns true if at
-  /// least one diagnostic was emitted.
-  bool diagnoseAllSpecialTypes(ArrayRef<SMLoc> Loc, Twine Msg) const;
-
   void reportUnreachable(ArrayRef<SMLoc> Locs) const;
   virtual bool checkSemantics(ArrayRef<SMLoc> Loc);
 
@@ -746,20 +632,6 @@ protected:
 
   SmallVector<InstructionOperand, 4> Operands;
 };
-
-bool InstructionPattern::diagnoseAllSpecialTypes(ArrayRef<SMLoc> Loc,
-                                                 Twine Msg) const {
-  bool HasDiag = false;
-  for (const auto &[Idx, Op] : enumerate(operands())) {
-    if (Op.getType().isSpecial()) {
-      PrintError(Loc, Msg);
-      PrintNote(Loc, "operand " + Twine(Idx) + " of '" + getName() +
-                         "' has type '" + Op.getType().str() + "'");
-      HasDiag = true;
-    }
-  }
-  return HasDiag;
-}
 
 void InstructionPattern::reportUnreachable(ArrayRef<SMLoc> Locs) const {
   PrintError(Locs, "pattern '" + getName() + "' ('" + getInstName() +
@@ -957,20 +829,17 @@ unsigned CodeGenInstructionPattern::getNumInstOperands() const {
 /// It infers the type of each operand, check it's consistent with the known
 /// type of the operand, and then sets all of the types in all operands in
 /// setAllOperandTypes.
-///
-/// It also handles verifying correctness of special types.
 class OperandTypeChecker {
 public:
   OperandTypeChecker(ArrayRef<SMLoc> DiagLoc) : DiagLoc(DiagLoc) {}
 
-  bool check(InstructionPattern *P,
-             std::function<bool(const PatternType &)> VerifyTypeOfOperand);
+  bool check(InstructionPattern *P);
 
   void setAllOperandTypes();
 
 private:
   struct OpTypeInfo {
-    PatternType Type;
+    const Record *Type = nullptr;
     InstructionPattern *TypeSrc = nullptr;
   };
 
@@ -980,26 +849,16 @@ private:
   SmallVector<InstructionPattern *, 16> Pats;
 };
 
-bool OperandTypeChecker::check(
-    InstructionPattern *P,
-    std::function<bool(const PatternType &)> VerifyTypeOfOperand) {
+bool OperandTypeChecker::check(InstructionPattern *P) {
   Pats.push_back(P);
 
-  for (auto &Op : P->operands()) {
-    const auto Ty = Op.getType();
+  for (auto &Op : P->named_operands()) {
+    const Record *Ty = Op.getType();
     if (!Ty)
       continue;
 
-    if (!Ty.checkSemantics(DiagLoc))
-      return false;
-
-    if (Ty.isTypeOf() && !VerifyTypeOfOperand(Ty))
-      return false;
-
-    if (!Op.isNamedOperand())
-      continue;
-
     auto &Info = Types[Op.getOperandName()];
+
     if (!Info.Type) {
       Info.Type = Ty;
       Info.TypeSrc = P;
@@ -1009,9 +868,9 @@ bool OperandTypeChecker::check(
     if (Info.Type != Ty) {
       PrintError(DiagLoc, "conflicting types for operand '" +
                               Op.getOperandName() + "': first seen with '" +
-                              Info.Type.str() + "' in '" +
+                              Info.Type->getName() + "' in '" +
                               Info.TypeSrc->getName() + ", now seen with '" +
-                              Ty.str() + "' in '" + P->getName() + "'");
+                              Ty->getName() + "' in '" + P->getName() + "'");
       return false;
     }
   }
@@ -1199,12 +1058,7 @@ bool PatFrag::checkSemantics() {
                    PatFragClassName);
         return false;
       case Pattern::K_CXX:
-        continue;
       case Pattern::K_CodeGenInstruction:
-        if (cast<CodeGenInstructionPattern>(Pat.get())->diagnoseAllSpecialTypes(
-                Def.getLoc(), SpecialTyClassName + " is not supported in " +
-                                  PatFragClassName))
-          return false;
         continue;
       case Pattern::K_PatFrag:
         // TODO: It's just that the emitter doesn't handle it but technically
@@ -1288,16 +1142,12 @@ bool PatFrag::checkSemantics() {
 
   // TODO: find unused params
 
-  const auto CheckTypeOf = [&](const PatternType &) -> bool {
-    llvm_unreachable("GITypeOf should have been rejected earlier!");
-  };
-
   // Now, typecheck all alternatives.
   for (auto &Alt : Alts) {
     OperandTypeChecker OTC(Def.getLoc());
     for (auto &Pat : Alt.Pats) {
       if (auto *IP = dyn_cast<InstructionPattern>(Pat.get())) {
-        if (!OTC.check(IP, CheckTypeOf))
+        if (!OTC.check(IP))
           return false;
       }
     }
@@ -2104,49 +1954,21 @@ bool CombineRuleBuilder::hasEraseRoot() const {
 bool CombineRuleBuilder::typecheckPatterns() {
   OperandTypeChecker OTC(RuleDef.getLoc());
 
-  const auto CheckMatchTypeOf = [&](const PatternType &) -> bool {
-    // We'll reject those after we're done inferring
-    return true;
-  };
-
   for (auto &Pat : values(MatchPats)) {
     if (auto *IP = dyn_cast<InstructionPattern>(Pat.get())) {
-      if (!OTC.check(IP, CheckMatchTypeOf))
+      if (!OTC.check(IP))
         return false;
     }
   }
 
-  const auto CheckApplyTypeOf = [&](const PatternType &Ty) {
-    // GITypeOf<"$x"> can only be used if "$x" is a matched operand.
-    const auto OpName = Ty.getTypeOfOpName();
-    if (MatchOpTable.lookup(OpName).Found)
-      return true;
-
-    PrintError("'" + OpName + "' ('" + Ty.str() +
-               "') does not refer to a matched operand!");
-    return false;
-  };
-
   for (auto &Pat : values(ApplyPats)) {
     if (auto *IP = dyn_cast<InstructionPattern>(Pat.get())) {
-      if (!OTC.check(IP, CheckApplyTypeOf))
+      if (!OTC.check(IP))
         return false;
     }
   }
 
   OTC.setAllOperandTypes();
-
-  // Always check this after in case inference adds some special types to the
-  // match patterns.
-  for (auto &Pat : values(MatchPats)) {
-    if (auto *IP = dyn_cast<InstructionPattern>(Pat.get())) {
-      if (IP->diagnoseAllSpecialTypes(
-              RuleDef.getLoc(),
-              SpecialTyClassName + " is not supported in 'match' patterns")) {
-        return false;
-      }
-    }
-  }
   return true;
 }
 
@@ -2639,12 +2461,10 @@ bool CombineRuleBuilder::parseInstructionPatternOperand(
     if (DagOp->getNumArgs() != 1)
       return ParseErr();
 
-    const Record *TyDef = DagOp->getOperatorAsDef(RuleDef.getLoc());
-    PatternType ImmTy(TyDef);
-    if (!ImmTy.isValidType()) {
+    Record *ImmTy = DagOp->getOperatorAsDef(RuleDef.getLoc());
+    if (!ImmTy->isSubClassOf("ValueType")) {
       PrintError("cannot parse immediate '" + OpInit->getAsUnquotedString() +
-                 "', '" + TyDef->getName() + "' is not a ValueType or " +
-                 SpecialTyClassName);
+                 "', '" + ImmTy->getName() + "' is not a ValueType!");
       return false;
     }
 
@@ -2671,13 +2491,12 @@ bool CombineRuleBuilder::parseInstructionPatternOperand(
       return false;
     }
     const Record *Def = DefI->getDef();
-    PatternType Ty(Def);
-    if (!Ty.isValidType()) {
+    if (!Def->isSubClassOf("ValueType")) {
       PrintError("invalid operand type: '" + Def->getName() +
                  "' is not a ValueType");
       return false;
     }
-    IP.addOperand(OpName->getAsUnquotedString(), Ty);
+    IP.addOperand(OpName->getAsUnquotedString(), Def);
     return true;
   }
 
@@ -3004,8 +2823,8 @@ bool CombineRuleBuilder::emitPatFragMatchPattern(
       StringRef PFName = PF.getName();
       PrintWarning("impossible type constraints: operand " + Twine(PIdx) +
                    " of '" + PFP.getName() + "' has type '" +
-                   ArgOp.getType().str() + "', but '" + PFName +
-                   "' constrains it to '" + O.getType().str() + "'");
+                   ArgOp.getType()->getName() + "', but '" + PFName +
+                   "' constrains it to '" + O.getType()->getName() + "'");
       if (ArgOp.isNamedOperand())
         PrintNote("operand " + Twine(PIdx) + " of '" + PFP.getName() +
                   "' is '" + ArgOp.getOperandName() + "'");
@@ -3236,18 +3055,17 @@ bool CombineRuleBuilder::emitInstructionApplyPattern(
       // This is a brand new register.
       TempRegID = M.allocateTempRegID();
       OperandToTempRegID[OpName] = TempRegID;
-      const auto Ty = Op.getType();
+      const Record *Ty = Op.getType();
       if (!Ty) {
         PrintError("def of a new register '" + OpName +
                    "' in the apply patterns must have a type");
         return false;
       }
-
       declareTempRegExpansion(CE, TempRegID, OpName);
       // Always insert the action at the beginning, otherwise we may end up
       // using the temp reg before it's available.
       M.insertAction<MakeTempRegisterAction>(
-          M.actions_begin(), Ty.getLLTCodeGenOrTempType(M), TempRegID);
+          M.actions_begin(), getLLTCodeGenFromRecord(Ty), TempRegID);
     }
 
     DstMI.addRenderer<TempRegRenderer>(TempRegID);
@@ -3270,7 +3088,7 @@ bool CombineRuleBuilder::emitCodeGenInstructionApplyImmOperand(
   // G_CONSTANT is a special case and needs a CImm though so this is likely a
   // mistake.
   const bool isGConstant = P.is("G_CONSTANT");
-  const auto Ty = O.getType();
+  const Record *Ty = O.getType();
   if (!Ty) {
     if (isGConstant) {
       PrintError("'G_CONSTANT' immediate must be typed!");
@@ -3283,18 +3101,20 @@ bool CombineRuleBuilder::emitCodeGenInstructionApplyImmOperand(
     return true;
   }
 
-  auto ImmTy = Ty.getLLTCodeGenOrTempType(M);
-
+  LLTCodeGen LLT = getLLTCodeGenFromRecord(Ty);
   if (isGConstant) {
-    DstMI.addRenderer<ImmRenderer>(O.getImmValue(), ImmTy);
+    DstMI.addRenderer<ImmRenderer>(O.getImmValue(), LLT);
     return true;
   }
 
   unsigned TempRegID = M.allocateTempRegID();
-  // Ensure MakeTempReg & the BuildConstantAction occur at the beginning.
-  auto InsertIt = M.insertAction<MakeTempRegisterAction>(M.actions_begin(),
-                                                         ImmTy, TempRegID);
-  M.insertAction<BuildConstantAction>(++InsertIt, TempRegID, O.getImmValue());
+  auto ActIt = M.insertAction<BuildMIAction>(
+      M.actions_begin(), M.allocateOutputInsnID(), &getGConstant());
+  // Ensure MakeTempReg occurs before the BuildMI of th G_CONSTANT.
+  M.insertAction<MakeTempRegisterAction>(ActIt, LLT, TempRegID);
+  auto &ConstantMI = *static_cast<BuildMIAction *>(ActIt->get());
+  ConstantMI.addRenderer<TempRegRenderer>(TempRegID);
+  ConstantMI.addRenderer<ImmRenderer>(O.getImmValue(), LLT);
   DstMI.addRenderer<TempRegRenderer>(TempRegID);
   return true;
 }
@@ -3410,14 +3230,8 @@ bool CombineRuleBuilder::emitCodeGenInstructionMatchPattern(
     // Always emit a check for unnamed operands.
     if (OpName.empty() ||
         !M.getOperandMatcher(OpName).contains<LLTOperandMatcher>()) {
-      if (const auto Ty = RemappedO.getType()) {
-        // TODO: We could support GITypeOf here on the condition that the
-        // OperandMatcher exists already. Though it's clunky to make this work
-        // and isn't all that useful so it's just rejected in typecheckPatterns
-        // at this time.
-        assert(Ty.isLLT() && "Only LLTs are supported in match patterns!");
-        OM.addPredicate<LLTOperandMatcher>(Ty.getLLTCodeGen());
-      }
+      if (const Record *Ty = RemappedO.getType())
+        OM.addPredicate<LLTOperandMatcher>(getLLTCodeGenFromRecord(Ty));
     }
 
     // Stop here if the operand is a def, or if it had no name.
@@ -3495,10 +3309,6 @@ class GICombinerEmitter final : public GlobalISelMatchTableExecutorEmitter {
   // latter is internal to the MatchTable, the former is the canonical ID of the
   // combine rule used to disable/enable it.
   std::vector<std::pair<unsigned, std::string>> AllCombineRules;
-
-  // Keep track of all rules we've seen so far to ensure we don't process
-  // the same rule twice.
-  StringSet<> RulesSeen;
 
   MatchTable buildMatchTable(MutableArrayRef<RuleMatcher> Rules);
 
@@ -3655,15 +3465,15 @@ void GICombinerEmitter::emitAdditionalImpl(raw_ostream &OS) {
      << "  const TargetSubtargetInfo &ST = MF.getSubtarget();\n"
      << "  const PredicateBitset AvailableFeatures = "
         "getAvailableFeatures();\n"
-     << "  B.setInstrAndDebugLoc(I);\n"
+     << "  NewMIVector OutMIs;\n"
      << "  State.MIs.clear();\n"
      << "  State.MIs.push_back(&I);\n"
      << "  " << MatchDataInfo::StructName << " = "
      << MatchDataInfo::StructTypeName << "();\n\n"
-     << "  if (executeMatchTable(*this, State, ExecInfo, B"
+     << "  if (executeMatchTable(*this, OutMIs, State, ExecInfo"
      << ", getMatchTable(), *ST.getInstrInfo(), MRI, "
         "*MRI.getTargetRegisterInfo(), *ST.getRegBankInfo(), AvailableFeatures"
-     << ", /*CoverageInfo*/ nullptr)) {\n"
+     << ", /*CoverageInfo*/ nullptr, &Observer)) {\n"
      << "    return true;\n"
      << "  }\n\n"
      << "  return false;\n"
@@ -3817,44 +3627,31 @@ void GICombinerEmitter::gatherRules(
     std::vector<RuleMatcher> &ActiveRules,
     const std::vector<Record *> &&RulesAndGroups) {
   for (Record *Rec : RulesAndGroups) {
-    if (!Rec->isValueUnset("Rules")) {
+    if (Rec->isValueUnset("Rules")) {
+      AllCombineRules.emplace_back(NextRuleID, Rec->getName().str());
+      CombineRuleBuilder CRB(Target, SubtargetFeatures, *Rec, NextRuleID++,
+                             ActiveRules);
+
+      if (!CRB.parseAll()) {
+        assert(ErrorsPrinted && "Parsing failed without errors!");
+        continue;
+      }
+
+      if (StopAfterParse) {
+        CRB.print(outs());
+        continue;
+      }
+
+      if (!CRB.emitRuleMatchers()) {
+        assert(ErrorsPrinted && "Emission failed without errors!");
+        continue;
+      }
+    } else
       gatherRules(ActiveRules, Rec->getValueAsListOfDefs("Rules"));
-      continue;
-    }
-
-    StringRef RuleName = Rec->getName();
-    if (!RulesSeen.insert(RuleName).second) {
-      PrintWarning(Rec->getLoc(),
-                   "skipping rule '" + Rec->getName() +
-                       "' because it has already been processed");
-      continue;
-    }
-
-    AllCombineRules.emplace_back(NextRuleID, Rec->getName().str());
-    CombineRuleBuilder CRB(Target, SubtargetFeatures, *Rec, NextRuleID++,
-                           ActiveRules);
-
-    if (!CRB.parseAll()) {
-      assert(ErrorsPrinted && "Parsing failed without errors!");
-      continue;
-    }
-
-    if (StopAfterParse) {
-      CRB.print(outs());
-      continue;
-    }
-
-    if (!CRB.emitRuleMatchers()) {
-      assert(ErrorsPrinted && "Emission failed without errors!");
-      continue;
-    }
   }
 }
 
 void GICombinerEmitter::run(raw_ostream &OS) {
-  InstructionOpcodeMatcher::initOpcodeValuesMap(Target);
-  LLTOperandMatcher::initTypeIDValuesMap();
-
   Records.startTimer("Gather rules");
   std::vector<RuleMatcher> Rules;
   gatherRules(Rules, Combiner->getValueAsListOfDefs("Rules"));
@@ -3868,16 +3665,6 @@ void GICombinerEmitter::run(raw_ostream &OS) {
   unsigned MaxTemporaries = 0;
   for (const auto &Rule : Rules)
     MaxTemporaries = std::max(MaxTemporaries, Rule.countRendererFns());
-
-  llvm::stable_sort(Rules, [&](const RuleMatcher &A, const RuleMatcher &B) {
-    if (A.isHigherPriorityThan(B)) {
-      assert(!B.isHigherPriorityThan(A) && "Cannot be more important "
-                                           "and less important at "
-                                           "the same time");
-      return true;
-    }
-    return false;
-  });
 
   const MatchTable Table = buildMatchTable(Rules);
 

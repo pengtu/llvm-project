@@ -1014,7 +1014,8 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
       if (CGM.getTriple().isOSBinFormatCOFF()) {
         cast<llvm::GlobalValue>(isa)->setDLLStorageClass(llvm::GlobalValue::DLLImportStorageClass);
       }
-    }
+    } else if (isa->getType() != PtrToIdTy)
+      isa = llvm::ConstantExpr::getBitCast(isa, PtrToIdTy);
 
     //  struct
     //  {
@@ -1107,9 +1108,10 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
       std::pair<llvm::GlobalVariable*, int> v{ObjCStrGV, 0};
       EarlyInitList.emplace_back(Sym, v);
     }
-    ObjCStrings[Str] = ObjCStrGV;
-    ConstantStrings.push_back(ObjCStrGV);
-    return ConstantAddress(ObjCStrGV, IdElemTy, Align);
+    llvm::Constant *ObjCStr = llvm::ConstantExpr::getBitCast(ObjCStrGV, IdTy);
+    ObjCStrings[Str] = ObjCStr;
+    ConstantStrings.push_back(ObjCStr);
+    return ConstantAddress(ObjCStr, IdElemTy, Align);
   }
 
   void PushProperty(ConstantArrayBuilder &PropertiesArray,
@@ -1191,7 +1193,9 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
                                                    ReferencedProtocols.end());
     SmallVector<llvm::Constant *, 16> Protocols;
     for (const auto *PI : RuntimeProtocols)
-      Protocols.push_back(GenerateProtocolRef(PI));
+      Protocols.push_back(
+          llvm::ConstantExpr::getBitCast(GenerateProtocolRef(PI),
+            ProtocolPtrTy));
     return GenerateProtocolList(Protocols);
   }
 
@@ -1301,7 +1305,7 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
           llvm::GlobalValue::ExternalLinkage, nullptr, Name);
       GV->setAlignment(CGM.getPointerAlign().getAsAlign());
     }
-    return GV;
+    return llvm::ConstantExpr::getBitCast(GV, ProtocolPtrTy);
   }
 
   /// Existing protocol references.
@@ -1318,9 +1322,9 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
       std::string RefName = SymbolForProtocolRef(Name);
       assert(!TheModule.getGlobalVariable(RefName));
       // Emit a reference symbol.
-      auto GV = new llvm::GlobalVariable(TheModule, ProtocolPtrTy, false,
-                                         llvm::GlobalValue::LinkOnceODRLinkage,
-                                         Protocol, RefName);
+      auto GV = new llvm::GlobalVariable(TheModule, ProtocolPtrTy,
+          false, llvm::GlobalValue::LinkOnceODRLinkage,
+          llvm::ConstantExpr::getBitCast(Protocol, ProtocolPtrTy), RefName);
       GV->setComdat(TheModule.getOrInsertComdat(RefName));
       GV->setSection(sectionName<ProtocolReferenceSection>());
       GV->setAlignment(CGM.getPointerAlign().getAsAlign());
@@ -1377,7 +1381,9 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
     auto RuntimeProtocols =
         GetRuntimeProtocolList(PD->protocol_begin(), PD->protocol_end());
     for (const auto *PI : RuntimeProtocols)
-      Protocols.push_back(GenerateProtocolRef(PI));
+      Protocols.push_back(
+          llvm::ConstantExpr::getBitCast(GenerateProtocolRef(PI),
+            ProtocolPtrTy));
     llvm::Constant *ProtocolList = GenerateProtocolList(Protocols);
 
     // Collect information about methods
@@ -1414,7 +1420,8 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
     GV->setSection(sectionName<ProtocolSection>());
     GV->setComdat(TheModule.getOrInsertComdat(SymName));
     if (OldGV) {
-      OldGV->replaceAllUsesWith(GV);
+      OldGV->replaceAllUsesWith(llvm::ConstantExpr::getBitCast(GV,
+            OldGV->getType()));
       OldGV->removeFromParent();
       GV->setName(SymName);
     }
@@ -2486,9 +2493,10 @@ ConstantAddress CGObjCGNU::GenerateConstantString(const StringLiteral *SL) {
   llvm::Constant *isa = TheModule.getNamedGlobal(Sym);
 
   if (!isa)
-    isa = new llvm::GlobalVariable(TheModule, IdTy, /* isConstant */ false,
-                                   llvm::GlobalValue::ExternalWeakLinkage,
-                                   nullptr, Sym);
+    isa = new llvm::GlobalVariable(TheModule, IdTy, /* isConstant */false,
+            llvm::GlobalValue::ExternalWeakLinkage, nullptr, Sym);
+  else if (isa->getType() != PtrToIdTy)
+    isa = llvm::ConstantExpr::getBitCast(isa, PtrToIdTy);
 
   ConstantInitBuilder Builder(CGM);
   auto Fields = Builder.beginStruct();

@@ -9,12 +9,12 @@
 // they prove useful.
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_CPP_ALGORITHM_H
-#define LLVM_LIBC_SRC___SUPPORT_CPP_ALGORITHM_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_CPP_ALGORITHM_H
+#define LLVM_LIBC_SRC_SUPPORT_CPP_ALGORITHM_H
 
 #include "src/__support/macros/attributes.h" // LIBC_INLINE
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace cpp {
 
 template <class T> LIBC_INLINE constexpr const T &max(const T &a, const T &b) {
@@ -26,6 +26,6 @@ template <class T> LIBC_INLINE constexpr const T &min(const T &a, const T &b) {
 }
 
 } // namespace cpp
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_CPP_ALGORITHM_H
+#endif // LLVM_LIBC_SRC_SUPPORT_CPP_ALGORITHM_H

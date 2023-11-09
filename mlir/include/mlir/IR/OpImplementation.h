@@ -1242,7 +1242,10 @@ public:
   }
 
   /// Parse a type list.
-  ParseResult parseTypeList(SmallVectorImpl<Type> &result);
+  ParseResult parseTypeList(SmallVectorImpl<Type> &result) {
+    return parseCommaSeparatedList(
+        [&]() { return parseType(result.emplace_back()); });
+  }
 
   /// Parse an arrow followed by a type list.
   virtual ParseResult parseArrowTypeList(SmallVectorImpl<Type> &result) = 0;

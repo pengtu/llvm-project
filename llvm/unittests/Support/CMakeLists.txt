@@ -81,7 +81,6 @@ add_llvm_unittest(SupportTests
   SwapByteOrderTest.cpp
   TarWriterTest.cpp
   ThreadPool.cpp
-  ThreadSafeAllocatorTest.cpp
   Threading.cpp
   TimerTest.cpp
   TimeProfilerTest.cpp
@@ -91,7 +90,6 @@ add_llvm_unittest(SupportTests
   TypeTraitsTest.cpp
   TrailingObjectsTest.cpp
   UnicodeTest.cpp
-  UTCTimeTest.cpp
   VersionTupleTest.cpp
   VirtualFileSystemTest.cpp
   WithColorTest.cpp

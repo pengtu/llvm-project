@@ -16,7 +16,6 @@ include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
-include "mlir/IR/OpAsmInterface.td"
 include "mlir/IR/RegionKindInterface.td"
 include "mlir/IR/SymbolInterfaces.td"
 
@@ -154,7 +153,6 @@ def MLProgram_GlobalOp : MLProgram_Op<"global", [
 //===----------------------------------------------------------------------===//
 
 def MLProgram_GlobalLoadOp : MLProgram_Op<"global_load", [
-    DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     DeclareOpInterfaceMethods<SymbolUserOpInterface>
   ]> {
   let summary = "Direct load of a mutable value from a global";
@@ -192,13 +190,6 @@ def MLProgram_GlobalLoadOp : MLProgram_Op<"global_load", [
     /// Gets the corresponding GlobalOp (or nullptr).
     GlobalOp getGlobalOp(SymbolTableCollection &symbolTable);
   }];
-
-  let extraClassDefinition = [{
-    void $cppClass::getAsmResultNames(
-        function_ref<void(::mlir::Value, ::llvm::StringRef)> setNameFn) {
-      setNameFn(getResult(), getGlobal().getLeafReference());
-    }
-  }];
 }
 
 //===----------------------------------------------------------------------===//
@@ -207,7 +198,6 @@ def MLProgram_GlobalLoadOp : MLProgram_Op<"global_load", [
 
 def MLProgram_GlobalLoadConstOp : MLProgram_Op<"global_load_const", [
     Pure,
-    DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     DeclareOpInterfaceMethods<SymbolUserOpInterface>
   ]> {
   let summary = "Direct load a constant value from a global";
@@ -238,13 +228,6 @@ def MLProgram_GlobalLoadConstOp : MLProgram_Op<"global_load_const", [
   let extraClassDeclaration = [{
     /// Gets the corresponding GlobalOp (or nullptr).
     GlobalOp getGlobalOp(SymbolTableCollection &symbolTable);
-  }];
-
-  let extraClassDefinition = [{
-    void $cppClass::getAsmResultNames(
-      function_ref<void(::mlir::Value, ::llvm::StringRef)> setNameFn) {
-        setNameFn(getResult(), getGlobal().getLeafReference());
-    }
   }];
 }
 

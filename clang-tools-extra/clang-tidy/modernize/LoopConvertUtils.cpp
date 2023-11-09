@@ -174,7 +174,7 @@ const Expr *digThroughConstructorsConversions(const Expr *E) {
     // The initial constructor must take exactly one parameter, but base class
     // and deferred constructors can take more.
     if (ConstructExpr->getNumArgs() != 1 ||
-        ConstructExpr->getConstructionKind() != CXXConstructionKind::Complete)
+        ConstructExpr->getConstructionKind() != CXXConstructExpr::CK_Complete)
       return nullptr;
     E = ConstructExpr->getArg(0);
     if (const auto *Temp = dyn_cast<MaterializeTemporaryExpr>(E))

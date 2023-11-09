@@ -570,19 +570,3 @@ struct PR52818  {
 
     int bar;
 };
-
-struct RefReassignment {
-  RefReassignment(int &i) : m_i{i} {
-    m_i = 1;
-  }
-  int & m_i;
-};
-
-struct ReassignmentAfterUnsafetyAssignment {
-  ReassignmentAfterUnsafetyAssignment() {
-    int a = 10;
-    m_i = a;
-    m_i = 1;
-  }
-  int m_i;
-};

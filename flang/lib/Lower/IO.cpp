@@ -362,14 +362,17 @@ getNonTbpDefinedIoTableAddr(Fortran::lower::AbstractConverter &converter,
                       Fortran::evaluate::ProcedureDesignator{*procSym}},
                   stmtCtx))));
         } else {
-          mlir::func::FuncOp procDef = Fortran::lower::getOrDeclareFunction(
-              Fortran::evaluate::ProcedureDesignator{*procSym}, converter);
-          mlir::SymbolRefAttr nameAttr =
-              builder.getSymbolRefAttr(procDef.getSymName());
-          insert(builder.createConvert(
-              loc, refTy,
-              builder.create<fir::AddrOfOp>(loc, procDef.getFunctionType(),
-                                            nameAttr)));
+          std::string procName = converter.mangleName(*procSym);
+          mlir::func::FuncOp procDef = builder.getNamedFunction(procName);
+          if (!procDef)
+            procDef = Fortran::lower::getOrDeclareFunction(
+                procName, Fortran::evaluate::ProcedureDesignator{*procSym},
+                converter);
+          insert(
+              builder.createConvert(loc, refTy,
+                                    builder.create<fir::AddrOfOp>(
+                                        loc, procDef.getFunctionType(),
+                                        builder.getSymbolRefAttr(procName))));
         }
       } else {
         insert(builder.createNullConstant(loc, refTy));
@@ -652,7 +655,7 @@ static void genNamelistIO(Fortran::lower::AbstractConverter &converter,
 static mlir::func::FuncOp getOutputFunc(mlir::Location loc,
                                         fir::FirOpBuilder &builder,
                                         mlir::Type type, bool isFormatted) {
-  if (fir::unwrapPassByRefType(type).isa<fir::RecordType>())
+  if (type.isa<fir::RecordType>())
     return getIORuntimeFunc<mkIOKey(OutputDerivedType)>(loc, builder);
   if (!isFormatted)
     return getIORuntimeFunc<mkIOKey(OutputDescriptor)>(loc, builder);
@@ -734,7 +737,7 @@ static void genOutputItemList(
     if (argType.isa<fir::BoxType>()) {
       mlir::Value box = fir::getBase(converter.genExprBox(loc, *expr, stmtCtx));
       outputFuncArgs.push_back(builder.createConvert(loc, argType, box));
-      if (fir::unwrapPassByRefType(itemTy).isa<fir::RecordType>())
+      if (itemTy.isa<fir::RecordType>())
         outputFuncArgs.push_back(getNonTbpDefinedIoTableAddr(converter));
     } else if (helper.isCharacterScalar(itemTy)) {
       fir::ExtendedValue exv = converter.genExprAddr(loc, expr, stmtCtx);
@@ -769,7 +772,7 @@ static void genOutputItemList(
 static mlir::func::FuncOp getInputFunc(mlir::Location loc,
                                        fir::FirOpBuilder &builder,
                                        mlir::Type type, bool isFormatted) {
-  if (fir::unwrapPassByRefType(type).isa<fir::RecordType>())
+  if (type.isa<fir::RecordType>())
     return getIORuntimeFunc<mkIOKey(InputDerivedType)>(loc, builder);
   if (!isFormatted)
     return getIORuntimeFunc<mkIOKey(InputDescriptor)>(loc, builder);
@@ -831,7 +834,7 @@ createIoRuntimeCallForItem(Fortran::lower::AbstractConverter &converter,
     auto boxTy = box.getType().dyn_cast<fir::BaseBoxType>();
     assert(boxTy && "must be previously emboxed");
     inputFuncArgs.push_back(builder.createConvert(loc, argType, box));
-    if (fir::unwrapPassByRefType(boxTy).isa<fir::RecordType>())
+    if (boxTy.getEleTy().isa<fir::RecordType>())
       inputFuncArgs.push_back(getNonTbpDefinedIoTableAddr(converter));
   } else {
     mlir::Value itemAddr = fir::getBase(item);

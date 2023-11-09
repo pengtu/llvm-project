@@ -13,7 +13,7 @@
 
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 // TODO: Make the matcher match specific exceptions instead of just identifying
@@ -50,13 +50,13 @@ public:
 };
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #define ASSERT_RAISES_FP_EXCEPT(func)                                          \
   ASSERT_THAT(                                                                 \
       true,                                                                    \
-      LIBC_NAMESPACE::testing::FPExceptMatcher(                                \
-          LIBC_NAMESPACE::testing::FPExceptMatcher::getFunctionCaller(func)))
+      __llvm_libc::testing::FPExceptMatcher(                                   \
+          __llvm_libc::testing::FPExceptMatcher::getFunctionCaller(func)))
 #else
 #define ASSERT_RAISES_FP_EXCEPT(func) ASSERT_DEATH(func, WITH_SIGNAL(SIGFPE))
 #endif // LIBC_COPT_TEST_USE_FUCHSIA

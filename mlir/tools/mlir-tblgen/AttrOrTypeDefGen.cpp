@@ -353,7 +353,7 @@ void DefGen::emitDefaultBuilder() {
   MethodBody &body = m->body().indent();
   auto scope = body.scope("return Base::get(context", ");");
   for (const auto &param : params)
-    body << ", std::move(" << param.getName() << ")";
+    body << ", " << param.getName();
 }
 
 void DefGen::emitCheckedBuilder() {
@@ -474,10 +474,8 @@ void DefGen::emitTraitMethod(const InterfaceMethod &method) {
 void DefGen::emitStorageConstructor() {
   Constructor *ctor =
       storageCls->addConstructor<Method::Inline>(getBuilderParams({}));
-  for (auto &param : params) {
-    std::string movedValue = ("std::move(" + param.getName() + ")").str();
-    ctor->addMemberInitializer(param.getName(), movedValue);
-  }
+  for (auto &param : params)
+    ctor->addMemberInitializer(param.getName(), param.getName());
 }
 
 void DefGen::emitKeyType() {
@@ -527,11 +525,11 @@ void DefGen::emitConstruct() {
                                         : Method::Static,
       MethodParameter(strfmt("::mlir::{0}StorageAllocator &", valueType),
                       "allocator"),
-      MethodParameter("KeyTy &&", "tblgenKey"));
+      MethodParameter("const KeyTy &", "tblgenKey"));
   if (!def.hasStorageCustomConstructor()) {
     auto &body = construct->body().indent();
     for (const auto &it : llvm::enumerate(params)) {
-      body << formatv("auto {0} = std::move(std::get<{1}>(tblgenKey));\n",
+      body << formatv("auto {0} = std::get<{1}>(tblgenKey);\n",
                       it.value().getName(), it.index());
     }
     // Use the parameters' custom allocator code, if provided.
@@ -546,9 +544,8 @@ void DefGen::emitConstruct() {
         body.scope(strfmt("return new (allocator.allocate<{0}>()) {0}(",
                           def.getStorageClassName()),
                    ");");
-    llvm::interleaveComma(params, body, [&](auto &param) {
-      body << "std::move(" << param.getName() << ")";
-    });
+    llvm::interleaveComma(params, body,
+                          [&](auto &param) { body << param.getName(); });
   }
 }
 
@@ -587,12 +584,7 @@ protected:
   DefGenerator(std::vector<llvm::Record *> &&defs, raw_ostream &os,
                StringRef defType, StringRef valueType, bool isAttrGenerator)
       : defRecords(std::move(defs)), os(os), defType(defType),
-        valueType(valueType), isAttrGenerator(isAttrGenerator) {
-    // Sort by occurrence in file.
-    llvm::sort(defRecords, [](llvm::Record *lhs, llvm::Record *rhs) {
-      return lhs->getID() < rhs->getID();
-    });
-  }
+        valueType(valueType), isAttrGenerator(isAttrGenerator) {}
 
   /// Emit the list of def type names.
   void emitTypeDefList(ArrayRef<AttrOrTypeDef> defs);

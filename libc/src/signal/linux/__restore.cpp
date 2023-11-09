@@ -14,14 +14,14 @@
 
 #include <sys/syscall.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 extern "C" void __restore_rt()
     __attribute__((no_sanitize("all"),
                    hidden));
 
 extern "C" void __restore_rt() {
-  LIBC_NAMESPACE::syscall_impl<long>(SYS_rt_sigreturn);
+  __llvm_libc::syscall_impl<long>(SYS_rt_sigreturn);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

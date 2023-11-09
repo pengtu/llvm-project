@@ -706,8 +706,7 @@ auto AlignVectors::createAlignedPointer(IRBuilderBase &Builder, Value *Ptr,
   Value *AsInt = Builder.CreatePtrToInt(Ptr, HVC.getIntTy(), "pti");
   Value *Mask = HVC.getConstInt(-Alignment);
   Value *And = Builder.CreateAnd(remap(AsInt), Mask, "and");
-  return Builder.CreateIntToPtr(
-      And, PointerType::getUnqual(ValTy->getContext()), "itp");
+  return Builder.CreateIntToPtr(And, ValTy->getPointerTo(), "itp");
 }
 
 auto AlignVectors::createLoad(IRBuilderBase &Builder, Type *ValTy, Value *Ptr,

@@ -46,18 +46,6 @@ public:
   void registerCallbacks(PassInstrumentationCallbacks &PIC);
 
 private:
-  struct PassRunDescriptor {
-    const Module *M;
-    const std::string DumpIRFilename;
-    const std::string IRName;
-    const StringRef PassID;
-
-    PassRunDescriptor(const Module *M, std::string DumpIRFilename,
-                      std::string IRName, const StringRef PassID)
-        : M{M}, DumpIRFilename{DumpIRFilename}, IRName{IRName}, PassID(PassID) {
-    }
-  };
-
   void printBeforePass(StringRef PassID, Any IR);
   void printAfterPass(StringRef PassID, Any IR);
   void printAfterPassInvalidated(StringRef PassID);
@@ -67,15 +55,15 @@ private:
   bool shouldPrintPassNumbers();
   bool shouldPrintAtPassNumber();
 
-  void pushPassRunDescriptor(StringRef PassID, Any IR,
-                             std::string &DumpIRFilename);
-  PassRunDescriptor popPassRunDescriptor(StringRef PassID);
-  std::string fetchDumpFilename(StringRef PassId, Any IR);
+  using PrintModuleDesc = std::tuple<const Module *, std::string, StringRef>;
+
+  void pushModuleDesc(StringRef PassID, Any IR);
+  PrintModuleDesc popModuleDesc(StringRef PassID);
 
   PassInstrumentationCallbacks *PIC;
-  /// Stack of Pass Run descriptions, enough to print the IR unit after a given
+  /// Stack of Module description, enough to print the module after a given
   /// pass.
-  SmallVector<PassRunDescriptor, 2> PassRunDescriptorStack;
+  SmallVector<PrintModuleDesc, 2> ModuleDescStack;
 
   /// Used for print-at-pass-number
   unsigned CurrentPassNumber = 0;

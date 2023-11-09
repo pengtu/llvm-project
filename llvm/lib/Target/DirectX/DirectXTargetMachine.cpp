@@ -87,7 +87,7 @@ DirectXTargetMachine::DirectXTargetMachine(const Target &T, const Triple &TT,
                                            const TargetOptions &Options,
                                            std::optional<Reloc::Model> RM,
                                            std::optional<CodeModel::Model> CM,
-                                           CodeGenOptLevel OL, bool JIT)
+                                           CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(T,
                         "e-m:e-p:32:32-i1:32-i8:8-i16:16-i32:32-i64:64-f16:16-"
                         "f32:32-f64:64-n8:16:32:64",
@@ -129,11 +129,11 @@ bool DirectXTargetMachine::addPassesToEmitFile(
   PassConfig->addCodeGenPrepare();
 
   switch (FileType) {
-  case CodeGenFileType::AssemblyFile:
+  case CGFT_AssemblyFile:
     PM.add(createDXILPrettyPrinterPass(Out));
     PM.add(createPrintModulePass(Out, "", true));
     break;
-  case CodeGenFileType::ObjectFile:
+  case CGFT_ObjectFile:
     if (TargetPassConfig::willCompleteCodeGenPipeline()) {
       PM.add(createDXILEmbedderPass());
       // We embed the other DXContainer globals after embedding DXIL so that the
@@ -149,7 +149,7 @@ bool DirectXTargetMachine::addPassesToEmitFile(
     } else
       PM.add(createDXILWriterPass(Out));
     break;
-  case CodeGenFileType::Null:
+  case CGFT_Null:
     break;
   }
   return false;

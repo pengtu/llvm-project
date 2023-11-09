@@ -178,7 +178,6 @@ private:
   mutable bool RawTextValid : 1;   ///< True if RawText is valid
   mutable bool BriefTextValid : 1; ///< True if BriefText is valid
 
-  LLVM_PREFERRED_TYPE(CommentKind)
   unsigned Kind : 3;
 
   /// True if comment is attached to a declaration in ASTContext.

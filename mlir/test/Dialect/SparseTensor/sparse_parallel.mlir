@@ -10,15 +10,15 @@
 // RUN:   FileCheck %s --check-prefix=CHECK-PAR4
 
 #DenseMatrix = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : dense)
+  lvlTypes = [ "dense", "dense" ]
 }>
 
 #SparseMatrix = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed, d1 : compressed)
+  lvlTypes = [ "compressed", "compressed" ]
 }>
 
 #CSR = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ]
 }>
 
 #trait_dd = {

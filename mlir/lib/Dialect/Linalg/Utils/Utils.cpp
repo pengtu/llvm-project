@@ -174,8 +174,8 @@ bool isElementwise(LinalgOp op) {
     return false;
 
   // TODO: relax the restrictions on indexing map.
-  for (OpOperand &opOperand : op.getDpsInitsMutable()) {
-    if (!op.getMatchingIndexingMap(&opOperand).isPermutation())
+  for (OpOperand *opOperand : op.getDpsInitOperands()) {
+    if (!op.getMatchingIndexingMap(opOperand).isPermutation())
       return false;
   }
   return hasOnlyScalarElementwiseOp(op->getRegion(0));
@@ -321,9 +321,10 @@ void GenerateLoopNest<scf::ForOp>::doit(
   assert((procInfo.empty() || (procInfo.size() == loopRanges.size())) &&
          "expected as many entries for proc info as number of loops, even if "
          "they are null entries");
-  SmallVector<Value> iterArgInitValues;
-  if (!linalgOp.hasBufferSemantics())
-    llvm::append_range(iterArgInitValues, linalgOp.getDpsInits());
+  SmallVector<Value> iterArgInitValues = linalgOp.hasBufferSemantics()
+                                             ? SmallVector<Value>{}
+                                             : linalgOp.getDpsInitOperands();
+
   SmallVector<Value, 4> lbs, ubs, steps;
   unpackRanges(b, loc, loopRanges, lbs, ubs, steps);
   LoopNest loopNest = mlir::scf::buildLoopNest(
@@ -333,7 +334,7 @@ void GenerateLoopNest<scf::ForOp>::doit(
                "expect the number of output tensors and iter args to match");
         SmallVector<Value> operandValuesToUse = linalgOp->getOperands();
         if (!iterArgs.empty()) {
-          operandValuesToUse = linalgOp.getDpsInputs();
+          operandValuesToUse = linalgOp.getDpsInputOperands();
           operandValuesToUse.append(iterArgs.begin(), iterArgs.end());
         }
         return bodyBuilderFn(b, loc, ivs, operandValuesToUse);
@@ -361,9 +362,9 @@ void GenerateLoopNest<AffineForOp>::doit(
                                   ValueRange)>
         bodyBuilderFn,
     ArrayRef<linalg::ProcInfo> /*procInfo*/) {
-  SmallVector<Value> iterArgInitValues;
-  if (!linalgOp.hasBufferSemantics())
-    llvm::append_range(iterArgInitValues, linalgOp.getDpsInits());
+  SmallVector<Value> iterArgInitValues = linalgOp.hasBufferSemantics()
+                                             ? SmallVector<Value>{}
+                                             : linalgOp.getDpsInitOperands();
   assert(iterArgInitValues.empty() && "unexpected AffineForOp init values");
   SmallVector<Value, 4> lbs, ubs, steps;
   unpackRanges(b, loc, loopRanges, lbs, ubs, steps);
@@ -528,9 +529,9 @@ void GenerateLoopNest<scf::ParallelOp>::doit(
                                   ValueRange)>
         bodyBuilderFn,
     ArrayRef<linalg::ProcInfo> procInfo) {
-  SmallVector<Value> iterArgInitValues;
-  if (!linalgOp.hasBufferSemantics())
-    llvm::append_range(iterArgInitValues, linalgOp.getDpsInits());
+  SmallVector<Value> iterArgInitValues = linalgOp.hasBufferSemantics()
+                                             ? SmallVector<Value>{}
+                                             : linalgOp.getDpsInitOperands();
   assert(iterArgInitValues.empty() && "unexpected ParallelOp init values");
   // This function may be passed more iterator types than ranges.
   assert(iteratorTypes.size() >= loopRanges.size() &&
@@ -741,8 +742,8 @@ SmallVector<Type> getTensorOutputTypes(LinalgOp op, ValueRange operands) {
   if (op.hasBufferSemantics())
     return {};
   return llvm::to_vector(
-      llvm::map_range(op.getDpsInitsMutable(), [&](OpOperand &opOperand) {
-        return operands[opOperand.getOperandNumber()].getType();
+      llvm::map_range(op.getDpsInitOperands(), [&](OpOperand *opOperand) {
+        return operands[opOperand->getOperandNumber()].getType();
       }));
 }
 
@@ -755,10 +756,10 @@ SmallVector<Value> insertSlicesBack(OpBuilder &builder, Location loc,
   tensorResults.reserve(results.size());
   // Insert a insert_slice for each output tensor.
   unsigned resultIdx = 0;
-  for (OpOperand &opOperand : op.getDpsInitsMutable()) {
+  for (OpOperand *opOperand : op.getDpsInitOperands()) {
     // TODO: use an interface/adaptor to avoid leaking position in
     // `tiledOperands`.
-    Value outputTensor = operands[opOperand.getOperandNumber()];
+    Value outputTensor = operands[opOperand->getOperandNumber()];
     if (auto sliceOp = outputTensor.getDefiningOp<tensor::ExtractSliceOp>()) {
       Value inserted = builder.create<tensor::InsertSliceOp>(
           loc, sliceOp.getSource().getType(), results[resultIdx],

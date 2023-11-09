@@ -315,16 +315,12 @@ std::string JSONNodeDumper::createPointerRepresentation(const void *Ptr) {
 
 llvm::json::Object JSONNodeDumper::createQualType(QualType QT, bool Desugar) {
   SplitQualType SQT = QT.split();
-  std::string SQTS = QualType::getAsString(SQT, PrintPolicy);
-  llvm::json::Object Ret{{"qualType", SQTS}};
+  llvm::json::Object Ret{{"qualType", QualType::getAsString(SQT, PrintPolicy)}};
 
   if (Desugar && !QT.isNull()) {
     SplitQualType DSQT = QT.getSplitDesugaredType();
-    if (DSQT != SQT) {
-      std::string DSQTS = QualType::getAsString(DSQT, PrintPolicy);
-      if (DSQTS != SQTS)
-        Ret["desugaredQualType"] = DSQTS;
-    }
+    if (DSQT != SQT)
+      Ret["desugaredQualType"] = QualType::getAsString(DSQT, PrintPolicy);
     if (const auto *TT = QT->getAs<TypedefType>())
       Ret["typeAliasDeclId"] = createPointerRepresentation(TT->getDecl());
   }
@@ -646,13 +642,13 @@ void JSONNodeDumper::VisitRValueReferenceType(const ReferenceType *RT) {
 
 void JSONNodeDumper::VisitArrayType(const ArrayType *AT) {
   switch (AT->getSizeModifier()) {
-  case ArraySizeModifier::Star:
+  case ArrayType::Star:
     JOS.attribute("sizeModifier", "*");
     break;
-  case ArraySizeModifier::Static:
+  case ArrayType::Static:
     JOS.attribute("sizeModifier", "static");
     break;
-  case ArraySizeModifier::Normal:
+  case ArrayType::Normal:
     break;
   }
 
@@ -677,30 +673,30 @@ void JSONNodeDumper::VisitDependentSizedExtVectorType(
 void JSONNodeDumper::VisitVectorType(const VectorType *VT) {
   JOS.attribute("numElements", VT->getNumElements());
   switch (VT->getVectorKind()) {
-  case VectorKind::Generic:
+  case VectorType::GenericVector:
     break;
-  case VectorKind::AltiVecVector:
+  case VectorType::AltiVecVector:
     JOS.attribute("vectorKind", "altivec");
     break;
-  case VectorKind::AltiVecPixel:
+  case VectorType::AltiVecPixel:
     JOS.attribute("vectorKind", "altivec pixel");
     break;
-  case VectorKind::AltiVecBool:
+  case VectorType::AltiVecBool:
     JOS.attribute("vectorKind", "altivec bool");
     break;
-  case VectorKind::Neon:
+  case VectorType::NeonVector:
     JOS.attribute("vectorKind", "neon");
     break;
-  case VectorKind::NeonPoly:
+  case VectorType::NeonPolyVector:
     JOS.attribute("vectorKind", "neon poly");
     break;
-  case VectorKind::SveFixedLengthData:
+  case VectorType::SveFixedLengthDataVector:
     JOS.attribute("vectorKind", "fixed-length sve data vector");
     break;
-  case VectorKind::SveFixedLengthPredicate:
+  case VectorType::SveFixedLengthPredicateVector:
     JOS.attribute("vectorKind", "fixed-length sve predicate vector");
     break;
-  case VectorKind::RVVFixedLengthData:
+  case VectorType::RVVFixedLengthDataVector:
     JOS.attribute("vectorKind", "fixed-length rvv data vector");
     break;
   }
@@ -880,9 +876,6 @@ void JSONNodeDumper::VisitUsingShadowDecl(const UsingShadowDecl *USD) {
 void JSONNodeDumper::VisitVarDecl(const VarDecl *VD) {
   VisitNamedDecl(VD);
   JOS.attribute("type", createQualType(VD->getType()));
-  if (const auto *P = dyn_cast<ParmVarDecl>(VD))
-    attributeOnlyIfTrue("explicitObjectParameter",
-                        P->isExplicitObjectParameter());
 
   StorageClass SC = VD->getStorageClass();
   if (SC != SC_None)
@@ -1027,12 +1020,8 @@ void JSONNodeDumper::VisitTemplateTemplateParmDecl(
 void JSONNodeDumper::VisitLinkageSpecDecl(const LinkageSpecDecl *LSD) {
   StringRef Lang;
   switch (LSD->getLanguage()) {
-  case LinkageSpecLanguageIDs::C:
-    Lang = "C";
-    break;
-  case LinkageSpecLanguageIDs::CXX:
-    Lang = "C++";
-    break;
+  case LinkageSpecDecl::lang_c: Lang = "C"; break;
+  case LinkageSpecDecl::lang_cxx: Lang = "C++"; break;
   }
   JOS.attribute("language", Lang);
   attributeOnlyIfTrue("hasBraces", LSD->hasBraces());
@@ -1351,15 +1340,9 @@ void JSONNodeDumper::VisitCXXNewExpr(const CXXNewExpr *NE) {
   attributeOnlyIfTrue("isArray", NE->isArray());
   attributeOnlyIfTrue("isPlacement", NE->getNumPlacementArgs() != 0);
   switch (NE->getInitializationStyle()) {
-  case CXXNewInitializationStyle::None:
-  case CXXNewInitializationStyle::Implicit:
-    break;
-  case CXXNewInitializationStyle::Call:
-    JOS.attribute("initStyle", "call");
-    break;
-  case CXXNewInitializationStyle::List:
-    JOS.attribute("initStyle", "list");
-    break;
+  case CXXNewExpr::NoInit: break;
+  case CXXNewExpr::CallInit: JOS.attribute("initStyle", "call"); break;
+  case CXXNewExpr::ListInit: JOS.attribute("initStyle", "list"); break;
   }
   if (const FunctionDecl *FD = NE->getOperatorNew())
     JOS.attribute("operatorNewDecl", createBareDeclRef(FD));
@@ -1468,16 +1451,16 @@ void JSONNodeDumper::VisitCXXConstructExpr(const CXXConstructExpr *CE) {
   attributeOnlyIfTrue("isImmediateEscalating", CE->isImmediateEscalating());
 
   switch (CE->getConstructionKind()) {
-  case CXXConstructionKind::Complete:
+  case CXXConstructExpr::CK_Complete:
     JOS.attribute("constructionKind", "complete");
     break;
-  case CXXConstructionKind::Delegating:
+  case CXXConstructExpr::CK_Delegating:
     JOS.attribute("constructionKind", "delegating");
     break;
-  case CXXConstructionKind::NonVirtualBase:
+  case CXXConstructExpr::CK_NonVirtualBase:
     JOS.attribute("constructionKind", "non-virtual base");
     break;
-  case CXXConstructionKind::VirtualBase:
+  case CXXConstructExpr::CK_VirtualBase:
     JOS.attribute("constructionKind", "virtual base");
     break;
   }
@@ -1680,19 +1663,19 @@ void JSONNodeDumper::visitInlineCommandComment(
   JOS.attribute("name", getCommentCommandName(C->getCommandID()));
 
   switch (C->getRenderKind()) {
-  case comments::InlineCommandRenderKind::Normal:
+  case comments::InlineCommandComment::RenderNormal:
     JOS.attribute("renderKind", "normal");
     break;
-  case comments::InlineCommandRenderKind::Bold:
+  case comments::InlineCommandComment::RenderBold:
     JOS.attribute("renderKind", "bold");
     break;
-  case comments::InlineCommandRenderKind::Emphasized:
+  case comments::InlineCommandComment::RenderEmphasized:
     JOS.attribute("renderKind", "emphasized");
     break;
-  case comments::InlineCommandRenderKind::Monospaced:
+  case comments::InlineCommandComment::RenderMonospaced:
     JOS.attribute("renderKind", "monospaced");
     break;
-  case comments::InlineCommandRenderKind::Anchor:
+  case comments::InlineCommandComment::RenderAnchor:
     JOS.attribute("renderKind", "anchor");
     break;
   }
@@ -1740,13 +1723,13 @@ void JSONNodeDumper::visitBlockCommandComment(
 void JSONNodeDumper::visitParamCommandComment(
     const comments::ParamCommandComment *C, const comments::FullComment *FC) {
   switch (C->getDirection()) {
-  case comments::ParamCommandPassDirection::In:
+  case comments::ParamCommandComment::In:
     JOS.attribute("direction", "in");
     break;
-  case comments::ParamCommandPassDirection::Out:
+  case comments::ParamCommandComment::Out:
     JOS.attribute("direction", "out");
     break;
-  case comments::ParamCommandPassDirection::InOut:
+  case comments::ParamCommandComment::InOut:
     JOS.attribute("direction", "in,out");
     break;
   }

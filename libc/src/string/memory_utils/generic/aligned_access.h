@@ -20,7 +20,7 @@
 
 #include <stddef.h> // size_t
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 [[maybe_unused]] LIBC_INLINE uint32_t load32_aligned(CPtr ptr, size_t offset,
                                                      size_t alignment) {
@@ -28,7 +28,7 @@ namespace LIBC_NAMESPACE {
     return load32_aligned<uint32_t>(ptr, offset);
   else if (alignment == 2)
     return load32_aligned<uint16_t, uint16_t>(ptr, offset);
-  else // 1, 3
+  else
     return load32_aligned<uint8_t, uint16_t, uint8_t>(ptr, offset);
 }
 
@@ -38,11 +38,9 @@ namespace LIBC_NAMESPACE {
     return load64_aligned<uint64_t>(ptr, offset);
   else if (alignment == 4)
     return load64_aligned<uint32_t, uint32_t>(ptr, offset);
-  else if (alignment == 6)
-    return load64_aligned<uint16_t, uint32_t, uint16_t>(ptr, offset);
   else if (alignment == 2)
     return load64_aligned<uint16_t, uint16_t, uint16_t, uint16_t>(ptr, offset);
-  else // 1, 3, 5, 7
+  else
     return load64_aligned<uint8_t, uint16_t, uint16_t, uint16_t, uint8_t>(
         ptr, offset);
 }
@@ -202,6 +200,6 @@ inline_memcmp_aligned_access_64bit(CPtr p1, CPtr p2, size_t count) {
   return inline_memcmp_byte_per_byte(p1, p2, count, offset);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STRING_MEMORY_UTILS_GENERIC_ALIGNED_ACCESS_H

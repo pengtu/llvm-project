@@ -392,10 +392,6 @@ private:
   ///        Pos is whitespace or a new line
   bool isBlankOrBreak(StringRef::iterator Position);
 
-  /// Return true if the minimal well-formed code unit subsequence at
-  ///        Pos is considered a "safe" character for plain scalars.
-  bool isPlainSafeNonBlank(StringRef::iterator Position);
-
   /// Return true if the line is a line break, false otherwise.
   bool isLineEmpty(StringRef Line);
 
@@ -548,10 +544,6 @@ private:
 
   /// Can the next token be the start of a simple key?
   bool IsSimpleKeyAllowed;
-
-  /// Can the next token be a value indicator even if it does not have a
-  /// trailing space?
-  bool IsAdjacentValueAllowedInFlow;
 
   /// True if an error has occurred.
   bool Failed;
@@ -876,7 +868,6 @@ void Scanner::init(MemoryBufferRef Buffer) {
   FlowLevel = 0;
   IsStartOfStream = true;
   IsSimpleKeyAllowed = true;
-  IsAdjacentValueAllowedInFlow = false;
   Failed = false;
   std::unique_ptr<MemoryBuffer> InputBufferOwner =
       MemoryBuffer::getMemBuffer(Buffer, /*RequiresNullTerminator=*/false);
@@ -1058,15 +1049,6 @@ bool Scanner::isBlankOrBreak(StringRef::iterator Position) {
          *Position == '\n';
 }
 
-bool Scanner::isPlainSafeNonBlank(StringRef::iterator Position) {
-  if (Position == End || isBlankOrBreak(Position))
-    return false;
-  if (FlowLevel &&
-      StringRef(Position, 1).find_first_of(",[]{}") != StringRef::npos)
-    return false;
-  return true;
-}
-
 bool Scanner::isLineEmpty(StringRef Line) {
   for (const auto *Position = Line.begin(); Position != Line.end(); ++Position)
     if (!isBlankOrBreak(Position))
@@ -1207,7 +1189,6 @@ bool Scanner::scanStreamEnd() {
   unrollIndent(-1);
   SimpleKeys.clear();
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   Token T;
   T.Kind = Token::TK_StreamEnd;
@@ -1221,7 +1202,6 @@ bool Scanner::scanDirective() {
   unrollIndent(-1);
   SimpleKeys.clear();
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   StringRef::iterator Start = Current;
   consume('%');
@@ -1253,7 +1233,6 @@ bool Scanner::scanDocumentIndicator(bool IsStart) {
   unrollIndent(-1);
   SimpleKeys.clear();
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   Token T;
   T.Kind = IsStart ? Token::TK_DocumentStart : Token::TK_DocumentEnd;
@@ -1276,8 +1255,6 @@ bool Scanner::scanFlowCollectionStart(bool IsSequence) {
 
   // And may also be followed by a simple key.
   IsSimpleKeyAllowed = true;
-  // Adjacent values are allowed in flows only after JSON-style keys.
-  IsAdjacentValueAllowedInFlow = false;
   ++FlowLevel;
   return true;
 }
@@ -1285,7 +1262,6 @@ bool Scanner::scanFlowCollectionStart(bool IsSequence) {
 bool Scanner::scanFlowCollectionEnd(bool IsSequence) {
   removeSimpleKeyCandidatesOnFlowLevel(FlowLevel);
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = true;
   Token T;
   T.Kind = IsSequence ? Token::TK_FlowSequenceEnd
                       : Token::TK_FlowMappingEnd;
@@ -1300,7 +1276,6 @@ bool Scanner::scanFlowCollectionEnd(bool IsSequence) {
 bool Scanner::scanFlowEntry() {
   removeSimpleKeyCandidatesOnFlowLevel(FlowLevel);
   IsSimpleKeyAllowed = true;
-  IsAdjacentValueAllowedInFlow = false;
   Token T;
   T.Kind = Token::TK_FlowEntry;
   T.Range = StringRef(Current, 1);
@@ -1313,7 +1288,6 @@ bool Scanner::scanBlockEntry() {
   rollIndent(Column, Token::TK_BlockSequenceStart, TokenQueue.end());
   removeSimpleKeyCandidatesOnFlowLevel(FlowLevel);
   IsSimpleKeyAllowed = true;
-  IsAdjacentValueAllowedInFlow = false;
   Token T;
   T.Kind = Token::TK_BlockEntry;
   T.Range = StringRef(Current, 1);
@@ -1328,7 +1302,6 @@ bool Scanner::scanKey() {
 
   removeSimpleKeyCandidatesOnFlowLevel(FlowLevel);
   IsSimpleKeyAllowed = !FlowLevel;
-  IsAdjacentValueAllowedInFlow = false;
 
   Token T;
   T.Kind = Token::TK_Key;
@@ -1366,7 +1339,6 @@ bool Scanner::scanValue() {
       rollIndent(Column, Token::TK_BlockMappingStart, TokenQueue.end());
     IsSimpleKeyAllowed = !FlowLevel;
   }
-  IsAdjacentValueAllowedInFlow = false;
 
   Token T;
   T.Kind = Token::TK_Value;
@@ -1448,7 +1420,6 @@ bool Scanner::scanFlowScalar(bool IsDoubleQuoted) {
   saveSimpleKeyCandidate(--TokenQueue.end(), ColStart, false);
 
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = true;
 
   return true;
 }
@@ -1463,9 +1434,21 @@ bool Scanner::scanPlainScalar() {
     if (*Current == '#')
       break;
 
-    while (Current != End &&
-           ((*Current != ':' && isPlainSafeNonBlank(Current)) ||
-            (*Current == ':' && isPlainSafeNonBlank(Current + 1)))) {
+    while (Current != End && !isBlankOrBreak(Current)) {
+      if (FlowLevel && *Current == ':' &&
+          (Current + 1 == End ||
+           !(isBlankOrBreak(Current + 1) || *(Current + 1) == ','))) {
+        setError("Found unexpected ':' while scanning a plain scalar", Current);
+        return false;
+      }
+
+      // Check for the end of the plain scalar.
+      if (  (*Current == ':' && isBlankOrBreak(Current + 1))
+          || (  FlowLevel
+          && (StringRef(Current, 1).find_first_of(",:?[]{}")
+              != StringRef::npos)))
+        break;
+
       StringRef::iterator i = skip_nb_char(Current);
       if (i == Current)
         break;
@@ -1516,7 +1499,6 @@ bool Scanner::scanPlainScalar() {
   saveSimpleKeyCandidate(--TokenQueue.end(), ColStart, false);
 
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   return true;
 }
@@ -1552,7 +1534,6 @@ bool Scanner::scanAliasOrAnchor(bool IsAlias) {
   saveSimpleKeyCandidate(--TokenQueue.end(), ColStart, false);
 
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   return true;
 }
@@ -1785,7 +1766,6 @@ bool Scanner::scanBlockScalar(bool IsLiteral) {
   // New lines may start a simple key.
   if (!FlowLevel)
     IsSimpleKeyAllowed = true;
-  IsAdjacentValueAllowedInFlow = false;
 
   Token T;
   T.Kind = Token::TK_BlockScalar;
@@ -1819,7 +1799,6 @@ bool Scanner::scanTag() {
   saveSimpleKeyCandidate(--TokenQueue.end(), ColStart, false);
 
   IsSimpleKeyAllowed = false;
-  IsAdjacentValueAllowedInFlow = false;
 
   return true;
 }
@@ -1869,14 +1848,13 @@ bool Scanner::fetchMoreTokens() {
   if (*Current == ',')
     return scanFlowEntry();
 
-  if (*Current == '-' && (isBlankOrBreak(Current + 1) || Current + 1 == End))
+  if (*Current == '-' && isBlankOrBreak(Current + 1))
     return scanBlockEntry();
 
-  if (*Current == '?' && (Current + 1 == End || isBlankOrBreak(Current + 1)))
+  if (*Current == '?' && (FlowLevel || isBlankOrBreak(Current + 1)))
     return scanKey();
 
-  if (*Current == ':' &&
-      (!isPlainSafeNonBlank(Current + 1) || IsAdjacentValueAllowedInFlow))
+  if (*Current == ':' && (FlowLevel || isBlankOrBreak(Current + 1)))
     return scanValue();
 
   if (*Current == '*')
@@ -1902,10 +1880,15 @@ bool Scanner::fetchMoreTokens() {
 
   // Get a plain scalar.
   StringRef FirstChar(Current, 1);
-  if ((!isBlankOrBreak(Current) &&
-       FirstChar.find_first_of("-?:,[]{}#&*!|>'\"%@`") == StringRef::npos) ||
-      (FirstChar.find_first_of("?:-") != StringRef::npos &&
-       isPlainSafeNonBlank(Current + 1)))
+  if (!(isBlankOrBreak(Current)
+        || FirstChar.find_first_of("-?:,[]{}#&*!|>'\"%@`") != StringRef::npos)
+      || (*Current == '-' && !isBlankOrBreak(Current + 1))
+      || (!FlowLevel && (*Current == '?' || *Current == ':')
+          && isBlankOrBreak(Current + 1))
+      || (!FlowLevel && *Current == ':'
+                      && Current + 2 < End
+                      && *(Current + 1) == ':'
+                      && !isBlankOrBreak(Current + 2)))
     return scanPlainScalar();
 
   setError("Unrecognized character while tokenizing.", Current);
@@ -1968,7 +1951,7 @@ std::string Node::getVerbatimTag() const {
       Ret = std::string(Doc->getTagMap().find("!")->second);
       Ret += Raw.substr(1);
       return Ret;
-    } else if (Raw.starts_with("!!")) {
+    } else if (Raw.startswith("!!")) {
       Ret = std::string(Doc->getTagMap().find("!!")->second);
       Ret += Raw.substr(2);
       return Ret;

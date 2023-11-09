@@ -24,7 +24,8 @@
 /// runtime? This is a special case because MIN and MAX can have any number of
 /// arguments.
 static bool isMinOrMaxWithDynamicallyOptionalArg(
-    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef) {
+    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef,
+    Fortran::evaluate::FoldingContext &foldingContext) {
   if (name != "min" && name != "max")
     return false;
   const auto &args = procRef.arguments();
@@ -34,7 +35,7 @@ static bool isMinOrMaxWithDynamicallyOptionalArg(
   for (std::size_t i = 2; i < argSize; ++i) {
     if (auto *expr =
             Fortran::evaluate::UnwrapExpr<Fortran::lower::SomeExpr>(args[i]))
-      if (Fortran::evaluate::MayBePassedAsAbsentOptional(*expr))
+      if (Fortran::evaluate::MayBePassedAsAbsentOptional(*expr, foldingContext))
         return true;
   }
   return false;
@@ -44,12 +45,14 @@ static bool isMinOrMaxWithDynamicallyOptionalArg(
 /// at runtime? This is a special case because the SIZE value to be applied
 /// when absent is not zero.
 static bool isIshftcWithDynamicallyOptionalArg(
-    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef) {
+    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef,
+    Fortran::evaluate::FoldingContext &foldingContext) {
   if (name != "ishftc" || procRef.arguments().size() < 3)
     return false;
   auto *expr = Fortran::evaluate::UnwrapExpr<Fortran::lower::SomeExpr>(
       procRef.arguments()[2]);
-  return expr && Fortran::evaluate::MayBePassedAsAbsentOptional(*expr);
+  return expr &&
+         Fortran::evaluate::MayBePassedAsAbsentOptional(*expr, foldingContext);
 }
 
 /// Is this a call to ASSOCIATED where the TARGET is an OPTIONAL (but not a
@@ -64,7 +67,8 @@ static bool isIshftcWithDynamicallyOptionalArg(
 /// TARGET that are OPTIONAL get conditionally emboxed here to convey the
 /// optional aspect to the runtime.
 static bool isAssociatedWithDynamicallyOptionalArg(
-    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef) {
+    llvm::StringRef name, const Fortran::evaluate::ProcedureRef &procRef,
+    Fortran::evaluate::FoldingContext &foldingContext) {
   if (name != "associated" || procRef.arguments().size() < 2)
     return false;
   auto *expr = Fortran::evaluate::UnwrapExpr<Fortran::lower::SomeExpr>(
@@ -80,9 +84,10 @@ bool Fortran::lower::intrinsicRequiresCustomOptionalHandling(
     const Fortran::evaluate::SpecificIntrinsic &intrinsic,
     AbstractConverter &converter) {
   llvm::StringRef name = intrinsic.name;
-  return isMinOrMaxWithDynamicallyOptionalArg(name, procRef) ||
-         isIshftcWithDynamicallyOptionalArg(name, procRef) ||
-         isAssociatedWithDynamicallyOptionalArg(name, procRef);
+  Fortran::evaluate::FoldingContext &fldCtx = converter.getFoldingContext();
+  return isMinOrMaxWithDynamicallyOptionalArg(name, procRef, fldCtx) ||
+         isIshftcWithDynamicallyOptionalArg(name, procRef, fldCtx) ||
+         isAssociatedWithDynamicallyOptionalArg(name, procRef, fldCtx);
 }
 
 /// Generate the FIR+MLIR operations for the generic intrinsic \p name
@@ -125,8 +130,8 @@ static void prepareMinOrMaxArguments(
         Fortran::evaluate::UnwrapExpr<Fortran::lower::SomeExpr>(arg.value());
     if (!expr)
       continue;
-    if (arg.index() <= 1 ||
-        !Fortran::evaluate::MayBePassedAsAbsentOptional(*expr)) {
+    if (arg.index() <= 1 || !Fortran::evaluate::MayBePassedAsAbsentOptional(
+                                *expr, converter.getFoldingContext())) {
       // Non optional arguments.
       prepareOtherArgument(*expr, fir::LowerIntrinsicArgAs::Value);
     } else {
@@ -199,7 +204,8 @@ static void prepareIshftcArguments(
         Fortran::evaluate::UnwrapExpr<Fortran::lower::SomeExpr>(arg.value());
     assert(expr && "expected all ISHFTC argument to be textually present here");
     if (arg.index() == 2) {
-      assert(Fortran::evaluate::MayBePassedAsAbsentOptional(*expr) &&
+      assert(Fortran::evaluate::MayBePassedAsAbsentOptional(
+                 *expr, converter.getFoldingContext()) &&
              "expected ISHFTC SIZE arg to be dynamically optional");
       prepareOptionalArgument(*expr);
     } else {

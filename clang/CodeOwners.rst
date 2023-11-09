@@ -75,7 +75,7 @@ Modules & serialization
 Templates
 ~~~~~~~~~
 | Erich Keane
-| ekeane\@nvidia.com (email), ErichKeane (Phabricator), erichkeane (GitHub)
+| erich.keane\@intel.com (email), ErichKeane (Phabricator), erichkeane (GitHub)
 
 
 Debug information
@@ -174,7 +174,7 @@ compiler.
 Attributes
 ~~~~~~~~~~
 | Erich Keane
-| ekeane\@nvidia.com (email), ErichKeane (Phabricator), erichkeane (GitHub)
+| erich.keane\@intel.com (email), ErichKeane (Phabricator), erichkeane (GitHub)
 
 
 Inline assembly

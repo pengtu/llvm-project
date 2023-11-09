@@ -2632,8 +2632,7 @@ void Sema::WarnExactTypedMethods(ObjCMethodDecl *ImpMethodDecl,
   // don't issue warning when protocol method is optional because primary
   // class is not required to implement it and it is safe for protocol
   // to implement it.
-  if (MethodDecl->getImplementationControl() ==
-      ObjCImplementationControl::Optional)
+  if (MethodDecl->getImplementationControl() == ObjCMethodDecl::Optional)
     return;
   // don't issue warning when primary class's method is
   // deprecated/unavailable.
@@ -2766,43 +2765,45 @@ static void CheckProtocolMethodDefs(
   // check unimplemented instance methods.
   if (!NSIDecl)
     for (auto *method : PDecl->instance_methods()) {
-      if (method->getImplementationControl() !=
-              ObjCImplementationControl::Optional &&
+      if (method->getImplementationControl() != ObjCMethodDecl::Optional &&
           !method->isPropertyAccessor() &&
           !InsMap.count(method->getSelector()) &&
-          (!Super || !Super->lookupMethod(
-                         method->getSelector(), true /* instance */,
-                         false /* shallowCategory */, true /* followsSuper */,
-                         nullptr /* category */))) {
-        // If a method is not implemented in the category implementation but
-        // has been declared in its primary class, superclass,
-        // or in one of their protocols, no need to issue the warning.
-        // This is because method will be implemented in the primary class
-        // or one of its super class implementation.
+          (!Super || !Super->lookupMethod(method->getSelector(),
+                                          true /* instance */,
+                                          false /* shallowCategory */,
+                                          true /* followsSuper */,
+                                          nullptr /* category */))) {
+            // If a method is not implemented in the category implementation but
+            // has been declared in its primary class, superclass,
+            // or in one of their protocols, no need to issue the warning.
+            // This is because method will be implemented in the primary class
+            // or one of its super class implementation.
 
-        // Ugly, but necessary. Method declared in protocol might have
-        // have been synthesized due to a property declared in the class which
-        // uses the protocol.
-        if (ObjCMethodDecl *MethodInClass = IDecl->lookupMethod(
-                method->getSelector(), true /* instance */,
-                true /* shallowCategoryLookup */, false /* followSuper */))
-          if (C || MethodInClass->isPropertyAccessor())
-            continue;
-        unsigned DIAG = diag::warn_unimplemented_protocol_method;
-        if (!S.Diags.isIgnored(DIAG, Impl->getLocation())) {
-          WarnUndefinedMethod(S, Impl, method, IncompleteImpl, DIAG, PDecl);
-        }
-      }
+            // Ugly, but necessary. Method declared in protocol might have
+            // have been synthesized due to a property declared in the class which
+            // uses the protocol.
+            if (ObjCMethodDecl *MethodInClass =
+                  IDecl->lookupMethod(method->getSelector(),
+                                      true /* instance */,
+                                      true /* shallowCategoryLookup */,
+                                      false /* followSuper */))
+              if (C || MethodInClass->isPropertyAccessor())
+                continue;
+            unsigned DIAG = diag::warn_unimplemented_protocol_method;
+            if (!S.Diags.isIgnored(DIAG, Impl->getLocation())) {
+              WarnUndefinedMethod(S, Impl, method, IncompleteImpl, DIAG, PDecl);
+            }
+          }
     }
   // check unimplemented class methods
   for (auto *method : PDecl->class_methods()) {
-    if (method->getImplementationControl() !=
-            ObjCImplementationControl::Optional &&
+    if (method->getImplementationControl() != ObjCMethodDecl::Optional &&
         !ClsMap.count(method->getSelector()) &&
-        (!Super || !Super->lookupMethod(
-                       method->getSelector(), false /* class method */,
-                       false /* shallowCategoryLookup */,
-                       true /* followSuper */, nullptr /* category */))) {
+        (!Super || !Super->lookupMethod(method->getSelector(),
+                                        false /* class method */,
+                                        false /* shallowCategoryLookup */,
+                                        true  /* followSuper */,
+                                        nullptr /* category */))) {
       // See above comment for instance method lookups.
       if (C && IDecl->lookupMethod(method->getSelector(),
                                    false /* class */,
@@ -3884,7 +3885,7 @@ static void DiagnoseVariableSizedIvars(Sema &S, ObjCContainerDecl *OCD) {
     if (IvarTy->isIncompleteArrayType()) {
       S.Diag(ivar->getLocation(), diag::err_flexible_array_not_at_end)
           << ivar->getDeclName() << IvarTy
-          << llvm::to_underlying(TagTypeKind::Class); // Use "class" for Obj-C.
+          << TTK_Class; // Use "class" for Obj-C.
       IsInvalidIvar = true;
     } else if (const RecordType *RecordTy = IvarTy->getAs<RecordType>()) {
       if (RecordTy->getDecl()->hasFlexibleArrayMember()) {
@@ -4758,9 +4759,8 @@ Decl *Sema::ActOnMethodDeclaration(
       MethodType == tok::minus, isVariadic,
       /*isPropertyAccessor=*/false, /*isSynthesizedAccessorStub=*/false,
       /*isImplicitlyDeclared=*/false, /*isDefined=*/false,
-      MethodDeclKind == tok::objc_optional
-          ? ObjCImplementationControl::Optional
-          : ObjCImplementationControl::Required,
+      MethodDeclKind == tok::objc_optional ? ObjCMethodDecl::Optional
+                                           : ObjCMethodDecl::Required,
       HasRelatedResultType);
 
   SmallVector<ParmVarDecl*, 16> Params;

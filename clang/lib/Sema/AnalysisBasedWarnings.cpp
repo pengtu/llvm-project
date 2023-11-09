@@ -1983,12 +1983,6 @@ class ThreadSafetyReporter : public clang::threadSafety::ThreadSafetyHandler {
         case POK_PtPassByRef:
           DiagID = diag::warn_pt_guarded_pass_by_reference;
           break;
-        case POK_ReturnByRef:
-          DiagID = diag::warn_guarded_return_by_reference;
-          break;
-        case POK_PtReturnByRef:
-          DiagID = diag::warn_pt_guarded_return_by_reference;
-          break;
       }
       PartialDiagnosticAt Warning(Loc, S.PDiag(DiagID) << Kind
                                                        << D
@@ -2018,12 +2012,6 @@ class ThreadSafetyReporter : public clang::threadSafety::ThreadSafetyHandler {
           break;
         case POK_PtPassByRef:
           DiagID = diag::warn_pt_guarded_pass_by_reference;
-          break;
-        case POK_ReturnByRef:
-          DiagID = diag::warn_guarded_return_by_reference;
-          break;
-        case POK_PtReturnByRef:
-          DiagID = diag::warn_pt_guarded_return_by_reference;
           break;
       }
       PartialDiagnosticAt Warning(Loc, S.PDiag(DiagID) << Kind
@@ -2279,30 +2267,21 @@ public:
 
   void handleUnsafeVariableGroup(const VarDecl *Variable,
                                  const VariableGroupsManager &VarGrpMgr,
-                                 FixItList &&Fixes, const Decl *D) override {
+                                 FixItList &&Fixes) override {
     assert(!SuggestSuggestions &&
            "Unsafe buffer usage fixits displayed without suggestions!");
     S.Diag(Variable->getLocation(), diag::warn_unsafe_buffer_variable)
         << Variable << (Variable->getType()->isPointerType() ? 0 : 1)
         << Variable->getSourceRange();
     if (!Fixes.empty()) {
-      assert(isa<NamedDecl>(D) &&
-             "Fix-its are generated only for `NamedDecl`s");
-      const NamedDecl *ND = cast<NamedDecl>(D);
-      bool BriefMsg = false;
-      // If the variable group involves parameters, the diagnostic message will
-      // NOT explain how the variables are grouped as the reason is non-trivial
-      // and irrelavant to users' experience:
-      const auto VarGroupForVD = VarGrpMgr.getGroupOfVar(Variable, &BriefMsg);
+      const auto VarGroupForVD = VarGrpMgr.getGroupOfVar(Variable);
       unsigned FixItStrategy = 0; // For now we only have 'std::span' strategy
-      const auto &FD =
-          S.Diag(Variable->getLocation(),
-                 BriefMsg ? diag::note_unsafe_buffer_variable_fixit_together
-                          : diag::note_unsafe_buffer_variable_fixit_group);
+      const auto &FD = S.Diag(Variable->getLocation(),
+                              diag::note_unsafe_buffer_variable_fixit_group);
 
       FD << Variable << FixItStrategy;
       FD << listVariableGroupAsString(Variable, VarGroupForVD)
-         << (VarGroupForVD.size() > 1) << ND;
+         << (VarGroupForVD.size() > 1);
       for (const auto &F : Fixes) {
         FD << F;
       }

@@ -11,10 +11,10 @@
 
 #include "common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, scalbnf, (float x, int y)) {
   return internal::scalbnf(x, y);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

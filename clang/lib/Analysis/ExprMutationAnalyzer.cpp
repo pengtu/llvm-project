@@ -100,20 +100,6 @@ AST_MATCHER(CXXTypeidExpr, isPotentiallyEvaluated) {
   return Node.isPotentiallyEvaluated();
 }
 
-AST_MATCHER(CXXMemberCallExpr, isConstCallee) {
-  const Decl *CalleeDecl = Node.getCalleeDecl();
-  const auto *VD = dyn_cast_or_null<ValueDecl>(CalleeDecl);
-  if (!VD)
-    return false;
-  const QualType T = VD->getType().getCanonicalType();
-  const auto *MPT = dyn_cast<MemberPointerType>(T);
-  const auto *FPT = MPT ? cast<FunctionProtoType>(MPT->getPointeeType())
-                        : dyn_cast<FunctionProtoType>(T);
-  if (!FPT)
-    return false;
-  return FPT->isConst();
-}
-
 AST_MATCHER_P(GenericSelectionExpr, hasControllingExpr,
               ast_matchers::internal::Matcher<Expr>, InnerMatcher) {
   if (Node.isTypePredicate())
@@ -288,8 +274,8 @@ const Stmt *ExprMutationAnalyzer::findDirectMutation(const Expr *Exp) {
   const auto NonConstMethod = cxxMethodDecl(unless(isConst()));
 
   const auto AsNonConstThis = expr(anyOf(
-      cxxMemberCallExpr(on(canResolveToExpr(equalsNode(Exp))),
-                        unless(isConstCallee())),
+      cxxMemberCallExpr(callee(NonConstMethod),
+                        on(canResolveToExpr(equalsNode(Exp)))),
       cxxOperatorCallExpr(callee(NonConstMethod),
                           hasArgument(0, canResolveToExpr(equalsNode(Exp)))),
       // In case of a templated type, calling overloaded operators is not
@@ -405,9 +391,7 @@ const Stmt *ExprMutationAnalyzer::findMemberMutation(const Expr *Exp) {
       match(findAll(expr(anyOf(memberExpr(hasObjectExpression(
                                    canResolveToExpr(equalsNode(Exp)))),
                                cxxDependentScopeMemberExpr(hasObjectExpression(
-                                   canResolveToExpr(equalsNode(Exp)))),
-                               binaryOperator(hasOperatorName(".*"),
-                                              hasLHS(equalsNode(Exp)))))
+                                   canResolveToExpr(equalsNode(Exp))))))
                         .bind(NodeID<Expr>::value)),
             Stm, Context);
   return findExprMutation(MemberExprs);

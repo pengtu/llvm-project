@@ -21,6 +21,7 @@
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
 #include <optional>
 
@@ -195,6 +196,7 @@ struct OneShotBufferizePass
   void getDependentDialects(DialectRegistry &registry) const override {
     registry
         .insert<bufferization::BufferizationDialect, memref::MemRefDialect>();
+    registerAllocationOpInterfaceExternalModels(registry);
   }
 
   void runOnOperation() override {
@@ -202,11 +204,12 @@ struct OneShotBufferizePass
     if (!options) {
       // Make new bufferization options if none were provided when creating the
       // pass.
-      opt.allowReturnAllocsFromLoops = allowReturnAllocsFromLoops;
+      opt.allowReturnAllocs = allowReturnAllocs;
       opt.allowUnknownOps = allowUnknownOps;
       opt.analysisFuzzerSeed = analysisFuzzerSeed;
       opt.analysisHeuristic = parseHeuristicOption(analysisHeuristic);
       opt.copyBeforeWrite = copyBeforeWrite;
+      opt.createDeallocs = createDeallocs;
       opt.dumpAliasSets = dumpAliasSets;
       opt.setFunctionBoundaryTypeConversion(
           parseLayoutMapOption(functionBoundaryTypeConversion));
@@ -300,6 +303,7 @@ struct OneShotBufferizePass
 
     // Set pass statistics.
     this->numBufferAlloc = statistics.numBufferAlloc;
+    this->numBufferDealloc = statistics.numBufferDealloc;
     this->numTensorInPlace = statistics.numTensorInPlace;
     this->numTensorOutOfPlace = statistics.numTensorOutOfPlace;
   }
@@ -383,27 +387,35 @@ public:
                         DenseSet<Operation *> &toMemrefOps,
                         SmallVector<Operation *> &worklist,
                         const BufferizationOptions &options,
+                        const OpFilter *opFilter,
                         BufferizationStatistics *statistics)
       : IRRewriter(ctx), erasedOps(erasedOps), toMemrefOps(toMemrefOps),
-        worklist(worklist), analysisState(options), statistics(statistics) {
+        worklist(worklist), analysisState(options), opFilter(opFilter),
+        statistics(statistics) {
     setListener(this);
   }
 
 protected:
   void notifyOperationRemoved(Operation *op) override {
-    erasedOps.insert(op);
-    // Erase if present.
-    toMemrefOps.erase(op);
+    // TODO: Walk can be removed when D144193 has landed.
+    op->walk([&](Operation *op) {
+      erasedOps.insert(op);
+      // Erase if present.
+      toMemrefOps.erase(op);
+    });
   }
 
   void notifyOperationInserted(Operation *op) override {
     erasedOps.erase(op);
 
-    // Gather statistics about allocs.
+    // Gather statistics about allocs and deallocs.
     if (statistics) {
-      if (auto sideEffectingOp = dyn_cast<MemoryEffectOpInterface>(op))
+      if (auto sideEffectingOp = dyn_cast<MemoryEffectOpInterface>(op)) {
         statistics->numBufferAlloc += static_cast<int64_t>(
             sideEffectingOp.hasEffect<MemoryEffects::Allocate>());
+        statistics->numBufferDealloc += static_cast<int64_t>(
+            sideEffectingOp.hasEffect<MemoryEffects::Free>());
+      }
     }
 
     // Keep track of to_memref ops.
@@ -422,7 +434,7 @@ protected:
 
     // Skip ops that are not allowed to be bufferized.
     auto const &options = analysisState.getOptions();
-    if (!options.isOpAllowed(op))
+    if (!options.isOpAllowed(op) || (opFilter && !opFilter->isOpAllowed(op)))
       return;
 
     // Add op to worklist.
@@ -443,6 +455,9 @@ private:
   /// bufferization options.
   const AnalysisState analysisState;
 
+  /// An extra op filter for bufferization.
+  const OpFilter *opFilter;
+
   /// Bufferization statistics for debugging.
   BufferizationStatistics *statistics;
 };
@@ -450,8 +465,10 @@ private:
 
 LogicalResult bufferization::bufferizeOp(Operation *op,
                                          const BufferizationOptions &options,
+                                         bool copyBeforeWrite,
+                                         const OpFilter *opFilter,
                                          BufferizationStatistics *statistics) {
-  if (options.copyBeforeWrite) {
+  if (copyBeforeWrite) {
     AnalysisState state(options);
     if (failed(insertTensorCopies(op, state)))
       return failure();
@@ -479,7 +496,7 @@ LogicalResult bufferization::bufferizeOp(Operation *op,
 
   // Bufferize all ops.
   BufferizationRewriter rewriter(op->getContext(), erasedOps, toMemrefOps,
-                                 worklist, options, statistics);
+                                 worklist, options, opFilter, statistics);
   for (unsigned i = 0; i < worklist.size(); ++i) {
     Operation *nextOp = worklist[i];
     // Skip ops that were erased.
@@ -489,7 +506,7 @@ LogicalResult bufferization::bufferizeOp(Operation *op,
     auto bufferizableOp = options.dynCastBufferizableOp(nextOp);
     if (!bufferizableOp)
       continue;
-    if (!options.isOpAllowed(nextOp))
+    if (opFilter && !opFilter->isOpAllowed(nextOp))
       continue;
     // Skip ops that no longer have tensor semantics.
     if (!hasTensorSemantics(nextOp))
@@ -550,6 +567,8 @@ LogicalResult bufferization::bufferizeOp(Operation *op,
       continue;
     // Continue ops that are not allowed.
     if (!options.isOpAllowed(op))
+      continue;
+    if (opFilter && !opFilter->isOpAllowed(op))
       continue;
     // Ops without any uses and no side effects will fold away.
     if (op->getUses().empty() && isMemoryEffectFree(op))
@@ -653,7 +672,7 @@ bufferization::bufferizeBlockSignature(Block *block, RewriterBase &rewriter,
 BufferizationOptions bufferization::getPartialBufferizationOptions() {
   BufferizationOptions options;
   options.allowUnknownOps = true;
-  options.copyBeforeWrite = true;
+  options.createDeallocs = false;
   options.enforceAliasingInvariants = false;
   options.unknownTypeConverterFn = [](Value value, Attribute memorySpace,
                                       const BufferizationOptions &options) {
@@ -662,4 +681,60 @@ BufferizationOptions bufferization::getPartialBufferizationOptions() {
   };
   options.opFilter.allowDialect<BufferizationDialect>();
   return options;
+}
+
+//===----------------------------------------------------------------------===//
+// Default AllocationOpInterface implementation and registration
+//===----------------------------------------------------------------------===//
+
+namespace {
+struct DefaultAllocationInterface
+    : public bufferization::AllocationOpInterface::ExternalModel<
+          DefaultAllocationInterface, memref::AllocOp> {
+  static std::optional<Operation *> buildDealloc(OpBuilder &builder,
+                                                 Value alloc) {
+    return builder.create<memref::DeallocOp>(alloc.getLoc(), alloc)
+        .getOperation();
+  }
+  static std::optional<Value> buildClone(OpBuilder &builder, Value alloc) {
+    return builder.create<bufferization::CloneOp>(alloc.getLoc(), alloc)
+        .getResult();
+  }
+  static ::mlir::HoistingKind getHoistingKind() {
+    return HoistingKind::Loop | HoistingKind::Block;
+  }
+  static ::std::optional<::mlir::Operation *>
+  buildPromotedAlloc(OpBuilder &builder, Value alloc) {
+    Operation *definingOp = alloc.getDefiningOp();
+    return builder.create<memref::AllocaOp>(
+        definingOp->getLoc(), cast<MemRefType>(definingOp->getResultTypes()[0]),
+        definingOp->getOperands(), definingOp->getAttrs());
+  }
+};
+
+struct DefaultAutomaticAllocationHoistingInterface
+    : public bufferization::AllocationOpInterface::ExternalModel<
+          DefaultAutomaticAllocationHoistingInterface, memref::AllocaOp> {
+  static ::mlir::HoistingKind getHoistingKind() { return HoistingKind::Loop; }
+};
+
+struct DefaultReallocationInterface
+    : public bufferization::AllocationOpInterface::ExternalModel<
+          DefaultAllocationInterface, memref::ReallocOp> {
+  static std::optional<Operation *> buildDealloc(OpBuilder &builder,
+                                                 Value realloc) {
+    return builder.create<memref::DeallocOp>(realloc.getLoc(), realloc)
+        .getOperation();
+  }
+};
+} // namespace
+
+void bufferization::registerAllocationOpInterfaceExternalModels(
+    DialectRegistry &registry) {
+  registry.addExtension(+[](MLIRContext *ctx, memref::MemRefDialect *dialect) {
+    memref::AllocOp::attachInterface<DefaultAllocationInterface>(*ctx);
+    memref::AllocaOp::attachInterface<
+        DefaultAutomaticAllocationHoistingInterface>(*ctx);
+    memref::ReallocOp::attachInterface<DefaultReallocationInterface>(*ctx);
+  });
 }

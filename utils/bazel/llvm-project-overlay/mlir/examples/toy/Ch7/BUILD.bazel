@@ -97,7 +97,6 @@ cc_binary(
         ":ToyInterfacesIncGen",
         ":ToyOpsIncGen",
         "//llvm:Core",
-        "//llvm:OrcJIT",
         "//llvm:Support",
         "//mlir:AffineDialect",
         "//mlir:AffineToStandard",

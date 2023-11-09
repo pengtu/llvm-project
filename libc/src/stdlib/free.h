@@ -11,10 +11,10 @@
 #ifndef LLVM_LIBC_SRC_STDLIB_FREE_H
 #define LLVM_LIBC_SRC_STDLIB_FREE_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 void free(void *ptr);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDLIB_LDIV_H

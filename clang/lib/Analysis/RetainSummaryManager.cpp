@@ -371,9 +371,8 @@ const RetainSummary *RetainSummaryManager::getSummaryForObjCOrCFObject(
     return getPersistentSummary(RetEffect::MakeNoRet(),
                                 ScratchArgs,
                                 ArgEffect(DoNothing), ArgEffect(DoNothing));
-  } else if (FName == "VTCompressionSessionEncodeFrame" ||
-             FName == "VTCompressionSessionEncodeMultiImageFrame") {
-    // The context argument passed to VTCompressionSessionEncodeFrame() et.al.
+  } else if (FName == "VTCompressionSessionEncodeFrame") {
+    // The context argument passed to VTCompressionSessionEncodeFrame()
     // is passed to the callback specified when creating the session
     // (e.g. with VTCompressionSessionCreate()) which can release it.
     // To account for this possibility, conservatively stop tracking

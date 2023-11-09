@@ -46,7 +46,6 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 
 using namespace llvm;
@@ -115,6 +114,8 @@ void AMDGPUUnifyDivergentExitNodes::getAnalysisUsage(AnalysisUsage &AU) const {
   // We preserve the non-critical-edgeness property
   AU.addPreservedID(BreakCriticalEdgesID);
 
+  // This is a cluster of orthogonal Transforms
+  AU.addPreservedID(LowerSwitchID);
   FunctionPass::getAnalysisUsage(AU);
 
   AU.addRequired<TargetTransformInfoWrapperPass>();
@@ -191,8 +192,6 @@ BasicBlock *AMDGPUUnifyDivergentExitNodesImpl::unifyReturnBlockSet(
 bool AMDGPUUnifyDivergentExitNodesImpl::run(Function &F, DominatorTree *DT,
                                             const PostDominatorTree &PDT,
                                             const UniformityInfo &UA) {
-  assert(hasOnlySimpleTerminator(F) && "Unsupported block terminator.");
-
   if (PDT.root_size() == 0 ||
       (PDT.root_size() == 1 &&
        !isa<BranchInst>(PDT.getRoot()->getTerminator())))

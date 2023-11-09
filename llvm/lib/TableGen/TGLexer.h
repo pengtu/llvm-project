@@ -98,7 +98,6 @@ enum TokKind {
   Defm,
   Defset,
   Defvar,
-  Dump,
   Foreach,
   If,
   Let,
@@ -156,8 +155,7 @@ enum TokKind {
   XGetDagName,
   XSetDagArg,
   XSetDagName,
-  XRepr,
-  BANG_OPERATOR_LAST = XRepr,
+  BANG_OPERATOR_LAST = XSetDagName,
 
   // String valued tokens.
   STRING_VALUE_FIRST,

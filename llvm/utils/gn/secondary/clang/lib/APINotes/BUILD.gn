@@ -6,7 +6,6 @@ static_library("APINotes") {
     "//llvm/lib/Support",
   ]
   sources = [
-    "APINotesReader.cpp",
     "APINotesTypes.cpp",
     "APINotesWriter.cpp",
     "APINotesYAMLCompiler.cpp",

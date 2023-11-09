@@ -25,8 +25,6 @@ namespace LLVM {
 class ModuleTranslation;
 }
 namespace gpu {
-enum class CompilationTarget : uint32_t;
-
 /// This class indicates that the attribute associated with this trait is a GPU
 /// offloading translation attribute. These kinds of attributes must implement
 /// an interface for handling the translation of GPU offloading operations like
@@ -44,15 +42,27 @@ class OffloadingTranslationAttrTrait
 /// ensure type safeness. Targets are free to ignore these options.
 class TargetOptions {
 public:
+  /// The target representation of the compilation process.
+  typedef enum {
+    offload = 1,  /// The process should produce an offloading representation.
+                  /// For the NVVM & ROCDL targets this option produces LLVM IR.
+    assembly = 2, /// The process should produce assembly code.
+    binary = 4,   /// The process should produce a binary.
+    fatbinary = 8, /// The process should produce a fat binary.
+    binOrFatbin =
+        binary |
+        fatbinary, /// The process should produce a binary or fatbinary. It's up
+                   /// to the target to decide which.
+  } CompilationTarget;
+
   /// Constructor initializing the toolkit path, the list of files to link to,
   /// extra command line options, the compilation target and a callback for
   /// obtaining the parent symbol table. The default compilation target is
-  /// `Fatbin`.
-  TargetOptions(
-      StringRef toolkitPath = {}, ArrayRef<std::string> linkFiles = {},
-      StringRef cmdOptions = {},
-      CompilationTarget compilationTarget = getDefaultCompilationTarget(),
-      function_ref<SymbolTable *()> getSymbolTableCallback = {});
+  /// `binOrFatbin`.
+  TargetOptions(StringRef toolkitPath = {},
+                ArrayRef<std::string> linkFiles = {}, StringRef cmdOptions = {},
+                CompilationTarget compilationTarget = binOrFatbin,
+                function_ref<SymbolTable *()> getSymbolTableCallback = {});
 
   /// Returns the typeID.
   TypeID getTypeID() const;
@@ -80,17 +90,13 @@ public:
   /// table.
   SymbolTable *getSymbolTable() const;
 
-  /// Returns the default compilation target: `CompilationTarget::Fatbin`.
-  static CompilationTarget getDefaultCompilationTarget();
-
 protected:
   /// Derived classes must use this constructor to initialize `typeID` to the
   /// appropiate value: ie. `TargetOptions(TypeID::get<DerivedClass>())`.
-  TargetOptions(
-      TypeID typeID, StringRef toolkitPath = {},
-      ArrayRef<std::string> linkFiles = {}, StringRef cmdOptions = {},
-      CompilationTarget compilationTarget = getDefaultCompilationTarget(),
-      function_ref<SymbolTable *()> getSymbolTableCallback = {});
+  TargetOptions(TypeID typeID, StringRef toolkitPath = {},
+                ArrayRef<std::string> linkFiles = {}, StringRef cmdOptions = {},
+                CompilationTarget compilationTarget = binOrFatbin,
+                function_ref<SymbolTable *()> getSymbolTableCallback = {});
 
   /// Path to the target toolkit.
   std::string toolkitPath;
@@ -102,7 +108,7 @@ protected:
   /// process.
   std::string cmdOptions;
 
-  /// Compilation process target format.
+  /// Compilation process target representation.
   CompilationTarget compilationTarget;
 
   /// Callback for obtaining the parent symbol table of all the GPU modules

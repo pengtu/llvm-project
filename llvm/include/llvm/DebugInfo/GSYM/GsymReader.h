@@ -47,7 +47,7 @@ class GsymReader {
 
   std::unique_ptr<MemoryBuffer> MemBuffer;
   StringRef GsymBytes;
-  llvm::endianness Endian;
+  llvm::support::endianness Endian;
   const Header *Hdr = nullptr;
   ArrayRef<uint8_t> AddrOffsets;
   ArrayRef<uint32_t> AddrInfoOffsets;

@@ -44,6 +44,7 @@
 namespace clang {
 namespace clangd {
 namespace {
+using llvm::Succeeded;
 using testing::ElementsAre;
 
 MATCHER_P(diagMessage, M, "") {

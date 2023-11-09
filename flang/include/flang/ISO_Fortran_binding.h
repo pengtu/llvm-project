@@ -127,28 +127,22 @@ namespace cfi_internal {
 template <typename T> struct FlexibleArray : T {
   RT_API_ATTRS T &operator[](int index) { return *(this + index); }
   const RT_API_ATTRS T &operator[](int index) const { return *(this + index); }
-  RT_API_ATTRS operator T *() { return this; }
-  RT_API_ATTRS operator const T *() const { return this; }
+  operator T *() { return this; }
+  operator const T *() const { return this; }
 };
 } // namespace cfi_internal
 #endif
 
 /* 18.5.3 generic data descriptor */
-
-/* Descriptor header members */
-#define _CFI_CDESC_T_HEADER_MEMBERS \
-  /* These three members must appear first, \
-   * in exactly this order. */ \
-  void *base_addr; \
-  size_t elem_len; /* element size in bytes */ \
-  int version; /* == CFI_VERSION */ \
-  CFI_rank_t rank; /* [0 .. CFI_MAX_RANK] */ \
-  CFI_type_t type; \
-  CFI_attribute_t attribute; \
-  unsigned char f18Addendum;
-
 typedef struct CFI_cdesc_t {
-  _CFI_CDESC_T_HEADER_MEMBERS
+  /* These three members must appear first, in exactly this order. */
+  void *base_addr;
+  size_t elem_len; /* element size in bytes */
+  int version; /* == CFI_VERSION */
+  CFI_rank_t rank; /* [0 .. CFI_MAX_RANK] */
+  CFI_type_t type;
+  CFI_attribute_t attribute;
+  unsigned char f18Addendum;
 #ifdef __cplusplus
   cfi_internal::FlexibleArray<CFI_dim_t> dim;
 #else
@@ -158,9 +152,8 @@ typedef struct CFI_cdesc_t {
 
 /* 18.5.4 */
 #ifdef __cplusplus
-// This struct acquires the additional storage, if any is
-// needed, for C++'s CFI_cdesc_t's emulated flexible
-// dim[] array.
+// The struct below take care of getting the memory storage for C++ CFI_cdesc_t
+// that contain an emulated flexible array.
 namespace cfi_internal {
 template <int r> struct CdescStorage : public CFI_cdesc_t {
   static_assert((r > 1 && r <= CFI_MAX_RANK), "CFI_INVALID_RANK");
@@ -169,12 +162,12 @@ template <int r> struct CdescStorage : public CFI_cdesc_t {
 template <> struct CdescStorage<1> : public CFI_cdesc_t {};
 template <> struct CdescStorage<0> : public CFI_cdesc_t {};
 } // namespace cfi_internal
-#define CFI_CDESC_T(rank) ::Fortran::ISO::cfi_internal::CdescStorage<rank>
+#define CFI_CDESC_T(rank) cfi_internal::CdescStorage<rank>
 #else
-#define CFI_CDESC_T(_RANK) \
+#define CFI_CDESC_T(rank) \
   struct { \
-    _CFI_CDESC_T_HEADER_MEMBERS \
-    CFI_dim_t dim[_RANK]; \
+    CFI_cdesc_t cdesc; /* must be first */ \
+    CFI_dim_t dim[rank]; \
   }
 #endif
 
@@ -182,26 +175,25 @@ template <> struct CdescStorage<0> : public CFI_cdesc_t {};
 #ifdef __cplusplus
 extern "C" {
 #endif
-RT_API_ATTRS void *CFI_address(
-    const CFI_cdesc_t *, const CFI_index_t subscripts[]);
-RT_API_ATTRS int CFI_allocate(CFI_cdesc_t *, const CFI_index_t lower_bounds[],
+void *CFI_address(const CFI_cdesc_t *, const CFI_index_t subscripts[]);
+int CFI_allocate(CFI_cdesc_t *, const CFI_index_t lower_bounds[],
     const CFI_index_t upper_bounds[], size_t elem_len);
 RT_API_ATTRS int CFI_deallocate(CFI_cdesc_t *);
 int CFI_establish(CFI_cdesc_t *, void *base_addr, CFI_attribute_t, CFI_type_t,
     size_t elem_len, CFI_rank_t, const CFI_index_t extents[]);
-RT_API_ATTRS int CFI_is_contiguous(const CFI_cdesc_t *);
+int CFI_is_contiguous(const CFI_cdesc_t *);
 RT_API_ATTRS int CFI_section(CFI_cdesc_t *, const CFI_cdesc_t *source,
     const CFI_index_t lower_bounds[], const CFI_index_t upper_bounds[],
     const CFI_index_t strides[]);
-RT_API_ATTRS int CFI_select_part(CFI_cdesc_t *, const CFI_cdesc_t *source,
+int CFI_select_part(CFI_cdesc_t *, const CFI_cdesc_t *source,
     size_t displacement, size_t elem_len);
-RT_API_ATTRS int CFI_setpointer(
+int CFI_setpointer(
     CFI_cdesc_t *, const CFI_cdesc_t *source, const CFI_index_t lower_bounds[]);
 #ifdef __cplusplus
 } // extern "C"
 } // inline namespace Fortran_2018
-} // namespace ISO
-} // namespace Fortran
+}
+}
 #endif
 
 #endif /* CFI_ISO_FORTRAN_BINDING_H_ */

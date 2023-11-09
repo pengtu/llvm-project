@@ -7,8 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "lldb/Core/DumpDataExtractor.h"
-#include "lldb/Host/FileSystem.h"
-#include "lldb/Host/HostInfo.h"
 #include "lldb/Utility/DataBufferHeap.h"
 #include "lldb/Utility/DataExtractor.h"
 #include "lldb/Utility/Endian.h"
@@ -19,20 +17,6 @@
 
 using namespace lldb;
 using namespace lldb_private;
-
-// This is needed for the tests because they rely on the Target global
-// properties.
-class DumpDataExtractorTest : public ::testing::Test {
-public:
-  void SetUp() override {
-    FileSystem::Initialize();
-    HostInfo::Initialize();
-  }
-  void TearDown() override {
-    HostInfo::Terminate();
-    FileSystem::Terminate();
-  }
-};
 
 static void TestDumpWithAddress(uint64_t base_addr, size_t item_count,
                                 llvm::StringRef expected) {
@@ -48,7 +32,7 @@ static void TestDumpWithAddress(uint64_t base_addr, size_t item_count,
   ASSERT_EQ(expected, result.GetString());
 }
 
-TEST_F(DumpDataExtractorTest, BaseAddress) {
+TEST(DumpDataExtractorTest, BaseAddress) {
   TestDumpWithAddress(0x12341234, 1, "0x12341234: 0x11");
   TestDumpWithAddress(LLDB_INVALID_ADDRESS, 1, "0x11");
   TestDumpWithAddress(0x12341234, 2, "0x12341234: 0x11\n0x12341235: 0x22");
@@ -69,7 +53,7 @@ static void TestDumpWithOffset(offset_t start_offset,
   ASSERT_EQ(expected, result.GetString());
 }
 
-TEST_F(DumpDataExtractorTest, StartOffset) {
+TEST(DumpDataExtractorTest, StartOffset) {
   TestDumpWithOffset(0, "0x00000000: 0x11 0x22 0x33");
   // The offset applies to the DataExtractor, not the address used when
   // formatting.
@@ -78,7 +62,7 @@ TEST_F(DumpDataExtractorTest, StartOffset) {
   TestDumpWithOffset(3, "");
 }
 
-TEST_F(DumpDataExtractorTest, NullStream) {
+TEST(DumpDataExtractorTest, NullStream) {
   // We don't do any work if there is no output stream.
   uint8_t c = 0x11;
   StreamString result;
@@ -128,7 +112,7 @@ static void TestDump(const std::vector<T> data, lldb::Format format,
                LLDB_INVALID_ADDRESS, format, expected);
 }
 
-TEST_F(DumpDataExtractorTest, Formats) {
+TEST(DumpDataExtractorTest, Formats) {
   TestDump<uint8_t>(1, lldb::eFormatDefault, "0x01");
   TestDump<uint8_t>(1, lldb::eFormatBoolean, "true");
   TestDump<uint8_t>(0xAA, lldb::eFormatBinary, "0b10101010");
@@ -274,7 +258,7 @@ TEST_F(DumpDataExtractorTest, Formats) {
   TestDump<int>(99, lldb::Format::eFormatVoid, "0x00000063");
 }
 
-TEST_F(DumpDataExtractorTest, FormatCharArray) {
+TEST(DumpDataExtractorTest, FormatCharArray) {
   // Unlike the other formats, charArray isn't 1 array of N chars.
   // It must be passed as N chars of 1 byte each.
   // (eFormatVectorOfChar does this swap for you)
@@ -315,7 +299,7 @@ void TestDumpMultiLine(const T *data, size_t num_items, lldb::Format format,
                0x80000000, format, expected);
 }
 
-TEST_F(DumpDataExtractorTest, MultiLine) {
+TEST(DumpDataExtractorTest, MultiLine) {
   // A vector counts as 1 item regardless of size.
   TestDumpMultiLine(std::vector<uint8_t>{0x11},
                     lldb::Format::eFormatVectorOfUInt8, 1,
@@ -370,7 +354,7 @@ void TestDumpWithItemByteSize(size_t item_byte_size, lldb::Format format,
                expected);
 }
 
-TEST_F(DumpDataExtractorTest, ItemByteSizeErrors) {
+TEST(DumpDataExtractorTest, ItemByteSizeErrors) {
   TestDumpWithItemByteSize(
       16, lldb::Format::eFormatBoolean,
       "error: unsupported byte size (16) for boolean format");

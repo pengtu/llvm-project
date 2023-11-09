@@ -9,8 +9,8 @@
 #include "src/math/roundf.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, roundf, (float x)) { return __builtin_roundf(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

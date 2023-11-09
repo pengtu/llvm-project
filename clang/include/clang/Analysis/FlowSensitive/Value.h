@@ -225,6 +225,12 @@ public:
   /// Returns the storage location that this `RecordValue` is associated with.
   RecordStorageLocation &getLoc() const { return Loc; }
 
+  /// Convenience function that returns the child storage location for `Field`.
+  /// See also the documentation for `RecordStorageLocation::getChild()`.
+  StorageLocation *getChild(const ValueDecl &Field) const {
+    return Loc.getChild(Field);
+  }
+
 private:
   RecordStorageLocation &Loc;
 };

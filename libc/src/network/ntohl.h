@@ -11,10 +11,10 @@
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 uint32_t ntohl(uint32_t netlong);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_NETWORK_NTOHL_H

@@ -41,8 +41,7 @@ static APSInt peekToAPSInt(InterpStack &Stk, PrimType T, size_t Offset = 0) {
   APSInt R;
   INT_TYPE_SWITCH(T, {
     T Val = Stk.peek<T>(Offset);
-    R = APSInt(
-        APInt(Val.bitWidth(), static_cast<uint64_t>(Val), T::isSigned()));
+    R = APSInt(APInt(T::bitWidth(), static_cast<uint64_t>(Val), T::isSigned()));
   });
 
   return R;
@@ -150,9 +149,6 @@ static bool interp__builtin_strlen(InterpState &S, CodePtr OpPC,
     return false;
 
   if (!CheckLive(S, OpPC, StrPtr, AK_Read))
-    return false;
-
-  if (!CheckDummy(S, OpPC, StrPtr))
     return false;
 
   assert(StrPtr.getFieldDesc()->isPrimitiveArray());
@@ -306,15 +302,6 @@ static bool interp__builtin_isnan(InterpState &S, CodePtr OpPC,
   return true;
 }
 
-static bool interp__builtin_issignaling(InterpState &S, CodePtr OpPC,
-                                        const InterpFrame *Frame,
-                                        const Function *F) {
-  const Floating &Arg = S.Stk.peek<Floating>();
-
-  pushInt(S, Arg.isSignaling());
-  return true;
-}
-
 static bool interp__builtin_isinf(InterpState &S, CodePtr OpPC,
                                   const InterpFrame *Frame, const Function *F,
                                   bool CheckSign) {
@@ -343,24 +330,6 @@ static bool interp__builtin_isnormal(InterpState &S, CodePtr OpPC,
   const Floating &Arg = S.Stk.peek<Floating>();
 
   pushInt(S, Arg.isNormal());
-  return true;
-}
-
-static bool interp__builtin_issubnormal(InterpState &S, CodePtr OpPC,
-                                        const InterpFrame *Frame,
-                                        const Function *F) {
-  const Floating &Arg = S.Stk.peek<Floating>();
-
-  pushInt(S, Arg.isDenormal());
-  return true;
-}
-
-static bool interp__builtin_iszero(InterpState &S, CodePtr OpPC,
-                                   const InterpFrame *Frame,
-                                   const Function *F) {
-  const Floating &Arg = S.Stk.peek<Floating>();
-
-  pushInt(S, Arg.isZero());
   return true;
 }
 
@@ -426,16 +395,6 @@ static bool interp__builtin_fabs(InterpState &S, CodePtr OpPC,
   const Floating &Val = getParam<Floating>(Frame, 0);
 
   S.Stk.push<Floating>(Floating::abs(Val));
-  return true;
-}
-
-static bool interp__builtin_popcount(InterpState &S, CodePtr OpPC,
-                                     const InterpFrame *Frame,
-                                     const Function *Func,
-                                     const CallExpr *Call) {
-  PrimType ArgT = *S.getContext().classify(Call->getArg(0)->getType());
-  APSInt Val = peekToAPSInt(S.Stk, ArgT);
-  pushInt(S, Val.popcount());
   return true;
 }
 
@@ -518,10 +477,6 @@ bool InterpretBuiltin(InterpState &S, CodePtr OpPC, const Function *F,
     if (interp__builtin_isnan(S, OpPC, Frame, F))
       return retInt(S, OpPC, Dummy);
     break;
-  case Builtin::BI__builtin_issignaling:
-    if (interp__builtin_issignaling(S, OpPC, Frame, F))
-      return retInt(S, OpPC, Dummy);
-    break;
 
   case Builtin::BI__builtin_isinf:
     if (interp__builtin_isinf(S, OpPC, Frame, F, /*Sign=*/false))
@@ -541,14 +496,6 @@ bool InterpretBuiltin(InterpState &S, CodePtr OpPC, const Function *F,
     if (interp__builtin_isnormal(S, OpPC, Frame, F))
       return retInt(S, OpPC, Dummy);
     break;
-  case Builtin::BI__builtin_issubnormal:
-    if (interp__builtin_issubnormal(S, OpPC, Frame, F))
-      return retInt(S, OpPC, Dummy);
-    break;
-  case Builtin::BI__builtin_iszero:
-    if (interp__builtin_iszero(S, OpPC, Frame, F))
-      return retInt(S, OpPC, Dummy);
-    break;
   case Builtin::BI__builtin_isfpclass:
     if (interp__builtin_isfpclass(S, OpPC, Frame, F, Call))
       return retInt(S, OpPC, Dummy);
@@ -564,16 +511,6 @@ bool InterpretBuiltin(InterpState &S, CodePtr OpPC, const Function *F,
   case Builtin::BI__builtin_fabsf128:
     if (interp__builtin_fabs(S, OpPC, Frame, F))
       return Ret<PT_Float>(S, OpPC, Dummy);
-    break;
-
-  case Builtin::BI__builtin_popcount:
-  case Builtin::BI__builtin_popcountl:
-  case Builtin::BI__builtin_popcountll:
-  case Builtin::BI__popcnt16: // Microsoft variants of popcount
-  case Builtin::BI__popcnt:
-  case Builtin::BI__popcnt64:
-    if (interp__builtin_popcount(S, OpPC, Frame, F, Call))
-      return retInt(S, OpPC, Dummy);
     break;
 
   default:
@@ -654,23 +591,6 @@ bool InterpretOffsetOf(InterpState &S, CodePtr OpPC, const OffsetOfExpr *E,
 
   IntResult = Result.getQuantity();
 
-  return true;
-}
-
-bool SetThreeWayComparisonField(InterpState &S, CodePtr OpPC,
-                                const Pointer &Ptr, const APSInt &IntValue) {
-
-  const Record *R = Ptr.getRecord();
-  assert(R);
-  assert(R->getNumFields() == 1);
-
-  unsigned FieldOffset = R->getField(0u)->Offset;
-  const Pointer &FieldPtr = Ptr.atField(FieldOffset);
-  PrimType FieldT = *S.getContext().classify(FieldPtr.getType());
-
-  INT_TYPE_SWITCH(FieldT,
-                  FieldPtr.deref<T>() = T::from(IntValue.getSExtValue()));
-  FieldPtr.initialize();
   return true;
 }
 

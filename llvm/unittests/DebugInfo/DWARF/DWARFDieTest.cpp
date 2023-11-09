@@ -15,6 +15,7 @@
 
 using namespace llvm;
 using namespace llvm::dwarf;
+using object::SectionedAddress;
 
 namespace {
 

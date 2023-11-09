@@ -13,9 +13,10 @@
 // UNSUPPORTED: no-wide-characters
 // REQUIRES: target={{.+}}-windows-{{.+}}
 
-// FILE_DEPENDENCIES: test.dat
+// UNSUPPORTED: executor-has-no-bash
+// FILE_DEPENDENCIES: send-stdin.sh, test.dat
 // RUN: %{build}
-// RUN: cat test.dat | %{exec} %t.exe
+// RUN: %{exec} bash send-stdin.sh "%t.exe" "test.dat"
 
 // Check that wcin works, preserving the unicode characters, after switching
 // stdin to wide mode.

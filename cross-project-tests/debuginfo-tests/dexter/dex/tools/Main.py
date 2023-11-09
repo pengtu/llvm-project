@@ -193,6 +193,7 @@ class Context(object):
 
 def main() -> ReturnCode:
     context = Context()
+
     with PrettyOutput() as context.o:
         context.logger = Logger(context.o)
         try:

@@ -6,15 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC_SETJMP_LONGJMP_H
-#define LLVM_LIBC_SRC_SETJMP_LONGJMP_H
+#ifndef LLVM_LIBC_SRC_LONGJMP_LONGJMP_H
+#define LLVM_LIBC_SRC_LONGJMP_LONGJMP_H
 
 #include <setjmp.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 void longjmp(__jmp_buf *buf, int val);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC_SETJMP_LONGJMP_H
+#endif // LLVM_LIBC_SRC_LONGJMP_LONGJMP_H

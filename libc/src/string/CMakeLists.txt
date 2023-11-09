@@ -1,12 +1,5 @@
 add_subdirectory(memory_utils)
 
-if(LIBC_CONF_STRING_UNSAFE_WIDE_READ)
-  list(APPEND string_config_options "-DLIBC_COPT_STRING_UNSAFE_WIDE_READ")
-endif()
-if(string_config_options)
-  list(PREPEND string_config_options "COMPILE_OPTIONS")
-endif()
-
 add_header_library(
   string_utils
   HDRS
@@ -17,7 +10,6 @@ add_header_library(
     libc.include.stdlib
     libc.src.__support.common
     libc.src.__support.CPP.bitset
-  ${string_config_options}
 )
 
 add_header_library(
@@ -498,8 +490,6 @@ if(${LIBC_TARGET_ARCHITECTURE_IS_X86})
   add_bcmp(bcmp_x86_64_opt_avx512 COMPILE_OPTIONS -march=skylake-avx512 REQUIRE AVX512BW)
   add_bcmp(bcmp_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
   add_bcmp(bcmp)
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
-  add_bcmp(bcmp)
 else()
   add_bcmp(bcmp_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
   add_bcmp(bcmp)
@@ -526,8 +516,6 @@ if(${LIBC_TARGET_ARCHITECTURE_IS_X86})
   add_bzero(bzero_x86_64_opt_avx2   COMPILE_OPTIONS -march=haswell        REQUIRE AVX2)
   add_bzero(bzero_x86_64_opt_avx512 COMPILE_OPTIONS -march=skylake-avx512 REQUIRE AVX512F)
   add_bzero(bzero_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
-  add_bzero(bzero)
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
   add_bzero(bzero)
 else()
   add_bzero(bzero_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
@@ -558,8 +546,6 @@ if(${LIBC_TARGET_ARCHITECTURE_IS_X86})
   add_memcmp(memcmp)
 elseif(${LIBC_TARGET_ARCHITECTURE_IS_AARCH64})
   add_memcmp(memcmp_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
-  add_memcmp(memcmp)
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
   add_memcmp(memcmp)
 else()
   add_memcmp(memcmp_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
@@ -595,8 +581,6 @@ elseif(${LIBC_TARGET_ARCHITECTURE_IS_AARCH64})
   add_memcpy(memcpy_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE}
                                       MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
   add_memcpy(memcpy                   MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
-  add_memcpy(memcpy)
 else()
   add_memcpy(memcpy_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
   add_memcpy(memcpy)
@@ -629,8 +613,6 @@ elseif(${LIBC_TARGET_ARCHITECTURE_IS_AARCH64})
   add_memmove(memmove_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE}
                                         MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
   add_memmove(memmove                   MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
-  add_memmove(memmove)
 else()
   add_memmove(memmove_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
   add_memmove(memmove)
@@ -663,8 +645,6 @@ elseif(${LIBC_TARGET_ARCHITECTURE_IS_AARCH64})
   add_memset(memset_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE}
                                       MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
   add_memset(memset                   MLLVM_COMPILE_OPTIONS "-tail-merge-threshold=0")
-elseif(LIBC_TARGET_ARCHITECTURE_IS_GPU)
-  add_memset(memset)
 else()
   add_memset(memset_opt_host          COMPILE_OPTIONS ${LIBC_COMPILE_OPTIONS_NATIVE})
   add_memset(memset)

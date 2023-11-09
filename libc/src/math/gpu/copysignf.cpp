@@ -9,10 +9,10 @@
 #include "src/math/copysignf.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, copysignf, (float x, float y)) {
   return __builtin_copysignf(x, y);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

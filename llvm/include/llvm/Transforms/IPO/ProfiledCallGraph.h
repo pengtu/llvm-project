@@ -52,11 +52,10 @@ struct ProfiledCallGraphNode {
   using edges = std::set<edge, ProfiledCallGraphEdgeComparer>;
   using iterator = edges::iterator;
   using const_iterator = edges::const_iterator;
-  
-  ProfiledCallGraphNode(FunctionId FName = FunctionId()) : Name(FName)
-  {}
-  
-  FunctionId Name;
+
+  ProfiledCallGraphNode(StringRef FName = StringRef()) : Name(FName) {}
+
+  StringRef Name;
   edges Edges;
 };
 
@@ -86,7 +85,7 @@ public:
     std::queue<ContextTrieNode *> Queue;
     for (auto &Child : ContextTracker.getRootContext().getAllChildContext()) {
       ContextTrieNode *Callee = &Child.second;
-      addProfiledFunction(Callee->getFuncName());
+      addProfiledFunction(ContextTracker.getFuncNameFor(Callee));
       Queue.push(Callee);
     }
 
@@ -103,7 +102,7 @@ public:
       // context-based one, which may in turn block context-based inlining.
       for (auto &Child : Caller->getAllChildContext()) {
         ContextTrieNode *Callee = &Child.second;
-        addProfiledFunction(Callee->getFuncName());
+        addProfiledFunction(ContextTracker.getFuncNameFor(Callee));
         Queue.push(Callee);
 
         // Fetch edge weight from the profile.
@@ -117,14 +116,15 @@ public:
           LineLocation Callsite = Callee->getCallSiteLoc();
           if (auto CallTargets = CallerSamples->findCallTargetMapAt(Callsite)) {
             SampleRecord::CallTargetMap &TargetCounts = CallTargets.get();
-            auto It = TargetCounts.find(CalleeSamples->getFunction());
+            auto It = TargetCounts.find(CalleeSamples->getName());
             if (It != TargetCounts.end())
               CallsiteCount = It->second;
           }
           Weight = std::max(CallsiteCount, CalleeEntryCount);
         }
 
-        addProfiledCall(Caller->getFuncName(), Callee->getFuncName(), Weight);
+        addProfiledCall(ContextTracker.getFuncNameFor(Caller),
+                        ContextTracker.getFuncNameFor(Callee), Weight);
       }
     }
 
@@ -136,8 +136,8 @@ public:
   iterator begin() { return Root.Edges.begin(); }
   iterator end() { return Root.Edges.end(); }
   ProfiledCallGraphNode *getEntryNode() { return &Root; }
-  
-  void addProfiledFunction(FunctionId Name) {
+
+  void addProfiledFunction(StringRef Name) {
     if (!ProfiledFunctions.count(Name)) {
       // Link to synthetic root to make sure every node is reachable
       // from root. This does not affect SCC order.
@@ -147,7 +147,7 @@ public:
   }
 
 private:
-  void addProfiledCall(FunctionId CallerName, FunctionId CalleeName,
+  void addProfiledCall(StringRef CallerName, StringRef CalleeName,
                        uint64_t Weight = 0) {
     assert(ProfiledFunctions.count(CallerName));
     auto CalleeIt = ProfiledFunctions.find(CalleeName);
@@ -168,19 +168,19 @@ private:
   }
 
   void addProfiledCalls(const FunctionSamples &Samples) {
-    addProfiledFunction(Samples.getFunction());
+    addProfiledFunction(Samples.getFuncName());
 
     for (const auto &Sample : Samples.getBodySamples()) {
       for (const auto &[Target, Frequency] : Sample.second.getCallTargets()) {
         addProfiledFunction(Target);
-        addProfiledCall(Samples.getFunction(), Target, Frequency);
+        addProfiledCall(Samples.getFuncName(), Target, Frequency);
       }
     }
 
     for (const auto &CallsiteSamples : Samples.getCallsiteSamples()) {
       for (const auto &InlinedSamples : CallsiteSamples.second) {
         addProfiledFunction(InlinedSamples.first);
-        addProfiledCall(Samples.getFunction(), InlinedSamples.first,
+        addProfiledCall(Samples.getFuncName(), InlinedSamples.first,
                         InlinedSamples.second.getHeadSamplesEstimate());
         addProfiledCalls(InlinedSamples.second);
       }
@@ -206,8 +206,7 @@ private:
   }
 
   ProfiledCallGraphNode Root;
-  HashKeyMap<std::unordered_map, FunctionId, ProfiledCallGraphNode>
-      ProfiledFunctions;
+  StringMap<ProfiledCallGraphNode> ProfiledFunctions;
 };
 
 } // end namespace sampleprof

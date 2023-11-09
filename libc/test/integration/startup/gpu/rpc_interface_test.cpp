@@ -11,7 +11,7 @@
 #include "src/__support/RPC/rpc_client.h"
 #include "test/IntegrationTest/test.h"
 
-using namespace LIBC_NAMESPACE;
+using namespace __llvm_libc;
 
 // Test to ensure that we can use aribtrary combinations of sends and recieves
 // as long as they are mirrored.

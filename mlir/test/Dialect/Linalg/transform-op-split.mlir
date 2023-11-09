@@ -1,11 +1,9 @@
-// RUN: mlir-opt %s --transform-interpreter --split-input-file -verify-diagnostics | FileCheck %s
+// RUN: mlir-opt %s --test-transform-dialect-interpreter --split-input-file -verify-diagnostics | FileCheck %s
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1:2 = transform.structured.split %0 after 42 { dimension = 0 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1:2 = transform.structured.split %0 after 42 { dimension = 0 } : !transform.any_op
 }
 
 func.func private @elem(%arg0: f32, %arg1: index, %arg2: index) -> f32
@@ -50,12 +48,10 @@ func.func @one_d_static(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tenso
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1:2 = transform.structured.split %0 after 42 { dimension = 0 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1:2 = transform.structured.split %0 after 42 { dimension = 0 } : !transform.any_op
 }
 
 func.func private @elem(%arg0: f32, %arg1: index, %arg2: index) -> f32
@@ -85,13 +81,11 @@ func.func @one_d_static_overflow(%arg0: tensor<10xf32>, %arg1: tensor<10xf32>) -
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
 }
 
 func.func private @get_size() -> index
@@ -135,13 +129,11 @@ func.func @dynamic(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1:2 = transform.structured.split %0 after 4 { dimension = 0 } : !transform.any_op
-    %2:2 = transform.structured.split %1#1 after 16 { dimension = 1 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1:2 = transform.structured.split %0 after 4 { dimension = 0 } : !transform.any_op
+  %2:2 = transform.structured.split %1#1 after 16 { dimension = 1 } : !transform.any_op
 }
 
 func.func private @elem(%arg0: f32, %arg1: index, %arg2: index) -> f32
@@ -194,24 +186,20 @@ func.func @two_d(%arg0: tensor<10x34xf32>,
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.consumed}) {
-    // expected-error @below {{expects either a dynamic or a static split point to be provided}}
-    %0:2 = "transform.structured.split"(%arg1) { dimension = 1, static_split_point = -9223372036854775808 } : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  // expected-error @below {{expects either a dynamic or a static split point to be provided}}
+  %0:2 = "transform.structured.split"(%arg1) { dimension = 1, static_split_point = -9223372036854775808 } : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
 }
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    // expected-error @below {{expected dynamic split point handle to point to a single-result index-typed op}}
-    transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  // expected-error @below {{expected dynamic split point handle to point to a single-result index-typed op}}
+  transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
 }
 
 func.func private @get_size() -> i64
@@ -232,14 +220,12 @@ func.func @dynamic(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    // expected-error @below {{expected the dynamic split point handle to point to as many operations (0) as the target handle (1)}}
-    transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %1 = transform.structured.match ops{["func.call"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  // expected-error @below {{expected the dynamic split point handle to point to as many operations (0) as the target handle (1)}}
+  transform.structured.split %0 after %1 { dimension = 0 } : !transform.any_op, !transform.any_op
 }
 
 func.func private @get_size() -> i64
@@ -258,13 +244,11 @@ func.func @dynamic(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["func.return"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    // expected-error @below {{only applies to structured ops}}
-    transform.structured.split %0 after 16 { dimension = 1 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["func.return"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  // expected-error @below {{only applies to structured ops}}
+  transform.structured.split %0 after 16 { dimension = 1 } : !transform.any_op
 }
 
 func.func @noop(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100xf32> {
@@ -274,13 +258,11 @@ func.func @noop(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100xf3
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    // expected-error @below {{dimension 1 does not exist in target op}}
-    transform.structured.split %0 after 16 { dimension = 1 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  // expected-error @below {{dimension 1 does not exist in target op}}
+  transform.structured.split %0 after 16 { dimension = 1 } : !transform.any_op
 }
 
 func.func @one_d_static(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tensor<100xf32> {
@@ -298,14 +280,12 @@ func.func @one_d_static(%arg0: tensor<100xf32>, %arg1: tensor<100xf32>) -> tenso
 
 // -----
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    // expected-error @below {{splitting does not produce the second part for a subset of targets}}
-    // expected-note @below {{expected splitting to produce the second part of all or none of the targets}}
-    %1:2 = transform.structured.split %0 after 142 { dimension = 0 } : !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  // expected-error @below {{splitting does not produce the second part for a subset of targets}}
+  // expected-note @below {{expected splitting to produce the second part of all or none of the targets}}
+  %1:2 = transform.structured.split %0 after 142 { dimension = 0 } : !transform.any_op
 }
 
 func.func private @elem(%arg0: f32, %arg1: index, %arg2: index) -> f32

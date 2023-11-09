@@ -937,7 +937,7 @@ public:
       if (isDerivedTypeWithLenParameters(sym))
         TODO(loc, "component with length parameters in structure constructor");
 
-      std::string name = converter.getRecordTypeFieldName(sym);
+      llvm::StringRef name = toStringRef(sym.name());
       // FIXME: type parameters must come from the derived-type-spec
       mlir::Value field = builder.create<fir::FieldIndexOp>(
           loc, fieldTy, name, ty,
@@ -1237,8 +1237,41 @@ public:
         [&](const fir::CharBoxValue &boxchar) -> ExtValue {
           if constexpr (TC1 == Fortran::common::TypeCategory::Character &&
                         TC2 == TC1) {
-            return fir::factory::convertCharacterKind(builder, loc, boxchar,
-                                                      KIND);
+            // Use char_convert. Each code point is translated from a
+            // narrower/wider encoding to the target encoding. For example, 'A'
+            // may be translated from 0x41 : i8 to 0x0041 : i16. The symbol
+            // for euro (0x20AC : i16) may be translated from a wide character
+            // to "0xE2 0x82 0xAC" : UTF-8.
+            mlir::Value bufferSize = boxchar.getLen();
+            auto kindMap = builder.getKindMap();
+            mlir::Value boxCharAddr = boxchar.getAddr();
+            auto fromTy = boxCharAddr.getType();
+            if (auto charTy = fromTy.dyn_cast<fir::CharacterType>()) {
+              // boxchar is a value, not a variable. Turn it into a temporary.
+              // As a value, it ought to have a constant LEN value.
+              assert(charTy.hasConstantLen() && "must have constant length");
+              mlir::Value tmp = builder.createTemporary(loc, charTy);
+              builder.create<fir::StoreOp>(loc, boxCharAddr, tmp);
+              boxCharAddr = tmp;
+            }
+            auto fromBits =
+                kindMap.getCharacterBitsize(fir::unwrapRefType(fromTy)
+                                                .cast<fir::CharacterType>()
+                                                .getFKind());
+            auto toBits = kindMap.getCharacterBitsize(
+                ty.cast<fir::CharacterType>().getFKind());
+            if (toBits < fromBits) {
+              // Scale by relative ratio to give a buffer of the same length.
+              auto ratio = builder.createIntegerConstant(
+                  loc, bufferSize.getType(), fromBits / toBits);
+              bufferSize =
+                  builder.create<mlir::arith::MulIOp>(loc, bufferSize, ratio);
+            }
+            auto dest = builder.create<fir::AllocaOp>(
+                loc, ty, mlir::ValueRange{bufferSize});
+            builder.create<fir::CharConvertOp>(loc, boxCharAddr,
+                                               boxchar.getLen(), dest);
+            return fir::CharBoxValue{dest, boxchar.getLen()};
           } else {
             fir::emitFatalError(
                 loc, "unsupported evaluate::Convert between CHARACTER type "
@@ -1443,7 +1476,7 @@ public:
     for (const Fortran::evaluate::Component *field : list) {
       auto recTy = ty.cast<fir::RecordType>();
       const Fortran::semantics::Symbol &sym = getLastSym(*field);
-      std::string name = converter.getRecordTypeFieldName(sym);
+      llvm::StringRef name = toStringRef(sym.name());
       coorArgs.push_back(builder.create<fir::FieldIndexOp>(
           loc, fldTy, name, recTy, fir::getTypeParams(obj)));
       ty = recTy.getType(name);
@@ -1749,7 +1782,8 @@ public:
   /// Helper to lower intrinsic arguments for inquiry intrinsic.
   ExtValue
   lowerIntrinsicArgumentAsInquired(const Fortran::lower::SomeExpr &expr) {
-    if (Fortran::evaluate::IsAllocatableOrPointerObject(expr))
+    if (Fortran::evaluate::IsAllocatableOrPointerObject(
+            expr, converter.getFoldingContext()))
       return genMutableBoxValue(expr);
     /// Do not create temps for array sections whose properties only need to be
     /// inquired: create a descriptor that will be inquired.
@@ -1884,7 +1918,8 @@ public:
       fir::ArgLoweringRule argRules =
           fir::lowerIntrinsicArgumentAs(*argLowering, arg.index());
       if (argRules.handleDynamicOptional &&
-          Fortran::evaluate::MayBePassedAsAbsentOptional(*expr)) {
+          Fortran::evaluate::MayBePassedAsAbsentOptional(
+              *expr, converter.getFoldingContext())) {
         ExtValue optional = lowerIntrinsicArgumentAsInquired(*expr);
         mlir::Value isPresent = genActualIsPresentTest(builder, loc, optional);
         switch (argRules.lowerAs) {
@@ -2357,7 +2392,8 @@ public:
   std::pair<ExtValue, mlir::Value>
   prepareActualThatMayBeAbsent(const Fortran::lower::SomeExpr &expr) {
     mlir::Location loc = getLoc();
-    if (Fortran::evaluate::IsAllocatableOrPointerObject(expr)) {
+    if (Fortran::evaluate::IsAllocatableOrPointerObject(
+            expr, converter.getFoldingContext())) {
       // Fortran 2018 15.5.2.12 point 1: If unallocated/disassociated,
       // it is as if the argument was absent. The main care here is to
       // not do a copy-in/copy-out because the temp address, even though
@@ -2460,8 +2496,8 @@ public:
         // not passed.
         return {genTempExtAddr(expr), std::nullopt};
       ExtValue baseAddr;
-      if (arg.isOptional() &&
-          Fortran::evaluate::MayBePassedAsAbsentOptional(expr)) {
+      if (arg.isOptional() && Fortran::evaluate::MayBePassedAsAbsentOptional(
+                                  expr, converter.getFoldingContext())) {
         auto [actualArgBind, isPresent] = prepareActualThatMayBeAbsent(expr);
         const ExtValue &actualArg = actualArgBind;
         if (!needsCopy)
@@ -2534,8 +2570,7 @@ public:
             procRef.proc().GetSpecificIntrinsic())
       return genIntrinsicRef(procRef, resultType, *intrinsic);
 
-    if (Fortran::lower::isIntrinsicModuleProcRef(procRef) &&
-        !Fortran::semantics::IsBindCProcedure(*procRef.proc().GetSymbol()))
+    if (Fortran::lower::isIntrinsicModuleProcRef(procRef))
       return genIntrinsicRef(procRef, resultType);
 
     if (isStatementFunctionCall(procRef))
@@ -2596,7 +2631,8 @@ public:
           continue;
         }
         if (fir::isPointerType(argTy) &&
-            !Fortran::evaluate::IsObjectPointer(*expr)) {
+            !Fortran::evaluate::IsObjectPointer(
+                *expr, converter.getFoldingContext())) {
           // Passing a non POINTER actual argument to a POINTER dummy argument.
           // Create a pointer of the dummy argument type and assign the actual
           // argument to it.
@@ -2614,14 +2650,26 @@ public:
         }
         // Passing a POINTER to a POINTER, or an ALLOCATABLE to an ALLOCATABLE.
         fir::MutableBoxValue mutableBox = genMutableBoxValue(*expr);
-        if (fir::isAllocatableType(argTy) && arg.isIntentOut() &&
-            Fortran::semantics::IsBindCProcedure(*procRef.proc().GetSymbol()))
-          Fortran::lower::genDeallocateIfAllocated(converter, mutableBox, loc);
         mlir::Value irBox =
             fir::factory::getMutableIRBox(builder, loc, mutableBox);
         caller.placeInput(arg, irBox);
         if (arg.mayBeModifiedByCall())
           mutableModifiedByCall.emplace_back(std::move(mutableBox));
+        if (fir::isAllocatableType(argTy) && arg.isIntentOut() &&
+            Fortran::semantics::IsBindCProcedure(*procRef.proc().GetSymbol())) {
+          if (mutableBox.isDerived() || mutableBox.isPolymorphic() ||
+              mutableBox.isUnlimitedPolymorphic()) {
+            mlir::Value isAlloc = fir::factory::genIsAllocatedOrAssociatedTest(
+                builder, loc, mutableBox);
+            builder.genIfThen(loc, isAlloc)
+                .genThen([&]() {
+                  Fortran::lower::genDeallocateBox(converter, mutableBox, loc);
+                })
+                .end();
+          } else {
+            Fortran::lower::genDeallocateBox(converter, mutableBox, loc);
+          }
+        }
         continue;
       }
       if (arg.passBy == PassBy::BaseAddress || arg.passBy == PassBy::BoxChar ||
@@ -2711,7 +2759,8 @@ public:
           }
 
         } else if (arg.isOptional() &&
-                   Fortran::evaluate::IsAllocatableOrPointerObject(*expr)) {
+                   Fortran::evaluate::IsAllocatableOrPointerObject(
+                       *expr, converter.getFoldingContext())) {
           // Before lowering to an address, handle the allocatable/pointer
           // actual argument to optional fir.box dummy. It is legal to pass
           // unallocated/disassociated entity to an optional. In this case, an
@@ -2932,20 +2981,7 @@ public:
   }
 
   template <typename A>
-  mlir::Value getIfOverridenExpr(const Fortran::evaluate::Expr<A> &x) {
-    if (const Fortran::lower::ExprToValueMap *map =
-            converter.getExprOverrides()) {
-      Fortran::lower::SomeExpr someExpr = toEvExpr(x);
-      if (auto match = map->find(&someExpr); match != map->end())
-        return match->second;
-    }
-    return mlir::Value{};
-  }
-
-  template <typename A>
   ExtValue gen(const Fortran::evaluate::Expr<A> &x) {
-    if (mlir::Value val = getIfOverridenExpr(x))
-      return val;
     // Whole array symbols or components, and results of transformational
     // functions already have a storage and the scalar expression lowering path
     // is used to not create a new temporary storage.
@@ -2959,8 +2995,6 @@ public:
   }
   template <typename A>
   ExtValue genval(const Fortran::evaluate::Expr<A> &x) {
-    if (mlir::Value val = getIfOverridenExpr(x))
-      return val;
     if (isScalar(x) || Fortran::evaluate::UnwrapWholeSymbolDataRef(x) ||
         inInitializer)
       return std::visit([&](const auto &e) { return genval(e); }, x.u);
@@ -2970,8 +3004,6 @@ public:
   template <int KIND>
   ExtValue genval(const Fortran::evaluate::Expr<Fortran::evaluate::Type<
                       Fortran::common::TypeCategory::Logical, KIND>> &exp) {
-    if (mlir::Value val = getIfOverridenExpr(exp))
-      return val;
     return std::visit([&](const auto &e) { return genval(e); }, exp.u);
   }
 
@@ -3323,7 +3355,8 @@ public:
     setPointerAssignmentBounds(lbounds, ubounds);
     if (rhs.Rank() == 0 ||
         (Fortran::evaluate::UnwrapWholeSymbolOrComponentDataRef(rhs) &&
-         Fortran::evaluate::IsAllocatableOrPointerObject(rhs))) {
+         Fortran::evaluate::IsAllocatableOrPointerObject(
+             rhs, converter.getFoldingContext()))) {
       lowerScalarAssignment(lhs, rhs);
       return;
     }
@@ -3799,7 +3832,7 @@ private:
     return false;
   }
   bool genShapeFromDataRef(const Fortran::evaluate::CoarrayRef &) {
-    TODO(getLoc(), "coarray: reference to a coarray in an expression");
+    TODO(getLoc(), "coarray ref");
     return false;
   }
   bool genShapeFromDataRef(const Fortran::evaluate::Component &x) {
@@ -3933,7 +3966,7 @@ private:
       auto castTo = builder.createConvert(loc, memrefTy, origVal);
       origVal = builder.create<fir::EmboxOp>(loc, eleTy, castTo);
     }
-    mlir::Value val = builder.convertWithSemantics(loc, eleTy, origVal);
+    mlir::Value val = builder.createConvert(loc, eleTy, origVal);
     if (isBoundsSpec()) {
       assert(lbounds.has_value());
       auto lbs = *lbounds;
@@ -4651,7 +4684,8 @@ private:
         fir::ArgLoweringRule argRules =
             fir::lowerIntrinsicArgumentAs(*argLowering, arg.index());
         if (argRules.handleDynamicOptional &&
-            Fortran::evaluate::MayBePassedAsAbsentOptional(*expr)) {
+            Fortran::evaluate::MayBePassedAsAbsentOptional(
+                *expr, converter.getFoldingContext())) {
           // Currently, there is not elemental intrinsic that requires lowering
           // a potentially absent argument to something else than a value (apart
           // from character MAX/MIN that are handled elsewhere.)
@@ -4734,8 +4768,8 @@ private:
       LLVM_DEBUG(expr->AsFortran(llvm::dbgs()
                                  << "argument: " << arg.firArgument << " = [")
                  << "]\n");
-      if (arg.isOptional() &&
-          Fortran::evaluate::MayBePassedAsAbsentOptional(*expr))
+      if (arg.isOptional() && Fortran::evaluate::MayBePassedAsAbsentOptional(
+                                  *expr, converter.getFoldingContext()))
         TODO(loc,
              "passing dynamically optional argument to elemental procedures");
       switch (arg.passBy) {
@@ -5891,8 +5925,8 @@ private:
         fir::valueHasFirAttribute(base, fir::getOptionalAttrName());
     mlir::Type baseType = fir::unwrapRefType(base.getType());
     const bool isBox = baseType.isa<fir::BoxType>();
-    const bool isAllocOrPtr =
-        Fortran::evaluate::IsAllocatableOrPointerObject(expr);
+    const bool isAllocOrPtr = Fortran::evaluate::IsAllocatableOrPointerObject(
+        expr, converter.getFoldingContext());
     mlir::Type arrType = fir::unwrapPassByRefType(baseType);
     mlir::Type eleType = fir::unwrapSequenceType(arrType);
     ExtValue exv = optionalArg;
@@ -6711,8 +6745,7 @@ private:
               },
               [&](const Fortran::evaluate::Component *x) {
                 auto fieldTy = fir::FieldType::get(builder.getContext());
-                std::string name =
-                    converter.getRecordTypeFieldName(getLastSym(*x));
+                llvm::StringRef name = toStringRef(getLastSym(*x).name());
                 if (auto recTy = ty.dyn_cast<fir::RecordType>()) {
                   ty = recTy.getType(name);
                   auto fld = builder.create<fir::FieldIndexOp>(
@@ -7076,7 +7109,7 @@ private:
   }
 
   CC genarr(const Fortran::evaluate::CoarrayRef &x, ComponentPath &components) {
-    TODO(getLoc(), "coarray: reference to a coarray in an expression");
+    TODO(getLoc(), "coarray reference");
   }
 
   CC genarr(const Fortran::evaluate::NamedEntity &x,

@@ -17,16 +17,11 @@
 
 #include "check_assertion.h"
 
-template <class S>
-void test() {
-  S s;
-  S s2;
+int main(int, char**) {
+  std::string s;
+  std::string s2;
   TEST_LIBCPP_ASSERT_FAILURE(s.insert(s2.begin(), 1, 'a'),
                              "string::insert(iterator, n, value) called with an iterator not referring to this string");
-}
-
-int main(int, char**) {
-  test<std::string>();
 
   return 0;
 }

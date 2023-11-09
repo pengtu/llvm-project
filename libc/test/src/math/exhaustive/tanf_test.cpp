@@ -11,11 +11,11 @@
 #include "src/math/tanf.h"
 #include "utils/MPFRWrapper/MPFRUtils.h"
 
-namespace mpfr = LIBC_NAMESPACE::testing::mpfr;
+namespace mpfr = __llvm_libc::testing::mpfr;
 
 using LlvmLibcTanfExhaustiveTest =
     LlvmLibcUnaryOpExhaustiveMathTest<float, mpfr::Operation::Tan,
-                                      LIBC_NAMESPACE::tanf>;
+                                      __llvm_libc::tanf>;
 
 // Range: [0, Inf];
 static constexpr uint32_t POS_START = 0x0000'0000U;

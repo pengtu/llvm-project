@@ -490,9 +490,9 @@ INTERCEPTOR(int, pthread_detach, void *thread) {
   return result;
 }
 
-INTERCEPTOR(void, pthread_exit, void *retval) {
+INTERCEPTOR(int, pthread_exit, void *retval) {
   GetThreadArgRetval().Finish(GetThreadSelf(), retval);
-  REAL(pthread_exit)(retval);
+  return REAL(pthread_exit)(retval);
 }
 
 #  if SANITIZER_INTERCEPT_TRYJOIN

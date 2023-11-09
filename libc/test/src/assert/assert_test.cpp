@@ -14,7 +14,7 @@ extern "C" int close(int);
 
 TEST(LlvmLibcAssert, Enabled) {
   // -1 matches against any signal, which is necessary for now until
-  // LIBC_NAMESPACE::abort() unblocks SIGABRT. Close standard error for the
+  // __llvm_libc::abort() unblocks SIGABRT. Close standard error for the
   // child process so we don't print the assertion failure message.
   EXPECT_DEATH(
       [] {

@@ -18,7 +18,6 @@
 
 using namespace lldb_private;
 using namespace lldb_private::dwarf;
-using namespace lldb_private::plugin::dwarf;
 
 namespace {
 
@@ -373,49 +372,47 @@ std::vector<DWARFDIE> DWARFDIE::GetDeclContextDIEs() const {
   return result;
 }
 
-std::vector<lldb_private::CompilerContext> DWARFDIE::GetDeclContext() const {
-  std::vector<lldb_private::CompilerContext> context;
+void DWARFDIE::GetDeclContext(
+    llvm::SmallVectorImpl<lldb_private::CompilerContext> &context) const {
   const dw_tag_t tag = Tag();
   if (tag == DW_TAG_compile_unit || tag == DW_TAG_partial_unit)
-    return context;
+    return;
   DWARFDIE parent = GetParent();
   if (parent)
-    context = parent.GetDeclContext();
-  auto push_ctx = [&](CompilerContextKind kind, llvm::StringRef name) {
-    context.push_back({kind, ConstString(name)});
-  };
+    parent.GetDeclContext(context);
   switch (tag) {
   case DW_TAG_module:
-    push_ctx(CompilerContextKind::Module, GetName());
+    context.push_back({CompilerContextKind::Module, ConstString(GetName())});
     break;
   case DW_TAG_namespace:
-    push_ctx(CompilerContextKind::Namespace, GetName());
+    context.push_back({CompilerContextKind::Namespace, ConstString(GetName())});
     break;
   case DW_TAG_structure_type:
-    push_ctx(CompilerContextKind::Struct, GetName());
+    context.push_back({CompilerContextKind::Struct, ConstString(GetName())});
     break;
   case DW_TAG_union_type:
-    push_ctx(CompilerContextKind::Union, GetName());
+    context.push_back({CompilerContextKind::Union, ConstString(GetName())});
     break;
   case DW_TAG_class_type:
-    push_ctx(CompilerContextKind::Class, GetName());
+    context.push_back({CompilerContextKind::Class, ConstString(GetName())});
     break;
   case DW_TAG_enumeration_type:
-    push_ctx(CompilerContextKind::Enum, GetName());
+    context.push_back({CompilerContextKind::Enum, ConstString(GetName())});
     break;
   case DW_TAG_subprogram:
-    push_ctx(CompilerContextKind::Function, GetPubname());
+    context.push_back(
+        {CompilerContextKind::Function, ConstString(GetPubname())});
     break;
   case DW_TAG_variable:
-    push_ctx(CompilerContextKind::Variable, GetPubname());
+    context.push_back(
+        {CompilerContextKind::Variable, ConstString(GetPubname())});
     break;
   case DW_TAG_typedef:
-    push_ctx(CompilerContextKind::Typedef, GetName());
+    context.push_back({CompilerContextKind::Typedef, ConstString(GetName())});
     break;
   default:
     break;
   }
-  return context;
 }
 
 DWARFDIE

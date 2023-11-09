@@ -12,7 +12,6 @@
 
 #include "llvm/TableGen/TableGenBackend.h"
 #include "llvm/ADT/Twine.h"
-#include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <cassert>
@@ -41,8 +40,7 @@ static void printLine(raw_ostream &OS, const Twine &Prefix, char Fill,
   OS << Suffix << '\n';
 }
 
-void llvm::emitSourceFileHeader(StringRef Desc, raw_ostream &OS,
-                                const RecordKeeper &Record) {
+void llvm::emitSourceFileHeader(StringRef Desc, raw_ostream &OS) {
   printLine(OS, "/*===- TableGen'erated file ", '-', "*- C++ -*-===*\\");
   StringRef Prefix("|* ");
   StringRef Suffix(" *|");
@@ -57,13 +55,7 @@ void llvm::emitSourceFileHeader(StringRef Desc, raw_ostream &OS,
   } while (Pos < Desc.size());
   printLine(OS, Prefix, ' ', Suffix);
   printLine(OS, Prefix + "Automatically generated file, do not edit!", ' ',
-            Suffix);
-
-  // Print the filename of source file
-  if (!Record.getInputFilename().empty())
-    printLine(
-        OS, Prefix + "From: " + sys::path::filename(Record.getInputFilename()),
-        ' ', Suffix);
+    Suffix);
   printLine(OS, Prefix, ' ', Suffix);
   printLine(OS, "\\*===", '-', "===*/");
   OS << '\n';

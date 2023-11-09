@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Configuration.h"
+#include "Environment.h"
 #include "State.h"
 #include "Types.h"
 
@@ -19,19 +20,18 @@ using namespace ompx;
 
 #pragma omp begin declare target device_type(nohost)
 
-// Weak definitions will be overridden by CGOpenmpRuntimeGPU if enabled.
-[[gnu::weak]] extern const uint32_t __omp_rtl_debug_kind = 0;
-[[gnu::weak]] extern const uint32_t __omp_rtl_assume_no_thread_state = 0;
-[[gnu::weak]] extern const uint32_t __omp_rtl_assume_no_nested_parallelism = 0;
+// defined by CGOpenMPRuntimeGPU
+extern uint32_t __omp_rtl_debug_kind;
+extern uint32_t __omp_rtl_assume_no_thread_state;
+extern uint32_t __omp_rtl_assume_no_nested_parallelism;
 
 // This variable should be visibile to the plugin so we override the default
 // hidden visibility.
-[[gnu::used, gnu::retain, gnu::weak,
-  gnu::visibility("protected")]] DeviceEnvironmentTy
-    CONSTANT(__omp_rtl_device_environment);
+DeviceEnvironmentTy CONSTANT(__omp_rtl_device_environment)
+    __attribute__((used, retain, weak, visibility("protected")));
 
 uint32_t config::getDebugKind() {
-  return __omp_rtl_debug_kind & __omp_rtl_device_environment.DeviceDebugKind;
+  return __omp_rtl_debug_kind & __omp_rtl_device_environment.DebugKind;
 }
 
 uint32_t config::getNumDevices() {
@@ -63,8 +63,8 @@ uint64_t config::getIndirectCallTableSize() {
   return __omp_rtl_device_environment.IndirectCallTableSize;
 }
 
-bool config::isDebugMode(DeviceDebugKind Kind) {
-  return config::getDebugKind() & uint32_t(Kind);
+bool config::isDebugMode(config::DebugKind Kind) {
+  return config::getDebugKind() & Kind;
 }
 
 bool config::mayUseThreadStates() { return !__omp_rtl_assume_no_thread_state; }

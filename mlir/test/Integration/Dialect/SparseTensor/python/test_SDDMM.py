@@ -108,6 +108,7 @@ def build_compile_and_run_SDDMMM(attr: st.EncodingAttr, compiler):
 
     # Invoke the kernel and get numpy output.
     # Built-in bufferization uses in-out buffers.
+    # TODO: replace with inplace comprehensive bufferization.
     engine.invoke("main", mem_out, mem_a, mem_b, mem_c)
 
     # Sanity check on computed result. Only a few elements
@@ -132,15 +133,13 @@ def main():
 
     # CHECK-LABEL: TEST: testSDDMMM
     print("\nTEST: testSDDMMM")
-    count = 0
     with ir.Context() as ctx, ir.Location.unknown():
+        count = 0
         # Loop over various ways to compile and annotate the SDDMM kernel with
         # a *single* sparse tensor. Note that we deliberate do not exhaustively
         # search the full state space to reduce runtime of the test. It is
         # straightforward to adapt the code below to explore more combinations.
-        # For these simple orderings, dim2lvl and lvl2dim are the same.
         levels = [
-            [st.DimLevelType.compressed_nu, st.DimLevelType.singleton],
             [st.DimLevelType.dense, st.DimLevelType.dense],
             [st.DimLevelType.dense, st.DimLevelType.compressed],
             [st.DimLevelType.compressed, st.DimLevelType.dense],
@@ -156,7 +155,7 @@ def main():
                     for iwidth in [32]:
                         for e in [True]:
                             attr = st.EncodingAttr.get(
-                                level, ordering, ordering, pwidth, iwidth
+                                level, ordering, pwidth, iwidth
                             )
                             opt = f"parallelization-strategy=none"
                             compiler = sparse_compiler.SparseCompiler(
@@ -164,7 +163,7 @@ def main():
                             )
                             build_compile_and_run_SDDMMM(attr, compiler)
                             count = count + 1
-    # CHECK: Passed 10 tests
+    # CHECK: Passed 8 tests
     print("Passed ", count, "tests")
 
 

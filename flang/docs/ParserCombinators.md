@@ -8,10 +8,9 @@
 
 # Parser Combinators
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 This document is a primer on Parser Combinators and their use in Flang.

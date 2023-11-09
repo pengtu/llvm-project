@@ -9,7 +9,7 @@
 #include "src/__support/macros/attributes.h"
 #include "src/__support/macros/properties/architectures.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 #ifdef LIBC_TARGET_ARCH_IS_GPU
 struct ErrnoConsumer {
@@ -37,4 +37,4 @@ LIBC_THREAD_LOCAL int __llvmlibc_internal_errno;
 #endif
 } // extern "C"
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

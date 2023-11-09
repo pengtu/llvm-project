@@ -196,9 +196,6 @@ class MockGDBServerResponder:
             return self.vFile(packet)
         if packet.startswith("vRun;"):
             return self.vRun(packet)
-        if packet.startswith("qLaunchGDBServer;"):
-            _, host = packet.partition(";")[2].split(":")
-            return self.qLaunchGDBServer(host)
         if packet.startswith("qLaunchSuccess"):
             return self.qLaunchSuccess()
         if packet.startswith("QEnvironment:"):
@@ -331,9 +328,6 @@ class MockGDBServerResponder:
 
     def vRun(self, packet):
         return ""
-
-    def qLaunchGDBServer(self, host):
-        raise self.UnexpectedPacketException()
 
     def qLaunchSuccess(self):
         return ""

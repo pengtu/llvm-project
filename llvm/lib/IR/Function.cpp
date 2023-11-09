@@ -518,7 +518,15 @@ void Function::stealArgumentListFrom(Function &Src) {
   Src.setValueSubclassData(Src.getSubclassDataFromValue() | (1 << 0));
 }
 
-void Function::deleteBodyImpl(bool ShouldDrop) {
+// dropAllReferences() - This function causes all the subinstructions to "let
+// go" of all references that they are maintaining.  This allows one to
+// 'delete' a whole class at a time, even though there may be circular
+// references... first all references are dropped, and all use counts go to
+// zero.  Then everything is deleted for real.  Note that no operations are
+// valid on an object that has "dropped all references", except operator
+// delete.
+//
+void Function::dropAllReferences() {
   setIsMaterializable(false);
 
   for (BasicBlock &BB : *this)
@@ -529,18 +537,10 @@ void Function::deleteBodyImpl(bool ShouldDrop) {
   while (!BasicBlocks.empty())
     BasicBlocks.begin()->eraseFromParent();
 
+  // Drop uses of any optional data (real or placeholder).
   if (getNumOperands()) {
-    if (ShouldDrop) {
-      // Drop uses of any optional data (real or placeholder).
-      User::dropAllReferences();
-      setNumHungOffUseOperands(0);
-    } else {
-      // The code needs to match Function::allocHungoffUselist().
-      auto *CPN = ConstantPointerNull::get(PointerType::get(getContext(), 0));
-      Op<0>().set(CPN);
-      Op<1>().set(CPN);
-      Op<2>().set(CPN);
-    }
+    User::dropAllReferences();
+    setNumHungOffUseOperands(0);
     setValueSubclassData(getSubclassDataFromValue() & ~0xe);
   }
 

@@ -156,10 +156,6 @@ private:
       });
       CheckOptDict.parse(N);
     });
-    Dict.handle("FastCheckFilter", [&](Node &N) {
-      if (auto FastCheckFilter = scalarValue(N, "FastCheckFilter"))
-        F.FastCheckFilter = *FastCheckFilter;
-    });
     Dict.parse(N);
   }
 

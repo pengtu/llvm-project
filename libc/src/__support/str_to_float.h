@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_STR_TO_FLOAT_H
-#define LLVM_LIBC_SRC___SUPPORT_STR_TO_FLOAT_H
+#ifndef LIBC_SRC_SUPPORT_STR_TO_FLOAT_H
+#define LIBC_SRC_SUPPORT_STR_TO_FLOAT_H
 
 #include "src/__support/CPP/limits.h"
 #include "src/__support/CPP/optional.h"
@@ -25,7 +25,7 @@
 #include "src/__support/str_to_num_result.h"
 #include "src/errno/libc_errno.h" // For ERANGE
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace internal {
 
 template <class T> struct ExpandedFloat {
@@ -1220,9 +1220,9 @@ LIBC_INLINE StrToNumResult<T> strtofloatingpoint(const char *__restrict src) {
         tolower(src[index + 2]) == inf_string[2]) {
       seen_digit = true;
       if (result.get_sign())
-        result = fputil::FPBits<T>(result.neg_inf());
+        result = result.neg_inf();
       else
-        result = fputil::FPBits<T>(result.inf());
+        result = result.inf();
       if (tolower(src[index + 3]) == inf_string[3] &&
           tolower(src[index + 4]) == inf_string[4] &&
           tolower(src[index + 5]) == inf_string[5] &&
@@ -1247,6 +1247,6 @@ LIBC_INLINE StrToNumResult<T> strtofloatingpoint(const char *__restrict src) {
 }
 
 } // namespace internal
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_STR_TO_FLOAT_H
+#endif // LIBC_SRC_SUPPORT_STR_TO_FLOAT_H

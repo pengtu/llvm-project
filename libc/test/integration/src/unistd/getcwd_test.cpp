@@ -15,26 +15,26 @@
 
 #include <stdlib.h> // For malloc and free
 
-using LIBC_NAMESPACE::cpp::string_view;
+using __llvm_libc::cpp::string_view;
 
 TEST_MAIN(int argc, char **argv, char **envp) {
   char buffer[1024];
-  ASSERT_TRUE(string_view(LIBC_NAMESPACE::getenv("PWD")) ==
-              LIBC_NAMESPACE::getcwd(buffer, 1024));
+  ASSERT_TRUE(string_view(__llvm_libc::getenv("PWD")) ==
+              __llvm_libc::getcwd(buffer, 1024));
 
   // nullptr buffer
-  char *cwd = LIBC_NAMESPACE::getcwd(nullptr, 0);
-  ASSERT_TRUE(string_view(LIBC_NAMESPACE::getenv("PWD")) == cwd);
+  char *cwd = __llvm_libc::getcwd(nullptr, 0);
+  ASSERT_TRUE(string_view(__llvm_libc::getenv("PWD")) == cwd);
   free(cwd);
 
   // Bad size
-  cwd = LIBC_NAMESPACE::getcwd(buffer, 0);
+  cwd = __llvm_libc::getcwd(buffer, 0);
   ASSERT_TRUE(cwd == nullptr);
   ASSERT_EQ(libc_errno, EINVAL);
   libc_errno = 0;
 
   // Insufficient size
-  cwd = LIBC_NAMESPACE::getcwd(buffer, 2);
+  cwd = __llvm_libc::getcwd(buffer, 2);
   ASSERT_TRUE(cwd == nullptr);
   int err = libc_errno;
   ASSERT_EQ(err, ERANGE);

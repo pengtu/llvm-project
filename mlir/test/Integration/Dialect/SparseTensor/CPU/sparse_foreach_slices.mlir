@@ -24,27 +24,31 @@
 // TODO: support slices on lib path
 
 #CSR = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ]
 }>
 
 #CSR_SLICE = #sparse_tensor.encoding<{
-  map = (d0 : #sparse_tensor<slice(1, 4, 1)>, d1 : #sparse_tensor<slice(1, 4, 2)>) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ],
+  dimSlices = [ (1, 4, 1), (1, 4, 2) ]
 }>
 
 #CSR_SLICE_DYN = #sparse_tensor.encoding<{
-  map = (d0 : #sparse_tensor<slice(?, ?, ?)>, d1 : #sparse_tensor<slice(?, ?, ?)>) -> (d0 : dense, d1 : compressed)
+  lvlTypes = [ "dense", "compressed" ],
+  dimSlices = [ (?, ?, ?), (?, ?, ?) ]
 }>
 
 #COO = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ]
 }>
 
 #COO_SLICE = #sparse_tensor.encoding<{
-  map = (d0 : #sparse_tensor<slice(1, 4, 1)>, d1 : #sparse_tensor<slice(1, 4, 2)>) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ],
+  dimSlices = [ (1, 4, 1), (1, 4, 2) ]
 }>
 
 #COO_SLICE_DYN = #sparse_tensor.encoding<{
-  map = (d0 : #sparse_tensor<slice(?, ?, ?)>, d1 : #sparse_tensor<slice(?, ?, ?)>) -> (d0 : compressed(nonunique), d1 : singleton)
+  lvlTypes = [ "compressed_nu", "singleton" ],
+  dimSlices = [ (?, ?, ?), (?, ?, ?) ]
 }>
 
 

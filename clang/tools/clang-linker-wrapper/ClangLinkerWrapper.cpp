@@ -423,9 +423,8 @@ Expected<StringRef> clang(ArrayRef<StringRef> InputFiles, const ArgList &Args) {
     CmdArgs.push_back(Args.MakeArgString("--cuda-path=" + CudaBinaryPath));
 
   for (StringRef Arg : Args.getAllArgValues(OPT_ptxas_arg))
-    llvm::copy(
-        SmallVector<StringRef>({"-Xcuda-ptxas", Args.MakeArgString(Arg)}),
-        std::back_inserter(CmdArgs));
+    llvm::copy(SmallVector<StringRef>({"-Xcuda-ptxas", Arg}),
+               std::back_inserter(CmdArgs));
 
   for (StringRef Arg : Args.getAllArgValues(OPT_linker_arg_EQ))
     CmdArgs.push_back(Args.MakeArgString("-Wl," + Arg));
@@ -526,11 +525,10 @@ std::unique_ptr<lto::LTO> createLTO(
 
   Conf.CPU = Arch.str();
   Conf.Options = codegen::InitTargetOptionsFromCodeGenFlags(Triple);
-  Conf.Freestanding = true;
 
   StringRef OptLevel = Args.getLastArgValue(OPT_opt_level, "O2");
   Conf.MAttrs = Features;
-  std::optional<CodeGenOptLevel> CGOptLevelOrNone =
+  std::optional<CodeGenOpt::Level> CGOptLevelOrNone =
       CodeGenOpt::parseLevel(OptLevel[1]);
   assert(CGOptLevelOrNone && "Invalid optimization level");
   Conf.CGOptLevel = *CGOptLevelOrNone;
@@ -571,9 +569,8 @@ std::unique_ptr<lto::LTO> createLTO(
     };
   }
   Conf.PostOptModuleHook = Hook;
-  Conf.CGFileType = (Triple.isNVPTX() || SaveTemps)
-                        ? CodeGenFileType::AssemblyFile
-                        : CodeGenFileType::ObjectFile;
+  Conf.CGFileType =
+      (Triple.isNVPTX() || SaveTemps) ? CGFT_AssemblyFile : CGFT_ObjectFile;
 
   // TODO: Handle remark files
   Conf.HasWholeProgramVisibility = Args.hasArg(OPT_whole_program);
@@ -597,7 +594,6 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
   StringRef Arch = Args.getLastArgValue(OPT_arch_EQ);
 
   SmallVector<OffloadFile, 4> BitcodeInputFiles;
-  DenseSet<StringRef> StrongResolutions;
   DenseSet<StringRef> UsedInRegularObj;
   DenseSet<StringRef> UsedInSharedLib;
   BumpPtrAllocator Alloc;
@@ -611,18 +607,6 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
     file_magic Type = identify_magic(Buffer.getBuffer());
     switch (Type) {
     case file_magic::bitcode: {
-      Expected<IRSymtabFile> IRSymtabOrErr = readIRSymtab(Buffer);
-      if (!IRSymtabOrErr)
-        return IRSymtabOrErr.takeError();
-
-      // Check for any strong resolutions we need to preserve.
-      for (unsigned I = 0; I != IRSymtabOrErr->Mods.size(); ++I) {
-        for (const auto &Sym : IRSymtabOrErr->TheReader.module_symbols(I)) {
-          if (!Sym.isFormatSpecific() && Sym.isGlobal() && !Sym.isWeak() &&
-              !Sym.isUndefined())
-            StrongResolutions.insert(Saver.save(Sym.Name));
-        }
-      }
       BitcodeInputFiles.emplace_back(std::move(File));
       continue;
     }
@@ -711,7 +695,6 @@ Error linkBitcodeFiles(SmallVectorImpl<OffloadFile> &InputFiles,
       // it is undefined or another definition has already been used.
       Res.Prevailing =
           !Sym.isUndefined() &&
-          !(Sym.isWeak() && StrongResolutions.contains(Sym.getName())) &&
           PrevailingSymbols.insert(Saver.save(Sym.getName())).second;
 
       // We need LTO to preseve the following global symbols:
@@ -826,7 +809,7 @@ Expected<StringRef> writeOffloadFile(const OffloadFile &File) {
 
 // Compile the module to an object file using the appropriate target machine for
 // the host triple.
-Expected<StringRef> compileModule(Module &M, OffloadKind Kind) {
+Expected<StringRef> compileModule(Module &M) {
   llvm::TimeTraceScope TimeScope("Compile module");
   std::string Msg;
   const Target *T = TargetRegistry::lookupTarget(M.getTargetTriple(), Msg);
@@ -845,10 +828,8 @@ Expected<StringRef> compileModule(Module &M, OffloadKind Kind) {
     M.setDataLayout(TM->createDataLayout());
 
   int FD = -1;
-  auto TempFileOrErr =
-      createOutputFile(sys::path::filename(ExecutableName) + "." +
-                           getOffloadKindName(Kind) + ".image.wrapper",
-                       "o");
+  auto TempFileOrErr = createOutputFile(
+      sys::path::filename(ExecutableName) + ".image.wrapper", "o");
   if (!TempFileOrErr)
     return TempFileOrErr.takeError();
   if (std::error_code EC = sys::fs::openFileForWrite(*TempFileOrErr, FD))
@@ -859,8 +840,7 @@ Expected<StringRef> compileModule(Module &M, OffloadKind Kind) {
   legacy::PassManager CodeGenPasses;
   TargetLibraryInfoImpl TLII(Triple(M.getTargetTriple()));
   CodeGenPasses.add(new TargetLibraryInfoWrapperPass(TLII));
-  if (TM->addPassesToEmitFile(CodeGenPasses, *OS, nullptr,
-                              CodeGenFileType::ObjectFile))
+  if (TM->addPassesToEmitFile(CodeGenPasses, *OS, nullptr, CGFT_ObjectFile))
     return createStringError(inconvertibleErrorCode(),
                              "Failed to execute host backend");
   CodeGenPasses.run(M);
@@ -920,7 +900,7 @@ wrapDeviceImages(ArrayRef<std::unique_ptr<MemoryBuffer>> Buffers,
     WriteBitcodeToFile(M, OS);
   }
 
-  auto FileOrErr = compileModule(M, Kind);
+  auto FileOrErr = compileModule(M);
   if (!FileOrErr)
     return FileOrErr.takeError();
   return *FileOrErr;

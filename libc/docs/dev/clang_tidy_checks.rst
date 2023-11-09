@@ -30,19 +30,19 @@ implementation-in-namespace
 ---------------------------
 
 It is part of our implementation standards that all implementation pieces live
-under the ``LIBC_NAMESPACE`` namespace. This prevents pollution of the global
+under the ``__llvm_libc`` namespace. This prevents pollution of the global
 namespace. Without a formal check to ensure this, an implementation might
 compile and pass unit tests, but not produce a usable libc function.
 
 This check that ensures any function call resolves to a function within the
-``LIBC_NAMESPACE`` namespace.
+``__llvm_libc`` namespace.
 
 .. code-block:: c++
 
     // Correct: implementation inside the correct namespace.
-    namespace LIBC_NAMESPACE {
+    namespace __llvm_libc {
         void LLVM_LIBC_ENTRYPOINT(strcpy)(char *dest, const char *src) {}
-        // Namespaces within LIBC_NAMESPACE namespace are allowed.
+        // Namespaces within __llvm_libc namespace are allowed.
         namespace inner{
             int localVar = 0;
         }
@@ -67,7 +67,7 @@ creates some uncertainty about which library a call resolves to especially when
 a public header with non-namespaced functions like ``string.h`` is included.
 
 This check ensures any function call resolves to a function within the
-LIBC_NAMESPACE namespace.
+__llvm_libc namespace.
 
 There are exceptions for the following functions: 
 ``__errno_location`` so that ``errno`` can be set;
@@ -76,10 +76,10 @@ are always external and can be intercepted.
 
 .. code-block:: c++
 
-    namespace LIBC_NAMESPACE {
+    namespace __llvm_libc {
 
     // Allow calls with the fully qualified name.
-    LIBC_NAMESPACE::strlen("hello");
+    __llvm_libc::strlen("hello");
 
     // Allow calls to compiler provided functions.
     (void)__builtin_abs(-1);
@@ -93,4 +93,4 @@ are always external and can be intercepted.
     // Allow calling into specific global functions (explained above)
     ::malloc(10);
 
-    } // namespace LIBC_NAMESPACE
+    } // namespace __llvm_libc

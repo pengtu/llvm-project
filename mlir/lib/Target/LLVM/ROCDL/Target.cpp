@@ -44,7 +44,6 @@
 #include "llvm/TargetParser/TargetParser.h"
 
 #include <cstdlib>
-#include <optional>
 
 using namespace mlir;
 using namespace mlir::ROCDL;
@@ -61,10 +60,6 @@ public:
   std::optional<SmallVector<char, 0>>
   serializeToObject(Attribute attribute, Operation *module,
                     const gpu::TargetOptions &options) const;
-
-  Attribute createObject(Attribute attribute,
-                         const SmallVector<char, 0> &object,
-                         const gpu::TargetOptions &options) const;
 };
 } // namespace
 
@@ -159,15 +154,18 @@ LogicalResult SerializeGPUModuleBase::appendStandardLibs() {
 }
 
 std::optional<SmallVector<std::unique_ptr<llvm::Module>>>
-SerializeGPUModuleBase::loadBitcodeFiles(llvm::Module &module) {
+SerializeGPUModuleBase::loadBitcodeFiles(llvm::Module &module,
+                                         llvm::TargetMachine &targetMachine) {
   SmallVector<std::unique_ptr<llvm::Module>> bcFiles;
-  if (failed(loadBitcodeFilesFromList(module.getContext(), fileList, bcFiles,
-                                      true)))
+  if (failed(loadBitcodeFilesFromList(module.getContext(), targetMachine,
+                                      fileList, bcFiles, true)))
     return std::nullopt;
   return std::move(bcFiles);
 }
 
-LogicalResult SerializeGPUModuleBase::handleBitcodeFile(llvm::Module &module) {
+LogicalResult
+SerializeGPUModuleBase::handleBitcodeFile(llvm::Module &module,
+                                          llvm::TargetMachine &targetMachine) {
   // Some ROCM builds don't strip this like they should
   if (auto *openclVersion = module.getNamedMetadata("opencl.ocl.version"))
     module.eraseNamedMetadata(openclVersion);
@@ -177,10 +175,8 @@ LogicalResult SerializeGPUModuleBase::handleBitcodeFile(llvm::Module &module) {
   return success();
 }
 
-void SerializeGPUModuleBase::handleModulePreLink(llvm::Module &module) {
-  [[maybe_unused]] std::optional<llvm::TargetMachine *> targetMachine =
-      getOrCreateTargetMachine();
-  assert(targetMachine && "expect a TargetMachine");
+void SerializeGPUModuleBase::handleModulePreLink(
+    llvm::Module &module, llvm::TargetMachine &targetMachine) {
   addControlVariables(module, target.hasWave64(), target.hasDaz(),
                       target.hasFiniteOnly(), target.hasUnsafeMath(),
                       target.hasFastMath(), target.hasCorrectSqrt(),
@@ -332,7 +328,8 @@ public:
   compileToBinary(const std::string &serializedISA);
 
   std::optional<SmallVector<char, 0>>
-  moduleToObject(llvm::Module &llvmModule) override;
+  moduleToObject(llvm::Module &llvmModule,
+                 llvm::TargetMachine &targetMachine) override;
 
 private:
   // Target options.
@@ -376,8 +373,9 @@ AMDGPUSerializer::compileToBinary(const std::string &serializedISA) {
   }
 
   // Create a temp file for HSA code object.
+  int tempHsacoFD = -1;
   SmallString<128> tempHsacoFilename;
-  if (llvm::sys::fs::createTemporaryFile("kernel", "hsaco",
+  if (llvm::sys::fs::createTemporaryFile("kernel", "hsaco", tempHsacoFD,
                                          tempHsacoFilename)) {
     getOperation().emitError()
         << "Failed to create a temporary file for the HSA code object.";
@@ -396,21 +394,21 @@ AMDGPUSerializer::compileToBinary(const std::string &serializedISA) {
   }
 
   // Load the HSA code object.
-  auto hsacoFile =
-      llvm::MemoryBuffer::getFile(tempHsacoFilename, /*IsText=*/false);
+  auto hsacoFile = openInputFile(tempHsacoFilename);
   if (!hsacoFile) {
     getOperation().emitError()
         << "Failed to read the HSA code object from the temp file.";
     return std::nullopt;
   }
 
-  StringRef buffer = (*hsacoFile)->getBuffer();
+  StringRef buffer = hsacoFile->getBuffer();
 
   return SmallVector<char, 0>(buffer.begin(), buffer.end());
 }
 
 std::optional<SmallVector<char, 0>>
-AMDGPUSerializer::moduleToObject(llvm::Module &llvmModule) {
+AMDGPUSerializer::moduleToObject(llvm::Module &llvmModule,
+                                 llvm::TargetMachine &targetMachine) {
   // Return LLVM IR if the compilation target is offload.
 #define DEBUG_TYPE "serialize-to-llvm"
   LLVM_DEBUG({
@@ -419,20 +417,12 @@ AMDGPUSerializer::moduleToObject(llvm::Module &llvmModule) {
                  << llvmModule << "\n";
   });
 #undef DEBUG_TYPE
-  if (targetOptions.getCompilationTarget() == gpu::CompilationTarget::Offload)
-    return SerializeGPUModuleBase::moduleToObject(llvmModule);
-
-  std::optional<llvm::TargetMachine *> targetMachine =
-      getOrCreateTargetMachine();
-  if (!targetMachine) {
-    getOperation().emitError() << "Target Machine unavailable for triple "
-                               << triple << ", can't compile with LLVM\n";
-    return std::nullopt;
-  }
+  if (targetOptions.getCompilationTarget() == gpu::TargetOptions::offload)
+    return SerializeGPUModuleBase::moduleToObject(llvmModule, targetMachine);
 
   // Translate the Module to ISA.
   std::optional<std::string> serializedISA =
-      translateToISA(llvmModule, **targetMachine);
+      translateToISA(llvmModule, targetMachine);
   if (!serializedISA) {
     getOperation().emitError() << "Failed translating the module to ISA.";
     return std::nullopt;
@@ -444,7 +434,7 @@ AMDGPUSerializer::moduleToObject(llvm::Module &llvmModule) {
   });
 #undef DEBUG_TYPE
   // Return ISA assembly code if the compilation target is assembly.
-  if (targetOptions.getCompilationTarget() == gpu::CompilationTarget::Assembly)
+  if (targetOptions.getCompilationTarget() == gpu::TargetOptions::assembly)
     return SmallVector<char, 0>(serializedISA->begin(), serializedISA->end());
 
   // Compile to binary.
@@ -472,17 +462,4 @@ std::optional<SmallVector<char, 0>> ROCDLTargetAttrImpl::serializeToObject(
                     "building LLVM.");
   return std::nullopt;
 #endif // MLIR_ROCM_CONVERSIONS_ENABLED == 1
-}
-
-Attribute
-ROCDLTargetAttrImpl::createObject(Attribute attribute,
-                                  const SmallVector<char, 0> &object,
-                                  const gpu::TargetOptions &options) const {
-  gpu::CompilationTarget format = options.getCompilationTarget();
-  Builder builder(attribute.getContext());
-  return builder.getAttr<gpu::ObjectAttr>(
-      attribute,
-      format > gpu::CompilationTarget::Binary ? gpu::CompilationTarget::Binary
-                                              : format,
-      builder.getStringAttr(StringRef(object.data(), object.size())), nullptr);
 }

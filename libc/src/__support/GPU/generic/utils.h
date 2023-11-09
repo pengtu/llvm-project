@@ -6,14 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_GPU_GENERIC_IO_H
-#define LLVM_LIBC_SRC___SUPPORT_GPU_GENERIC_IO_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_GPU_GENERIC_IO_H
+#define LLVM_LIBC_SRC_SUPPORT_GPU_GENERIC_IO_H
 
 #include "src/__support/common.h"
 
 #include <stdint.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace gpu {
 
 constexpr const uint64_t LANE_SIZE = 1;
@@ -73,9 +73,7 @@ LIBC_INLINE uint64_t processor_clock() { return 0; }
 
 LIBC_INLINE uint64_t fixed_frequency_clock() { return 0; }
 
-[[noreturn]] LIBC_INLINE void end_program() { __builtin_unreachable(); }
-
 } // namespace gpu
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif

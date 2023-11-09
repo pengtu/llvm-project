@@ -1519,17 +1519,19 @@ public:
   }
 };
 
-enum class CXXConstructionKind {
-  Complete,
-  NonVirtualBase,
-  VirtualBase,
-  Delegating
-};
-
 /// Represents a call to a C++ constructor.
 class CXXConstructExpr : public Expr {
   friend class ASTStmtReader;
 
+public:
+  enum ConstructionKind {
+    CK_Complete,
+    CK_NonVirtualBase,
+    CK_VirtualBase,
+    CK_Delegating
+  };
+
+private:
   /// A pointer to the constructor which will be ultimately called.
   CXXConstructorDecl *Constructor;
 
@@ -1565,7 +1567,7 @@ protected:
                    CXXConstructorDecl *Ctor, bool Elidable,
                    ArrayRef<Expr *> Args, bool HadMultipleCandidates,
                    bool ListInitialization, bool StdInitListInitialization,
-                   bool ZeroInitialization, CXXConstructionKind ConstructKind,
+                   bool ZeroInitialization, ConstructionKind ConstructKind,
                    SourceRange ParenOrBraceRange);
 
   /// Build an empty C++ construction expression.
@@ -1584,7 +1586,7 @@ public:
          CXXConstructorDecl *Ctor, bool Elidable, ArrayRef<Expr *> Args,
          bool HadMultipleCandidates, bool ListInitialization,
          bool StdInitListInitialization, bool ZeroInitialization,
-         CXXConstructionKind ConstructKind, SourceRange ParenOrBraceRange);
+         ConstructionKind ConstructKind, SourceRange ParenOrBraceRange);
 
   /// Create an empty C++ construction expression.
   static CXXConstructExpr *CreateEmpty(const ASTContext &Ctx, unsigned NumArgs);
@@ -1638,12 +1640,11 @@ public:
 
   /// Determine whether this constructor is actually constructing
   /// a base class (rather than a complete object).
-  CXXConstructionKind getConstructionKind() const {
-    return static_cast<CXXConstructionKind>(
-        CXXConstructExprBits.ConstructionKind);
+  ConstructionKind getConstructionKind() const {
+    return static_cast<ConstructionKind>(CXXConstructExprBits.ConstructionKind);
   }
-  void setConstructionKind(CXXConstructionKind CK) {
-    CXXConstructExprBits.ConstructionKind = llvm::to_underlying(CK);
+  void setConstructionKind(ConstructionKind CK) {
+    CXXConstructExprBits.ConstructionKind = CK;
   }
 
   using arg_iterator = ExprIterator;
@@ -1726,12 +1727,10 @@ private:
   SourceLocation Loc;
 
   /// Whether this is the construction of a virtual base.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned ConstructsVirtualBase : 1;
 
   /// Whether the constructor is inherited from a virtual base class of the
   /// class that we construct.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned InheritedFromVirtualBase : 1;
 
 public:
@@ -1760,9 +1759,9 @@ public:
   /// Determine whether this constructor is actually constructing
   /// a base class (rather than a complete object).
   bool constructsVBase() const { return ConstructsVirtualBase; }
-  CXXConstructionKind getConstructionKind() const {
-    return ConstructsVirtualBase ? CXXConstructionKind::VirtualBase
-                                 : CXXConstructionKind::NonVirtualBase;
+  CXXConstructExpr::ConstructionKind getConstructionKind() const {
+    return ConstructsVirtualBase ? CXXConstructExpr::CK_VirtualBase
+                                 : CXXConstructExpr::CK_NonVirtualBase;
   }
 
   /// Determine whether the inherited constructor is inherited from a
@@ -2206,20 +2205,6 @@ public:
   }
 };
 
-enum class CXXNewInitializationStyle {
-  /// New-expression has no initializer as written.
-  None,
-
-  /// New-expression has no written initializer, but has an implicit one.
-  Implicit,
-
-  /// New-expression has a C++98 paren-delimited initializer.
-  Call,
-
-  /// New-expression has a C++11 list-initializer.
-  List
-};
-
 /// Represents a new-expression for memory allocation and constructor
 /// calls, e.g: "new CXXNewExpr(foo)".
 class CXXNewExpr final
@@ -2273,12 +2258,25 @@ class CXXNewExpr final
     return isParenTypeId();
   }
 
+public:
+  enum InitializationStyle {
+    /// New-expression has no initializer as written.
+    NoInit,
+
+    /// New-expression has a C++98 paren-delimited initializer.
+    CallInit,
+
+    /// New-expression has a C++11 list-initializer.
+    ListInit
+  };
+
+private:
   /// Build a c++ new expression.
   CXXNewExpr(bool IsGlobalNew, FunctionDecl *OperatorNew,
              FunctionDecl *OperatorDelete, bool ShouldPassAlignment,
              bool UsualArrayDeleteWantsSize, ArrayRef<Expr *> PlacementArgs,
              SourceRange TypeIdParens, std::optional<Expr *> ArraySize,
-             CXXNewInitializationStyle InitializationStyle, Expr *Initializer,
+             InitializationStyle InitializationStyle, Expr *Initializer,
              QualType Ty, TypeSourceInfo *AllocatedTypeInfo, SourceRange Range,
              SourceRange DirectInitRange);
 
@@ -2293,7 +2291,7 @@ public:
          FunctionDecl *OperatorDelete, bool ShouldPassAlignment,
          bool UsualArrayDeleteWantsSize, ArrayRef<Expr *> PlacementArgs,
          SourceRange TypeIdParens, std::optional<Expr *> ArraySize,
-         CXXNewInitializationStyle InitializationStyle, Expr *Initializer,
+         InitializationStyle InitializationStyle, Expr *Initializer,
          QualType Ty, TypeSourceInfo *AllocatedTypeInfo, SourceRange Range,
          SourceRange DirectInitRange);
 
@@ -2389,20 +2387,15 @@ public:
 
   /// Whether this new-expression has any initializer at all.
   bool hasInitializer() const {
-    switch (getInitializationStyle()) {
-    case CXXNewInitializationStyle::None:
-      return false;
-    case CXXNewInitializationStyle::Implicit:
-    case CXXNewInitializationStyle::Call:
-    case CXXNewInitializationStyle::List:
-      return true;
-    }
+    return CXXNewExprBits.StoredInitializationStyle > 0;
   }
 
   /// The kind of initializer this new-expression has.
-  CXXNewInitializationStyle getInitializationStyle() const {
-    return static_cast<CXXNewInitializationStyle>(
-        CXXNewExprBits.StoredInitializationStyle);
+  InitializationStyle getInitializationStyle() const {
+    if (CXXNewExprBits.StoredInitializationStyle == 0)
+      return NoInit;
+    return static_cast<InitializationStyle>(
+        CXXNewExprBits.StoredInitializationStyle - 1);
   }
 
   /// The initializer of this new-expression.
@@ -2617,7 +2610,6 @@ class CXXPseudoDestructorExpr : public Expr {
 
   /// Whether the operator was an arrow ('->'); otherwise, it was a
   /// period ('.').
-  LLVM_PREFERRED_TYPE(bool)
   bool IsArrow : 1;
 
   /// The location of the '.' or '->' operator.
@@ -2847,7 +2839,6 @@ public:
 /// \endcode
 class ArrayTypeTraitExpr : public Expr {
   /// The trait. An ArrayTypeTrait enum in MSVC compat unsigned.
-  LLVM_PREFERRED_TYPE(ArrayTypeTrait)
   unsigned ATT : 2;
 
   /// The value of the type trait. Unspecified if dependent.
@@ -2918,11 +2909,9 @@ public:
 /// \endcode
 class ExpressionTraitExpr : public Expr {
   /// The trait. A ExpressionTrait enum in MSVC compatible unsigned.
-  LLVM_PREFERRED_TYPE(ExpressionTrait)
   unsigned ET : 31;
 
   /// The value of the type trait. Unspecified if dependent.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned Value : 1;
 
   /// The location of the type trait keyword.
@@ -3202,8 +3191,7 @@ class UnresolvedLookupExpr final
                        const DeclarationNameInfo &NameInfo, bool RequiresADL,
                        bool Overloaded,
                        const TemplateArgumentListInfo *TemplateArgs,
-                       UnresolvedSetIterator Begin, UnresolvedSetIterator End,
-                       bool KnownDependent);
+                       UnresolvedSetIterator Begin, UnresolvedSetIterator End);
 
   UnresolvedLookupExpr(EmptyShell Empty, unsigned NumResults,
                        bool HasTemplateKWAndArgsInfo);
@@ -3223,15 +3211,12 @@ public:
          const DeclarationNameInfo &NameInfo, bool RequiresADL, bool Overloaded,
          UnresolvedSetIterator Begin, UnresolvedSetIterator End);
 
-  // After canonicalization, there may be dependent template arguments in
-  // CanonicalConverted But none of Args is dependent. When any of
-  // CanonicalConverted dependent, KnownDependent is true.
   static UnresolvedLookupExpr *
   Create(const ASTContext &Context, CXXRecordDecl *NamingClass,
          NestedNameSpecifierLoc QualifierLoc, SourceLocation TemplateKWLoc,
          const DeclarationNameInfo &NameInfo, bool RequiresADL,
          const TemplateArgumentListInfo *Args, UnresolvedSetIterator Begin,
-         UnresolvedSetIterator End, bool KnownDependent);
+         UnresolvedSetIterator End);
 
   static UnresolvedLookupExpr *CreateEmpty(const ASTContext &Context,
                                            unsigned NumResults,

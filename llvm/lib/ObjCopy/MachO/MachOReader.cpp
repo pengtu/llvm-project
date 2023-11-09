@@ -67,8 +67,7 @@ Expected<std::vector<std::unique_ptr<Section>>> static extractSections(
                                                         LoadCmd.C.cmdsize);
        Curr < End; ++Curr) {
     SectionType Sec;
-    memcpy((void *)&Sec, reinterpret_cast<const char *>(Curr),
-           sizeof(SectionType));
+    memcpy((void *)&Sec, Curr, sizeof(SectionType));
 
     if (MachOObj.isLittleEndian() != sys::IsLittleEndianHost)
       MachO::swapStruct(Sec);

@@ -36,9 +36,10 @@ using namespace mlir::scf;
 /// type of the corresponding basic block argument of the loop.
 /// Note: This function handles only simple cases. Expand as needed.
 static bool isShapePreserving(ForOp forOp, int64_t arg) {
-  assert(arg < static_cast<int64_t>(forOp.getNumResults()) &&
+  auto yieldOp = cast<YieldOp>(forOp.getBody()->getTerminator());
+  assert(arg < static_cast<int64_t>(yieldOp.getResults().size()) &&
          "arg is out of bounds");
-  Value value = forOp.getYieldedValues()[arg];
+  Value value = yieldOp.getResults()[arg];
   while (value) {
     if (value == forOp.getRegionIterArgs()[arg])
       return true;
@@ -47,15 +48,16 @@ static bool isShapePreserving(ForOp forOp, int64_t arg) {
       return false;
 
     using tensor::InsertSliceOp;
-    value = llvm::TypeSwitch<Operation *, Value>(opResult.getOwner())
-                .template Case<InsertSliceOp>(
-                    [&](InsertSliceOp op) { return op.getDest(); })
-                .template Case<ForOp>([&](ForOp forOp) {
-                  return isShapePreserving(forOp, opResult.getResultNumber())
-                             ? forOp.getInitArgs()[opResult.getResultNumber()]
-                             : Value();
-                })
-                .Default([&](auto op) { return Value(); });
+    value =
+        llvm::TypeSwitch<Operation *, Value>(opResult.getOwner())
+            .template Case<InsertSliceOp>(
+                [&](InsertSliceOp op) { return op.getDest(); })
+            .template Case<ForOp>([&](ForOp forOp) {
+              return isShapePreserving(forOp, opResult.getResultNumber())
+                         ? forOp.getIterOperands()[opResult.getResultNumber()]
+                         : Value();
+            })
+            .Default([&](auto op) { return Value(); });
   }
   return false;
 }
@@ -98,7 +100,7 @@ struct DimOfIterArgFolder : public OpRewritePattern<OpTy> {
     if (!isShapePreserving(forOp, blockArg.getArgNumber() - 1))
       return failure();
 
-    Value initArg = forOp.getTiedLoopInit(blockArg)->get();
+    Value initArg = forOp.getOpOperandForRegionIterArg(blockArg).get();
     rewriter.updateRootInPlace(
         dimOp, [&]() { dimOp.getSourceMutable().assign(initArg); });
 
@@ -142,7 +144,7 @@ struct DimOfLoopResultFolder : public OpRewritePattern<OpTy> {
     if (!isShapePreserving(forOp, resultNumber))
       return failure();
     rewriter.updateRootInPlace(dimOp, [&]() {
-      dimOp.getSourceMutable().assign(forOp.getInitArgs()[resultNumber]);
+      dimOp.getSourceMutable().assign(forOp.getIterOperands()[resultNumber]);
     });
     return success();
   }

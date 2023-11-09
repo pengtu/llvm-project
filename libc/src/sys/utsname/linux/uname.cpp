@@ -15,10 +15,10 @@
 #include <sys/syscall.h> // For syscall numbers.
 #include <sys/utsname.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, uname, (struct utsname * name)) {
-  int ret = LIBC_NAMESPACE::syscall_impl<int>(SYS_uname, name);
+  int ret = __llvm_libc::syscall_impl<int>(SYS_uname, name);
 
   if (ret >= 0)
     return 1;
@@ -26,4 +26,4 @@ LLVM_LIBC_FUNCTION(int, uname, (struct utsname * name)) {
   return -1;
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

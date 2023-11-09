@@ -72,6 +72,9 @@ public:
   void emitAbbrevs(const std::vector<std::unique_ptr<DIEAbbrev>> &Abbrevs,
                    unsigned DwarfVersion) override;
 
+  /// Emit DIE containing warnings.
+  void emitPaperTrailWarningsDie(DIE &Die) override;
+
   /// Emit contents of section SecName From Obj.
   void emitSectionContents(StringRef SecData, StringRef SecName) override;
 
@@ -163,7 +166,7 @@ public:
                StringRef Bytes) override;
 
   /// Emit DWARF debug names.
-  void emitDebugNames(DWARF5AccelTable &Table) override;
+  void emitDebugNames(AccelTable<DWARF5AccelTableStaticData> &Table) override;
 
   /// Emit Apple namespaces accelerator table.
   void emitAppleNamespaces(

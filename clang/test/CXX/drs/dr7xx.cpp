@@ -111,11 +111,6 @@ namespace dr727 { // dr727: partial
 
     template<typename T> struct C<T*> {};
     template<typename T> static const int N<T*>;
-
-    template<typename>
-    struct E {
-      template<> void f<void>() {} // expected-error {{no candidate function template}}
-    };
   };
 
   void d(D<int> di) {

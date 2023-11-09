@@ -15,16 +15,23 @@
 
 #if __STDC_HOSTED__
 #include <time.h>
-#define LIBC_TEST_USE_CLOCK
-#elif defined(TARGET_SUPPORTS_CLOCK)
-#include <time.h>
-
-#include "src/time/clock.h"
-extern "C" clock_t clock() noexcept { return LIBC_NAMESPACE::clock(); }
-#define LIBC_TEST_USE_CLOCK
+#elif defined(LIBC_TARGET_ARCH_IS_GPU)
+#include "src/__support/GPU/utils.h"
+static long clock() { return __llvm_libc::gpu::fixed_frequency_clock(); }
+#if defined(LIBC_TARGET_ARCH_IS_NVPTX)
+#define CLOCKS_PER_SEC 1000000000UL
+#else
+// The AMDGPU loader needs to initialize this at runtime by querying the driver.
+extern "C" [[gnu::visibility("protected")]] uint64_t
+    [[clang::address_space(4)]] __llvm_libc_clock_freq;
+#define CLOCKS_PER_SEC __llvm_libc_clock_freq
+#endif
+#else
+static long clock() { return 0; }
+#define CLOCKS_PER_SEC 1
 #endif
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 namespace internal {
@@ -88,7 +95,6 @@ bool test(RunContext *Ctx, TestCond Cond, ValType LHS, ValType RHS,
   case TestCond::GE:
     return ExplainDifference(LHS >= RHS, "greater than or equal to");
   }
-  __builtin_unreachable();
 }
 
 } // namespace internal
@@ -140,7 +146,7 @@ int Test::runTests(const char *TestFilter) {
       break;
     case RunContext::RunResult::Pass:
       tlog << GREEN << "[       OK ] " << RESET << TestName;
-#ifdef LIBC_TEST_USE_CLOCK
+#if __STDC_HOSTED__ || defined(LIBC_TARGET_ARCH_IS_GPU)
       tlog << " (took ";
       if (start_time > end_time) {
         tlog << "unknown - try rerunning)\n";
@@ -238,42 +244,51 @@ template bool test<__uint128_t>(RunContext *Ctx, TestCond Cond, __uint128_t LHS,
                                 const char *RHSStr, Location Loc);
 #endif
 
-template bool test<LIBC_NAMESPACE::cpp::Int<128>>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::Int<128> LHS,
-    LIBC_NAMESPACE::cpp::Int<128> RHS, const char *LHSStr, const char *RHSStr,
-    Location Loc);
+template bool test<__llvm_libc::cpp::Int<128>>(RunContext *Ctx, TestCond Cond,
+                                               __llvm_libc::cpp::Int<128> LHS,
+                                               __llvm_libc::cpp::Int<128> RHS,
+                                               const char *LHSStr,
+                                               const char *RHSStr,
+                                               Location Loc);
 
-template bool test<LIBC_NAMESPACE::cpp::UInt<128>>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::UInt<128> LHS,
-    LIBC_NAMESPACE::cpp::UInt<128> RHS, const char *LHSStr, const char *RHSStr,
-    Location Loc);
-
-template bool test<LIBC_NAMESPACE::cpp::UInt<192>>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::UInt<192> LHS,
-    LIBC_NAMESPACE::cpp::UInt<192> RHS, const char *LHSStr, const char *RHSStr,
-    Location Loc);
-
-template bool test<LIBC_NAMESPACE::cpp::UInt<256>>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::UInt<256> LHS,
-    LIBC_NAMESPACE::cpp::UInt<256> RHS, const char *LHSStr, const char *RHSStr,
-    Location Loc);
-
-template bool test<LIBC_NAMESPACE::cpp::UInt<320>>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::UInt<320> LHS,
-    LIBC_NAMESPACE::cpp::UInt<320> RHS, const char *LHSStr, const char *RHSStr,
-    Location Loc);
-
-template bool test<LIBC_NAMESPACE::cpp::string_view>(
-    RunContext *Ctx, TestCond Cond, LIBC_NAMESPACE::cpp::string_view LHS,
-    LIBC_NAMESPACE::cpp::string_view RHS, const char *LHSStr,
-    const char *RHSStr, Location Loc);
-
-template bool test<LIBC_NAMESPACE::cpp::string>(RunContext *Ctx, TestCond Cond,
-                                                LIBC_NAMESPACE::cpp::string LHS,
-                                                LIBC_NAMESPACE::cpp::string RHS,
+template bool test<__llvm_libc::cpp::UInt<128>>(RunContext *Ctx, TestCond Cond,
+                                                __llvm_libc::cpp::UInt<128> LHS,
+                                                __llvm_libc::cpp::UInt<128> RHS,
                                                 const char *LHSStr,
                                                 const char *RHSStr,
                                                 Location Loc);
+
+template bool test<__llvm_libc::cpp::UInt<192>>(RunContext *Ctx, TestCond Cond,
+                                                __llvm_libc::cpp::UInt<192> LHS,
+                                                __llvm_libc::cpp::UInt<192> RHS,
+                                                const char *LHSStr,
+                                                const char *RHSStr,
+                                                Location Loc);
+
+template bool test<__llvm_libc::cpp::UInt<256>>(RunContext *Ctx, TestCond Cond,
+                                                __llvm_libc::cpp::UInt<256> LHS,
+                                                __llvm_libc::cpp::UInt<256> RHS,
+                                                const char *LHSStr,
+                                                const char *RHSStr,
+                                                Location Loc);
+
+template bool test<__llvm_libc::cpp::UInt<320>>(RunContext *Ctx, TestCond Cond,
+                                                __llvm_libc::cpp::UInt<320> LHS,
+                                                __llvm_libc::cpp::UInt<320> RHS,
+                                                const char *LHSStr,
+                                                const char *RHSStr,
+                                                Location Loc);
+
+template bool test<__llvm_libc::cpp::string_view>(
+    RunContext *Ctx, TestCond Cond, __llvm_libc::cpp::string_view LHS,
+    __llvm_libc::cpp::string_view RHS, const char *LHSStr, const char *RHSStr,
+    Location Loc);
+
+template bool test<__llvm_libc::cpp::string>(RunContext *Ctx, TestCond Cond,
+                                             __llvm_libc::cpp::string LHS,
+                                             __llvm_libc::cpp::string RHS,
+                                             const char *LHSStr,
+                                             const char *RHSStr, Location Loc);
 
 } // namespace internal
 
@@ -306,4 +321,4 @@ bool Test::testMatch(bool MatchResult, MatcherBase &Matcher, const char *LHSStr,
 }
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

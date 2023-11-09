@@ -20,7 +20,6 @@
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PointerUnion.h"
 #include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/DbgEntityHistoryCalculator.h"
 #include "llvm/CodeGen/DebugHandlerBase.h"
@@ -158,9 +157,6 @@ private:
 
     /// Ordered list of top-level inlined call sites.
     SmallVector<const DILocation *, 1> ChildSites;
-
-    /// Set of all functions directly inlined into this one.
-    SmallSet<codeview::TypeIndex, 1> Inlinees;
 
     SmallVector<LocalVariable, 1> Locals;
     SmallVector<CVGlobalVariable, 1> Globals;
@@ -374,8 +370,6 @@ private:
 
   void emitInlinedCallSite(const FunctionInfo &FI, const DILocation *InlinedAt,
                            const InlineSite &Site);
-
-  void emitInlinees(const SmallSet<codeview::TypeIndex, 1> &Inlinees);
 
   using InlinedEntity = DbgValueHistoryMap::InlinedEntity;
 

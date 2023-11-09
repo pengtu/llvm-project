@@ -47,8 +47,6 @@ public:
                        raw_ostream &O, const char *Modifier = nullptr);
   void printProtoIdent(const MCInst *MI, int OpNum,
                        raw_ostream &O, const char *Modifier = nullptr);
-  void printPrmtMode(const MCInst *MI, int OpNum, raw_ostream &O,
-                     const char *Modifier = nullptr);
 };
 
 }

@@ -11,11 +11,11 @@
 
 #include <stdarg.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 int vsprintf(char *__restrict buffer, const char *__restrict format,
              va_list vlist);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_STDIO_VSPRINTF_H

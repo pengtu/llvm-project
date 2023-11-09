@@ -1032,21 +1032,11 @@ struct CounterCoverageMappingBuilder
     // lexer may not be able to report back precise token end locations for
     // these children nodes (llvm.org/PR39822), and moreover users will not be
     // able to see coverage for them.
-    Counter BodyCounter = getRegionCounter(Body);
     bool Defaulted = false;
     if (auto *Method = dyn_cast<CXXMethodDecl>(D))
       Defaulted = Method->isDefaulted();
-    if (auto *Ctor = dyn_cast<CXXConstructorDecl>(D)) {
-      for (auto *Initializer : Ctor->inits()) {
-        if (Initializer->isWritten()) {
-          auto *Init = Initializer->getInit();
-          if (getStart(Init).isValid() && getEnd(Init).isValid())
-            propagateCounts(BodyCounter, Init);
-        }
-      }
-    }
 
-    propagateCounts(BodyCounter, Body,
+    propagateCounts(getRegionCounter(Body), Body,
                     /*VisitChildren=*/!Defaulted);
     assert(RegionStack.empty() && "Regions entered but never exited");
   }
@@ -1728,11 +1718,13 @@ void CoverageMappingModuleGen::emitFunctionMappingRecord(
 void CoverageMappingModuleGen::addFunctionMappingRecord(
     llvm::GlobalVariable *NamePtr, StringRef NameValue, uint64_t FuncHash,
     const std::string &CoverageMapping, bool IsUsed) {
+  llvm::LLVMContext &Ctx = CGM.getLLVMContext();
   const uint64_t NameHash = llvm::IndexedInstrProf::ComputeHash(NameValue);
   FunctionRecords.push_back({NameHash, FuncHash, CoverageMapping, IsUsed});
 
   if (!IsUsed)
-    FunctionNames.push_back(NamePtr);
+    FunctionNames.push_back(
+        llvm::ConstantExpr::getBitCast(NamePtr, llvm::Type::getInt8PtrTy(Ctx)));
 
   if (CGM.getCodeGenOpts().DumpCoverageMapping) {
     // Dump the coverage mapping data for this function by decoding the

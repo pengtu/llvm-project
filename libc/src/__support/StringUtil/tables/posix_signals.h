@@ -6,15 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H
-#define LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H
+#define LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H
 
 #include "src/__support/CPP/array.h"
 #include "src/__support/StringUtil/message_mapper.h"
 
 #include <signal.h> // For signal numbers
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LIBC_INLINE_VAR constexpr MsgTable<22> POSIX_SIGNALS = {
     MsgMapping(SIGHUP, "Hangup"),
@@ -41,6 +41,6 @@ LIBC_INLINE_VAR constexpr MsgTable<22> POSIX_SIGNALS = {
     MsgMapping(SIGSYS, "Bad system call"),
 };
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H
+#endif // LLVM_LIBC_SRC_SUPPORT_STRING_UTIL_TABLES_POSIX_SIGNALS_H

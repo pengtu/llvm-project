@@ -6,8 +6,9 @@
 extern int abs(int x);
 
 int absi(int x) {
-// WRAPV:      [[ABS:%.*]] = call i32 @llvm.abs.i32(i32 %0, i1 false)
-// WRAPV-NEXT: ret i32 [[ABS]]
+// WRAPV:   [[NEG:%.*]] = sub i32 0, [[X:%.*]]
+// WRAPV:   [[CMP:%.*]] = icmp slt i32 [[X]], 0
+// WRAPV:   [[SEL:%.*]] = select i1 [[CMP]], i32 [[NEG]], i32 [[X]]
 //
 // BOTH-TRAP:       [[NEG:%.*]] = call { i32, i1 } @llvm.ssub.with.overflow.i32(i32 0, i32 [[X:%.*]])
 // BOTH-TRAP:       [[NEGV:%.*]] = extractvalue { i32, i1 } [[NEG]], 0
@@ -25,8 +26,9 @@ int absi(int x) {
 }
 
 int babsi(int x) {
-// WRAPV:      [[ABS:%.*]] = call i32 @llvm.abs.i32(i32 %0, i1 false)
-// WRAPV-NEXT: ret i32 [[ABS]]
+// WRAPV:   [[NEG:%.*]] = sub i32 0, [[X:%.*]]
+// WRAPV:   [[CMP:%.*]] = icmp slt i32 [[X]], 0
+// WRAPV:   [[SEL:%.*]] = select i1 [[CMP]], i32 [[NEG]], i32 [[X]]
 //
 // BOTH-TRAP:       [[NEG:%.*]] = call { i32, i1 } @llvm.ssub.with.overflow.i32(i32 0, i32 [[X:%.*]])
 // BOTH-TRAP:       [[NEGV:%.*]] = extractvalue { i32, i1 } [[NEG]], 0

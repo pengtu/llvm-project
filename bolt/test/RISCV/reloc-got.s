@@ -14,7 +14,8 @@ d:
 // CHECK: Binary Function "_start" after building cfg {
 _start:
   nop // Here to not make the _start and .Ltmp0 symbols coincide
-// CHECK: auipc t0, %pcrel_hi(__BOLT_got_zero+{{[0-9]+}}) # Label: .Ltmp0
+// CHECK: .Ltmp0
+// CHECK: auipc t0, %pcrel_hi(__BOLT_got_zero+{{[0-9]+}})
 // CHECK-NEXT: ld t0, %pcrel_lo(.Ltmp0)(t0)
 1:
   auipc t0, %got_pcrel_hi(d)

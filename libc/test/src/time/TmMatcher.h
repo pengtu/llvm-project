@@ -13,7 +13,7 @@
 
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 class StructTmMatcher : public Matcher<::tm> {
@@ -57,9 +57,9 @@ public:
 };
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #define EXPECT_TM_EQ(expected, actual)                                         \
-  EXPECT_THAT((actual), LIBC_NAMESPACE::testing::StructTmMatcher((expected)))
+  EXPECT_THAT((actual), __llvm_libc::testing::StructTmMatcher((expected)))
 
 #endif // LLVM_LIBC_TEST_SRC_TIME_TM_MATCHER_H

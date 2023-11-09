@@ -715,7 +715,7 @@ Thread *CommandObject::GetDefaultThread() {
     return nullptr;
 }
 
-void CommandObjectParsed::Execute(const char *args_string,
+bool CommandObjectParsed::Execute(const char *args_string,
                                   CommandReturnObject &result) {
   bool handled = false;
   Args cmd_args(args_string);
@@ -746,17 +746,18 @@ void CommandObjectParsed::Execute(const char *args_string,
           result.AppendErrorWithFormatv("'{0}' doesn't take any arguments.",
                                         GetCommandName());
           Cleanup();
-          return;
+          return false;
         }
-        DoExecute(cmd_args, result);
+        handled = DoExecute(cmd_args, result);
       }
     }
 
     Cleanup();
   }
+  return handled;
 }
 
-void CommandObjectRaw::Execute(const char *args_string,
+bool CommandObjectRaw::Execute(const char *args_string,
                                CommandReturnObject &result) {
   bool handled = false;
   if (HasOverrideCallback()) {
@@ -769,8 +770,9 @@ void CommandObjectRaw::Execute(const char *args_string,
   }
   if (!handled) {
     if (CheckRequirements(result))
-      DoExecute(args_string, result);
+      handled = DoExecute(args_string, result);
 
     Cleanup();
   }
+  return handled;
 }

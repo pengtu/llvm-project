@@ -175,7 +175,6 @@ private:
   MaybeExpr TryDefinedOp(std::vector<const char *>, parser::MessageFixedText);
   MaybeExpr TryBoundOp(const Symbol &, int passIndex);
   std::optional<ActualArgument> AnalyzeExpr(const parser::Expr &);
-  std::optional<ActualArgument> AnalyzeVariable(const parser::Variable &);
   MaybeExpr AnalyzeExprOrWholeAssumedSizeArray(const parser::Expr &);
   bool AreConformable() const;
   const Symbol *FindBoundOp(parser::CharBlock, int passIndex,
@@ -261,11 +260,11 @@ MaybeExpr ExpressionAnalyzer::CompleteSubscripts(ArrayRef &&ref) {
           symbolRank, symbol.name(), subscripts);
     }
     return std::nullopt;
-  } else if (symbol.has<semantics::ObjectEntityDetails>() ||
-      symbol.has<semantics::AssocEntityDetails>()) {
+  } else if (const auto *object{
+                 symbol.detailsIf<semantics::ObjectEntityDetails>()}) {
     // C928 & C1002
     if (Triplet *last{std::get_if<Triplet>(&ref.subscript().back().u)}) {
-      if (!last->upper() && IsAssumedSizeArray(symbol)) {
+      if (!last->upper() && object->IsAssumedSize()) {
         Say("Assumed-size array '%s' must have explicit final "
             "subscript upper bound value"_err_en_US,
             symbol.name());
@@ -1858,23 +1857,6 @@ MaybeExpr ExpressionAnalyzer::Analyze(const parser::ArrayConstructor &array) {
   return acContext.ToExpr();
 }
 
-// Check if implicit conversion of expr to the symbol type is legal (if needed),
-// and make it explicit if requested.
-static MaybeExpr implicitConvertTo(const semantics::Symbol &sym,
-    Expr<SomeType> &&expr, bool keepConvertImplicit) {
-  if (!keepConvertImplicit) {
-    return ConvertToType(sym, std::move(expr));
-  } else {
-    // Test if a convert could be inserted, but do not make it explicit to
-    // preserve the information that expr is a variable.
-    if (ConvertToType(sym, common::Clone(expr))) {
-      return MaybeExpr{std::move(expr)};
-    }
-  }
-  // Illegal implicit convert.
-  return std::nullopt;
-}
-
 MaybeExpr ExpressionAnalyzer::Analyze(
     const parser::StructureConstructor &structure) {
   auto &parsedType{std::get<parser::DerivedTypeSpec>(structure.t)};
@@ -2079,15 +2061,7 @@ MaybeExpr ExpressionAnalyzer::Analyze(
                 visible->name(), symbol->name(), pointer->name());
           }
         }
-        // Make implicit conversion explicit to allow folding of the structure
-        // constructors and help semantic checking, unless the component is
-        // allocatable, in which case the value could be an unallocated
-        // allocatable (see Fortran 2018 7.5.10 point 7). The explicit
-        // convert would cause a segfault. Lowering will deal with
-        // conditionally converting and preserving the lower bounds in this
-        // case.
-        if (MaybeExpr converted{implicitConvertTo(
-                *symbol, std::move(*value), IsAllocatable(*symbol))}) {
+        if (MaybeExpr converted{ConvertToType(*symbol, std::move(*value))}) {
           if (auto componentShape{GetShape(GetFoldingContext(), *symbol)}) {
             if (auto valueShape{GetShape(GetFoldingContext(), *converted)}) {
               if (GetRank(*componentShape) == 0 && GetRank(*valueShape) > 0) {
@@ -3895,14 +3869,13 @@ MaybeExpr ExpressionAnalyzer::AnalyzeComplex(
       std::move(im), GetDefaultKind(TypeCategory::Real)));
 }
 
-std::optional<ActualArgument> ArgumentAnalyzer::AnalyzeVariable(
-    const parser::Variable &x) {
+void ArgumentAnalyzer::Analyze(const parser::Variable &x) {
   source_.ExtendToCover(x.GetSource());
   if (MaybeExpr expr{context_.Analyze(x)}) {
     if (!IsConstantExpr(*expr)) {
-      ActualArgument actual{std::move(*expr)};
-      SetArgSourceLocation(actual, x.GetSource());
-      return actual;
+      actuals_.emplace_back(std::move(*expr));
+      SetArgSourceLocation(actuals_.back(), x.GetSource());
+      return;
     }
     const Symbol *symbol{GetLastSymbol(*expr)};
     if (!symbol) {
@@ -3925,50 +3898,32 @@ std::optional<ActualArgument> ArgumentAnalyzer::AnalyzeVariable(
     }
   }
   fatalErrors_ = true;
-  return std::nullopt;
-}
-
-void ArgumentAnalyzer::Analyze(const parser::Variable &x) {
-  if (auto actual = AnalyzeVariable(x)) {
-    actuals_.emplace_back(std::move(actual));
-  }
 }
 
 void ArgumentAnalyzer::Analyze(
     const parser::ActualArgSpec &arg, bool isSubroutine) {
   // TODO: C1534: Don't allow a "restricted" specific intrinsic to be passed.
   std::optional<ActualArgument> actual;
-  common::visit(
-      common::visitors{
-          [&](const common::Indirection<parser::Expr> &x) {
-            actual = AnalyzeExpr(x.value());
-          },
-          [&](const parser::AltReturnSpec &label) {
-            if (!isSubroutine) {
-              context_.Say("alternate return specification may not appear on"
-                           " function reference"_err_en_US);
-            }
-            actual = ActualArgument(label.v);
-          },
-          [&](const parser::ActualArg::PercentRef &percentRef) {
-            actual = AnalyzeVariable(percentRef.v);
-            if (actual.has_value()) {
-              actual->set_isPercentRef();
-            }
-          },
-          [&](const parser::ActualArg::PercentVal &percentVal) {
-            actual = AnalyzeExpr(percentVal.v);
-            if (actual.has_value()) {
-              actual->set_isPercentVal();
-              std::optional<DynamicType> type{actual->GetType()};
-              if (!type || !type->IsLengthlessIntrinsicType() ||
-                  actual->Rank() != 0) {
-                context_.SayAt(percentVal.v,
-                    "%VAL argument must be a scalar numerical or logical expression"_err_en_US);
-              }
-            }
-          },
-      },
+  common::visit(common::visitors{
+                    [&](const common::Indirection<parser::Expr> &x) {
+                      actual = AnalyzeExpr(x.value());
+                      SetArgSourceLocation(actual, x.value().source);
+                    },
+                    [&](const parser::AltReturnSpec &label) {
+                      if (!isSubroutine) {
+                        context_.Say(
+                            "alternate return specification may not appear on"
+                            " function reference"_err_en_US);
+                      }
+                      actual = ActualArgument(label.v);
+                    },
+                    [&](const parser::ActualArg::PercentRef &) {
+                      context_.Say("%REF() intrinsic for arguments"_todo_en_US);
+                    },
+                    [&](const parser::ActualArg::PercentVal &) {
+                      context_.Say("%VAL() intrinsic for arguments"_todo_en_US);
+                    },
+                },
       std::get<parser::ActualArg>(arg.t).u);
   if (actual) {
     if (const auto &argKW{std::get<std::optional<parser::Keyword>>(arg.t)}) {
@@ -4225,12 +4180,7 @@ std::optional<ProcedureRef> ArgumentAnalyzer::TryDefinedAssignment() {
   Tristate isDefined{
       semantics::IsDefinedAssignment(lhsType, lhsRank, rhsType, rhsRank)};
   if (isDefined == Tristate::No) {
-    // Make implicit conversion explicit, unless it is an assignment to a whole
-    // allocatable (the explicit conversion would prevent the propagation of the
-    // right hand side if it is a variable). Lowering will deal with the
-    // conversion in this case.
-    if (lhsType && rhsType &&
-        (!IsAllocatableDesignator(lhs) || context_.inWhereBody())) {
+    if (lhsType && rhsType) {
       AddAssignmentConversion(*lhsType, *rhsType);
     }
     if (!fatalErrors_) {

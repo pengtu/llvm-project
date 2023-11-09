@@ -11,11 +11,11 @@
 #include "src/__support/common.h"
 #include "src/string/string_utils.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // TODO: Look at performance benefits of comparing words.
 LLVM_LIBC_FUNCTION(char *, strchr, (const char *src, int c)) {
   return internal::strchr_implementation(src, c);
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

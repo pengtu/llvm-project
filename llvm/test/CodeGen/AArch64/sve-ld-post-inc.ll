@@ -35,23 +35,23 @@ define <vscale x 2 x double> @test_post_ld1_dup(ptr %a, ptr %ptr, i64 %inc) {
   ret <vscale x 2 x double> %dup
 }
 
-define void @test_post_ld1_int_fixed(ptr %data, i64 %idx, ptr %addr, ptr %res_ptr)  #1 {
+define <4 x i64> @test_post_ld1_int_fixed(ptr %data, i64 %idx, ptr %addr)  #1 {
 ; CHECK-LABEL: test_post_ld1_int_fixed:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ptrue p0.d
-; CHECK-NEXT:    mov w8, #2 // =0x2
+; CHECK-NEXT:    mov w9, #2 // =0x2
 ; CHECK-NEXT:    index z0.d, #0, #1
 ; CHECK-NEXT:    ptrue p1.d, vl1
-; CHECK-NEXT:    mov z1.d, x8
+; CHECK-NEXT:    mov z1.d, x9
 ; CHECK-NEXT:    ld1d { z2.d }, p0/z, [x2]
 ; CHECK-NEXT:    cmpeq p2.d, p0/z, z0.d, z1.d
-; CHECK-NEXT:    ldr x8, [x0]
-; CHECK-NEXT:    ldr x9, [x0, x1, lsl #3]
+; CHECK-NEXT:    ldr x9, [x0]
+; CHECK-NEXT:    ldr x10, [x0, x1, lsl #3]
 ; CHECK-NEXT:    mov z0.d, z2.d
-; CHECK-NEXT:    mov z2.d, p2/m, x9
-; CHECK-NEXT:    mov z0.d, p1/m, x8
+; CHECK-NEXT:    mov z2.d, p2/m, x10
+; CHECK-NEXT:    mov z0.d, p1/m, x9
 ; CHECK-NEXT:    add z0.d, z0.d, z2.d
-; CHECK-NEXT:    st1d { z0.d }, p0, [x3]
+; CHECK-NEXT:    st1d { z0.d }, p0, [x8]
 ; CHECK-NEXT:    ret
   %A = load <4 x i64>, ptr %addr
   %ld1 = load i64, ptr %data
@@ -60,17 +60,16 @@ define void @test_post_ld1_int_fixed(ptr %data, i64 %idx, ptr %addr, ptr %res_pt
   %ld2 = load i64, ptr %gep
   %vec2 = insertelement <4 x i64> %A, i64 %ld2, i32 2
   %res = add <4 x i64> %vec1, %vec2
-  store <4 x i64> %res, ptr %res_ptr
-  ret void
+  ret <4 x i64> %res
 }
 
-define void @test_post_ld1_double_fixed(ptr %data, i64 %idx, ptr %addr, ptr %res_ptr)  #1 {
+define <4 x double> @test_post_ld1_double_fixed(ptr %data, i64 %idx, ptr %addr)  #1 {
 ; CHECK-LABEL: test_post_ld1_double_fixed:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ptrue p0.d
-; CHECK-NEXT:    mov w8, #2 // =0x2
+; CHECK-NEXT:    mov w9, #2 // =0x2
 ; CHECK-NEXT:    index z0.d, #0, #1
-; CHECK-NEXT:    mov z1.d, x8
+; CHECK-NEXT:    mov z1.d, x9
 ; CHECK-NEXT:    ptrue p1.d, vl1
 ; CHECK-NEXT:    ld1d { z2.d }, p0/z, [x2]
 ; CHECK-NEXT:    cmpeq p2.d, p0/z, z0.d, z1.d
@@ -79,7 +78,7 @@ define void @test_post_ld1_double_fixed(ptr %data, i64 %idx, ptr %addr, ptr %res
 ; CHECK-NEXT:    sel z0.d, p1, z0.d, z2.d
 ; CHECK-NEXT:    mov z2.d, p2/m, d1
 ; CHECK-NEXT:    fadd z0.d, z0.d, z2.d
-; CHECK-NEXT:    st1d { z0.d }, p0, [x3]
+; CHECK-NEXT:    st1d { z0.d }, p0, [x8]
 ; CHECK-NEXT:    ret
   %A = load <4 x double>, ptr %addr
   %ld1 = load double, ptr %data
@@ -88,8 +87,7 @@ define void @test_post_ld1_double_fixed(ptr %data, i64 %idx, ptr %addr, ptr %res
   %ld2 = load double, ptr %gep
   %vec2 = insertelement <4 x double> %A, double %ld2, i32 2
   %res = fadd <4 x double> %vec1, %vec2
-  store <4 x double> %res, ptr %res_ptr
-  ret void
+  ret <4 x double> %res
 }
 attributes #1 = { vscale_range(2,2) "target-features"="+neon,+sve" }
 

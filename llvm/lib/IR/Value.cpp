@@ -330,7 +330,8 @@ void Value::setNameImpl(const Twine &NewName) {
 
   SmallString<256> NameData;
   StringRef NameRef = NeedNewName ? NewName.toStringRef(NameData) : "";
-  assert(!NameRef.contains(0) && "Null bytes are not allowed in names");
+  assert(NameRef.find_first_of(0) == StringRef::npos &&
+         "Null bytes are not allowed in names");
 
   // Name isn't changing?
   if (getName() == NameRef)

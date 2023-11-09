@@ -226,6 +226,7 @@ def run_debugger_subprocess(debugger_controller, working_dir_path):
 
     with open(controller_path, "rb") as fp:
         debugger_controller = pickle.load(fp)
+
     return debugger_controller
 
 

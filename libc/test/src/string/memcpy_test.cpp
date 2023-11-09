@@ -10,12 +10,12 @@
 #include "src/string/memcpy.h"
 #include "test/UnitTest/Test.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // Adapt CheckMemcpy signature to memcpy.
 static inline void Adaptor(cpp::span<char> dst, cpp::span<char> src,
                            size_t size) {
-  LIBC_NAMESPACE::memcpy(dst.begin(), src.begin(), size);
+  __llvm_libc::memcpy(dst.begin(), src.begin(), size);
 }
 
 TEST(LlvmLibcMemcpyTest, SizeSweep) {
@@ -30,4 +30,4 @@ TEST(LlvmLibcMemcpyTest, SizeSweep) {
   }
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

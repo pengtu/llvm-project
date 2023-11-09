@@ -41,7 +41,6 @@ struct RecordsEntry {
   std::unique_ptr<Record> Rec;
   std::unique_ptr<ForeachLoop> Loop;
   std::unique_ptr<Record::AssertionInfo> Assertion;
-  std::unique_ptr<Record::DumpInfo> Dump;
 
   void dump() const;
 
@@ -50,8 +49,6 @@ struct RecordsEntry {
   RecordsEntry(std::unique_ptr<ForeachLoop> Loop) : Loop(std::move(Loop)) {}
   RecordsEntry(std::unique_ptr<Record::AssertionInfo> Assertion)
       : Assertion(std::move(Assertion)) {}
-  RecordsEntry(std::unique_ptr<Record::DumpInfo> Dump)
-      : Dump(std::move(Dump)) {}
 };
 
 /// ForeachLoop - Record the iteration state associated with a for loop.
@@ -85,7 +82,7 @@ struct MultiClass {
   void dump() const;
 
   MultiClass(StringRef Name, SMLoc Loc, RecordKeeper &Records)
-      : Rec(Name, Loc, Records, Record::RK_MultiClass) {}
+      : Rec(Name, Loc, Records) {}
 };
 
 class TGVarScope {
@@ -265,7 +262,6 @@ private:  // Parser methods.
   bool ParseDef(MultiClass *CurMultiClass);
   bool ParseDefset();
   bool ParseDefvar(Record *CurRec = nullptr);
-  bool ParseDump(MultiClass *CurMultiClass, Record *CurRec = nullptr);
   bool ParseForeach(MultiClass *CurMultiClass);
   bool ParseIf(MultiClass *CurMultiClass);
   bool ParseIfBody(MultiClass *CurMultiClass, StringRef Kind);
@@ -293,7 +289,8 @@ private:  // Parser methods.
   void ParseValueList(SmallVectorImpl<llvm::Init*> &Result,
                       Record *CurRec, RecTy *ItemType = nullptr);
   bool ParseTemplateArgValueList(SmallVectorImpl<llvm::ArgumentInit *> &Result,
-                                 Record *CurRec, Record *ArgsRec);
+                                 Record *CurRec, Record *ArgsRec,
+                                 bool IsDefm = false);
   void ParseDagArgList(
       SmallVectorImpl<std::pair<llvm::Init*, StringInit*>> &Result,
       Record *CurRec);

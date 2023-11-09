@@ -15,3 +15,5 @@ define void @foo(){
 ; CHECK:      *** IR Dump After PromotePass
 ; CHECK-NEXT: define void @foo
 ; CHECK:      *** IR Dump After InstCombinePass
+; CHECK-NEXT: define void @foo
+; CHECK:      *** IR Dump After VerifierPass

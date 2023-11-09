@@ -507,8 +507,6 @@ void ASTStmtWriter::VisitRequiresExpr(RequiresExpr *E) {
       }
     }
   }
-  Record.AddSourceLocation(E->getLParenLoc());
-  Record.AddSourceLocation(E->getRParenLoc());
   Record.AddSourceLocation(E->getEndLoc());
 
   Code = serialization::EXPR_REQUIRES;
@@ -564,15 +562,17 @@ void ASTStmtWriter::VisitConstantExpr(ConstantExpr *E) {
   // HasCleanup not serialized since we can just query the APValue.
   Record.push_back(E->ConstantExprBits.IsImmediateInvocation);
 
-  switch (E->getResultStorageKind()) {
-  case ConstantResultStorageKind::None:
+  switch (E->ConstantExprBits.ResultKind) {
+  case ConstantExpr::RSK_None:
     break;
-  case ConstantResultStorageKind::Int64:
+  case ConstantExpr::RSK_Int64:
     Record.push_back(E->Int64Result());
     break;
-  case ConstantResultStorageKind::APValue:
+  case ConstantExpr::RSK_APValue:
     Record.AddAPValue(E->APValueResult());
     break;
+  default:
+    llvm_unreachable("unexpected ResultKind!");
   }
 
   Record.AddStmt(E->getSubExpr());
@@ -595,8 +595,7 @@ void ASTStmtWriter::VisitPredefinedExpr(PredefinedExpr *E) {
 
   bool HasFunctionName = E->getFunctionName() != nullptr;
   Record.push_back(HasFunctionName);
-  Record.push_back(
-      llvm::to_underlying(E->getIdentKind())); // FIXME: stable encoding
+  Record.push_back(E->getIdentKind()); // FIXME: stable encoding
   Record.push_back(E->isTransparent());
   Record.AddSourceLocation(E->getLocation());
   if (HasFunctionName)
@@ -688,7 +687,7 @@ void ASTStmtWriter::VisitStringLiteral(StringLiteral *E) {
   Record.push_back(E->getNumConcatenated());
   Record.push_back(E->getLength());
   Record.push_back(E->getCharByteWidth());
-  Record.push_back(llvm::to_underlying(E->getKind()));
+  Record.push_back(E->getKind());
   Record.push_back(E->isPascal());
 
   // Store the trailing array of SourceLocation.
@@ -707,7 +706,7 @@ void ASTStmtWriter::VisitCharacterLiteral(CharacterLiteral *E) {
   VisitExpr(E);
   Record.push_back(E->getValue());
   Record.AddSourceLocation(E->getLocation());
-  Record.push_back(llvm::to_underlying(E->getKind()));
+  Record.push_back(E->getKind());
 
   AbbrevToUse = Writer.getCharacterLiteralAbbrev();
 
@@ -1164,7 +1163,7 @@ void ASTStmtWriter::VisitSourceLocExpr(SourceLocExpr *E) {
   Record.AddDeclRef(cast_or_null<Decl>(E->getParentContext()));
   Record.AddSourceLocation(E->getBeginLoc());
   Record.AddSourceLocation(E->getEndLoc());
-  Record.push_back(llvm::to_underlying(E->getIdentKind()));
+  Record.push_back(E->getIdentKind());
   Code = serialization::EXPR_SOURCE_LOC;
 }
 
@@ -1602,8 +1601,7 @@ void ASTStmtWriter::VisitCXXConstructExpr(CXXConstructExpr *E) {
   Record.push_back(E->isListInitialization());
   Record.push_back(E->isStdInitListInitialization());
   Record.push_back(E->requiresZeroInitialization());
-  Record.push_back(
-      llvm::to_underlying(E->getConstructionKind())); // FIXME: stable encoding
+  Record.push_back(E->getConstructionKind()); // FIXME: stable encoding
   Record.push_back(E->isImmediateEscalating());
   Record.AddSourceLocation(E->getLocation());
   Record.AddDeclRef(E->getConstructor());

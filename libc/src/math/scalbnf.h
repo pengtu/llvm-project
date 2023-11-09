@@ -9,10 +9,10 @@
 #ifndef LLVM_LIBC_SRC_MATH_SCALBNF_H
 #define LLVM_LIBC_SRC_MATH_SCALBNF_H
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 float scalbnf(float x, int n);
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 #endif // LLVM_LIBC_SRC_MATH_SCALBNF_H

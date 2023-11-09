@@ -26,15 +26,20 @@
 
 namespace fir {
 
-LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA,
-                                     bool forceUnifiedTBAATree)
-    : mlir::LLVMTypeConverter(module.getContext()),
+LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA)
+    : mlir::LLVMTypeConverter(module.getContext(),
+                              [&] {
+                                mlir::LowerToLLVMOptions options(
+                                    module.getContext());
+                                options.useOpaquePointers = false;
+                                return options;
+                              }()),
       kindMapping(getKindMapping(module)),
       specifics(CodeGenSpecifics::get(module.getContext(),
                                       getTargetTriple(module),
                                       getKindMapping(module))),
-      tbaaBuilder(std::make_unique<TBAABuilder>(module->getContext(), applyTBAA,
-                                                forceUnifiedTBAATree)) {
+      tbaaBuilder(
+          std::make_unique<TBAABuilder>(module->getContext(), applyTBAA)) {
   LLVM_DEBUG(llvm::dbgs() << "FIR type converter\n");
 
   // Each conversion should return a value of type mlir::Type.
@@ -199,8 +204,7 @@ bool LLVMTypeConverter::requiresExtendedDesc(mlir::Type boxElementType) const {
 
 // This corresponds to the descriptor as defined in ISO_Fortran_binding.h and
 // the addendum defined in descriptor.h.
-mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box,
-                                                     int rank) const {
+mlir::Type LLVMTypeConverter::convertBoxType(BaseBoxType box, int rank) const {
   // (base_addr*, elem_len, version, rank, type, attribute, f18Addendum, [dim]
   llvm::SmallVector<mlir::Type> dataDescFields;
   mlir::Type ele = box.getEleTy();
@@ -212,8 +216,7 @@ mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box,
   if (ele.isa<SequenceType>() && eleTy.isa<mlir::LLVM::LLVMPointerType>())
     dataDescFields.push_back(eleTy);
   else
-    dataDescFields.push_back(
-        mlir::LLVM::LLVMPointerType::get(eleTy.getContext()));
+    dataDescFields.push_back(mlir::LLVM::LLVMPointerType::get(eleTy));
   // elem_len
   dataDescFields.push_back(
       getDescFieldTypeModel<kElemLenPosInBox>()(&getContext()));
@@ -262,24 +265,28 @@ mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box,
             mlir::LLVM::LLVMArrayType::get(rowTy, numLenParams));
       }
   }
-  return mlir::LLVM::LLVMStructType::getLiteral(&getContext(), dataDescFields,
-                                                /*isPacked=*/false);
+  // TODO: send the box type and the converted LLVM structure layout
+  // to tbaaBuilder for proper creation of TBAATypeDescriptorOp.
+  return mlir::LLVM::LLVMPointerType::get(
+      mlir::LLVM::LLVMStructType::getLiteral(&getContext(), dataDescFields,
+                                             /*isPacked=*/false));
 }
 
 /// Convert fir.box type to the corresponding llvm struct type instead of a
 /// pointer to this struct type.
-mlir::Type LLVMTypeConverter::convertBoxType(BaseBoxType box, int rank) const {
-  // TODO: send the box type and the converted LLVM structure layout
-  // to tbaaBuilder for proper creation of TBAATypeDescriptorOp.
-  return mlir::LLVM::LLVMPointerType::get(box.getContext());
+mlir::Type LLVMTypeConverter::convertBoxTypeAsStruct(BaseBoxType box) const {
+  return convertBoxType(box)
+      .cast<mlir::LLVM::LLVMPointerType>()
+      .getElementType();
 }
 
 // fir.boxproc<any>  -->  llvm<"{ any*, i8* }">
 mlir::Type LLVMTypeConverter::convertBoxProcType(BoxProcType boxproc) const {
   auto funcTy = convertType(boxproc.getEleTy());
-  auto voidPtrTy = mlir::LLVM::LLVMPointerType::get(boxproc.getContext());
-  llvm::SmallVector<mlir::Type, 2> tuple = {funcTy, voidPtrTy};
-  return mlir::LLVM::LLVMStructType::getLiteral(boxproc.getContext(), tuple,
+  auto i8PtrTy = mlir::LLVM::LLVMPointerType::get(
+      mlir::IntegerType::get(&getContext(), 8));
+  llvm::SmallVector<mlir::Type, 2> tuple = {funcTy, i8PtrTy};
+  return mlir::LLVM::LLVMStructType::getLiteral(&getContext(), tuple,
                                                 /*isPacked=*/false);
 }
 
@@ -307,7 +314,7 @@ mlir::Type LLVMTypeConverter::convertRealType(fir::KindTy kind) const {
 mlir::Type LLVMTypeConverter::convertSequenceType(SequenceType seq) const {
   auto baseTy = convertType(seq.getEleTy());
   if (characterWithDynamicLen(seq.getEleTy()))
-    return baseTy;
+    return mlir::LLVM::LLVMPointerType::get(baseTy);
   auto shape = seq.getShape();
   auto constRows = seq.getConstantRows();
   if (constRows) {
@@ -320,7 +327,7 @@ mlir::Type LLVMTypeConverter::convertSequenceType(SequenceType seq) const {
     if (!seq.hasDynamicExtents())
       return baseTy;
   }
-  return baseTy;
+  return mlir::LLVM::LLVMPointerType::get(baseTy);
 }
 
 // fir.tdesc<any>  -->  llvm<"i8*">
@@ -328,7 +335,8 @@ mlir::Type LLVMTypeConverter::convertSequenceType(SequenceType seq) const {
 // the f18 object v. class distinction (F2003).
 mlir::Type
 LLVMTypeConverter::convertTypeDescType(mlir::MLIRContext *ctx) const {
-  return mlir::LLVM::LLVMPointerType::get(ctx);
+  return mlir::LLVM::LLVMPointerType::get(
+      mlir::IntegerType::get(&getContext(), 8));
 }
 
 // Relay TBAA tag attachment to TBAABuilder.

@@ -48,12 +48,6 @@ static cl::opt<bool> WasmDisableExplicitLocals(
              " instruction output for test purposes only."),
     cl::init(false));
 
-static cl::opt<bool> WasmDisableFixIrreducibleControlFlowPass(
-    "wasm-disable-fix-irreducible-control-flow-pass", cl::Hidden,
-    cl::desc("webassembly: disables the fix "
-             " irreducible control flow optimization pass"),
-    cl::init(false));
-
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeWebAssemblyTarget() {
   // Register the target.
   RegisterTargetMachine<WebAssemblyTargetMachine> X(
@@ -113,7 +107,7 @@ static Reloc::Model getEffectiveRelocModel(std::optional<Reloc::Model> RM,
 WebAssemblyTargetMachine::WebAssemblyTargetMachine(
     const Target &T, const Triple &TT, StringRef CPU, StringRef FS,
     const TargetOptions &Options, std::optional<Reloc::Model> RM,
-    std::optional<CodeModel::Model> CM, CodeGenOptLevel OL, bool JIT)
+    std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(
           T,
           TT.isArch64Bit()
@@ -133,7 +127,6 @@ WebAssemblyTargetMachine::WebAssemblyTargetMachine(
   // LLVM 'unreachable' to ISD::TRAP and then lower that to WebAssembly's
   // 'unreachable' instructions which is meant for that case.
   this->Options.TrapUnreachable = true;
-  this->Options.NoTrapAfterNoreturn = false;
 
   // WebAssembly treats each function as an independent unit. Force
   // -ffunction-sections, effectively, so that we can emit them independently.
@@ -433,7 +426,7 @@ void WebAssemblyPassConfig::addIRPasses() {
   addPass(createWebAssemblyFixFunctionBitcasts());
 
   // Optimize "returned" function attributes.
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(createWebAssemblyOptimizeReturned());
 
   basicCheckForEHAndSjLj(TM);
@@ -510,7 +503,7 @@ void WebAssemblyPassConfig::addOptimizedRegAlloc() {
   // usually not used for production builds.
   // TODO Investigate why RegisterCoalesce degrades debug info quality and fix
   // it properly
-  if (getOptLevel() == CodeGenOptLevel::Less)
+  if (getOptLevel() == CodeGenOpt::Less)
     disablePass(&RegisterCoalescerID);
   TargetPassConfig::addOptimizedRegAlloc();
 }
@@ -544,8 +537,7 @@ void WebAssemblyPassConfig::addPreEmitPass() {
   addPass(createWebAssemblyNullifyDebugValueLists());
 
   // Eliminate multiple-entry loops.
-  if (!WasmDisableFixIrreducibleControlFlowPass)
-    addPass(createWebAssemblyFixIrreducibleControlFlow());
+  addPass(createWebAssemblyFixIrreducibleControlFlow());
 
   // Do various transformations for exception handling.
   // Every CFG-changing optimizations should come before this.
@@ -558,7 +550,7 @@ void WebAssemblyPassConfig::addPreEmitPass() {
   addPass(createWebAssemblyReplacePhysRegs());
 
   // Preparations and optimizations related to register stackification.
-  if (getOptLevel() != CodeGenOptLevel::None) {
+  if (getOptLevel() != CodeGenOpt::None) {
     // Depend on LiveIntervals and perform some optimizations on it.
     addPass(createWebAssemblyOptimizeLiveIntervals());
 
@@ -593,7 +585,7 @@ void WebAssemblyPassConfig::addPreEmitPass() {
   addPass(createWebAssemblyLowerBrUnless());
 
   // Perform the very last peephole optimizations on the code.
-  if (getOptLevel() != CodeGenOptLevel::None)
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(createWebAssemblyPeephole());
 
   // Create a mapping from LLVM CodeGen virtual registers to wasm registers.

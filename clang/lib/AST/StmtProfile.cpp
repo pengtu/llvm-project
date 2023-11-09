@@ -930,7 +930,6 @@ void OMPClauseProfiler::VisitOMPDoacrossClause(const OMPDoacrossClause *C) {
 }
 void OMPClauseProfiler::VisitOMPXAttributeClause(const OMPXAttributeClause *C) {
 }
-void OMPClauseProfiler::VisitOMPXBareClause(const OMPXBareClause *C) {}
 } // namespace
 
 void
@@ -1328,21 +1327,13 @@ void StmtProfiler::VisitSYCLUniqueStableNameExpr(
 
 void StmtProfiler::VisitPredefinedExpr(const PredefinedExpr *S) {
   VisitExpr(S);
-  ID.AddInteger(llvm::to_underlying(S->getIdentKind()));
+  ID.AddInteger(S->getIdentKind());
 }
 
 void StmtProfiler::VisitIntegerLiteral(const IntegerLiteral *S) {
   VisitExpr(S);
   S->getValue().Profile(ID);
-
-  QualType T = S->getType();
-  if (Canonical)
-    T = T.getCanonicalType();
-  ID.AddInteger(T->getTypeClass());
-  if (auto BitIntT = T->getAs<BitIntType>())
-    BitIntT->Profile(ID);
-  else
-    ID.AddInteger(T->castAs<BuiltinType>()->getKind());
+  ID.AddInteger(S->getType()->castAs<BuiltinType>()->getKind());
 }
 
 void StmtProfiler::VisitFixedPointLiteral(const FixedPointLiteral *S) {
@@ -1353,7 +1344,7 @@ void StmtProfiler::VisitFixedPointLiteral(const FixedPointLiteral *S) {
 
 void StmtProfiler::VisitCharacterLiteral(const CharacterLiteral *S) {
   VisitExpr(S);
-  ID.AddInteger(llvm::to_underlying(S->getKind()));
+  ID.AddInteger(S->getKind());
   ID.AddInteger(S->getValue());
 }
 
@@ -1371,7 +1362,7 @@ void StmtProfiler::VisitImaginaryLiteral(const ImaginaryLiteral *S) {
 void StmtProfiler::VisitStringLiteral(const StringLiteral *S) {
   VisitExpr(S);
   ID.AddString(S->getBytes());
-  ID.AddInteger(llvm::to_underlying(S->getKind()));
+  ID.AddInteger(S->getKind());
 }
 
 void StmtProfiler::VisitParenExpr(const ParenExpr *S) {
@@ -2096,7 +2087,7 @@ void StmtProfiler::VisitCXXNewExpr(const CXXNewExpr *S) {
   ID.AddInteger(S->getNumPlacementArgs());
   ID.AddBoolean(S->isGlobalNew());
   ID.AddBoolean(S->isParenTypeId());
-  ID.AddInteger(llvm::to_underlying(S->getInitializationStyle()));
+  ID.AddInteger(S->getInitializationStyle());
 }
 
 void

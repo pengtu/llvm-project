@@ -189,9 +189,6 @@ public:
   /// First SEH '__try' statement in the current function.
   SourceLocation FirstSEHTryLoc;
 
-  /// First use of a VLA within the current function.
-  SourceLocation FirstVLALoc;
-
 private:
   /// Used to determine if errors occurred in this function or block.
   DiagnosticErrorTrap ErrorTrap;
@@ -474,11 +471,6 @@ public:
   void setHasSEHTry(SourceLocation TryLoc) {
     setHasBranchProtectedScope();
     FirstSEHTryLoc = TryLoc;
-  }
-
-  void setHasVLA(SourceLocation VLALoc) {
-    if (FirstVLALoc.isInvalid())
-      FirstVLALoc = VLALoc;
   }
 
   bool NeedsScopeChecking() const {
@@ -855,8 +847,6 @@ public:
   /// is known.
   bool AfterParameterList = true;
 
-  ParmVarDecl *ExplicitObjectParameter = nullptr;
-
   /// Source range covering the lambda introducer [...].
   SourceRange IntroducerRange;
 
@@ -1035,7 +1025,7 @@ public:
     return NonODRUsedCapturingExprs.count(CapturingVarExpr);
   }
   void removePotentialCapture(Expr *E) {
-    llvm::erase(PotentiallyCapturingExprs, E);
+    llvm::erase_value(PotentiallyCapturingExprs, E);
   }
   void clearPotentialCaptures() {
     PotentiallyCapturingExprs.clear();
@@ -1052,8 +1042,6 @@ public:
 
   void visitPotentialCaptures(
       llvm::function_ref<void(ValueDecl *, Expr *)> Callback) const;
-
-  bool lambdaCaptureShouldBeConst() const;
 };
 
 FunctionScopeInfo::WeakObjectProfileTy::WeakObjectProfileTy()

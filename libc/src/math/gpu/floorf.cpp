@@ -9,8 +9,8 @@
 #include "src/math/floorf.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(float, floorf, (float x)) { return __builtin_floorf(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

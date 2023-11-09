@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <signal.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 
 #if defined(_WIN32)
@@ -47,4 +47,4 @@ FPExceptMatcher::FPExceptMatcher(FunctionCaller *func) {
 }
 
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

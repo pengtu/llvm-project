@@ -16,10 +16,10 @@ namespace clang {
 namespace driver {
 namespace tools {
 
-/// Directly call system default assembler and linker.
+/// aix -- Directly call system default assembler and linker.
 namespace aix {
 
-class LLVM_LIBRARY_VISIBILITY Assembler final : public Tool {
+class LLVM_LIBRARY_VISIBILITY Assembler : public Tool {
 public:
   Assembler(const ToolChain &TC) : Tool("aix::Assembler", "assembler", TC) {}
 
@@ -31,7 +31,7 @@ public:
                     const char *LinkingOutput) const override;
 };
 
-class LLVM_LIBRARY_VISIBILITY Linker final : public Tool {
+class LLVM_LIBRARY_VISIBILITY Linker : public Tool {
 public:
   Linker(const ToolChain &TC) : Tool("aix::Linker", "linker", TC) {}
 

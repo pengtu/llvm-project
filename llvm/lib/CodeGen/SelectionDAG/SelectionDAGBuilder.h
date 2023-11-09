@@ -295,10 +295,10 @@ public:
   LLVMContext *Context = nullptr;
 
   SelectionDAGBuilder(SelectionDAG &dag, FunctionLoweringInfo &funcinfo,
-                      SwiftErrorValueTracking &swifterror, CodeGenOptLevel ol)
+                      SwiftErrorValueTracking &swifterror, CodeGenOpt::Level ol)
       : SDNodeOrder(LowestSDNodeOrder), TM(dag.getTarget()), DAG(dag),
-        SL(std::make_unique<SDAGSwitchLowering>(this, funcinfo)),
-        FuncInfo(funcinfo), SwiftError(swifterror) {}
+        SL(std::make_unique<SDAGSwitchLowering>(this, funcinfo)), FuncInfo(funcinfo),
+        SwiftError(swifterror) {}
 
   void init(GCFunctionInfo *gfi, AAResults *AA, AssumptionCache *AC,
             const TargetLibraryInfo *li);
@@ -426,8 +426,7 @@ public:
   void populateCallLoweringInfo(TargetLowering::CallLoweringInfo &CLI,
                                 const CallBase *Call, unsigned ArgIdx,
                                 unsigned NumArgs, SDValue Callee,
-                                Type *ReturnTy, AttributeSet RetAttrs,
-                                bool IsPatchPoint);
+                                Type *ReturnTy, bool IsPatchPoint);
 
   std::pair<SDValue, SDValue>
   lowerInvokable(TargetLowering::CallLoweringInfo &CLI,

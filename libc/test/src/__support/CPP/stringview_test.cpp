@@ -9,7 +9,7 @@
 #include "src/__support/CPP/string_view.h"
 #include "test/UnitTest/Test.h"
 
-using LIBC_NAMESPACE::cpp::string_view;
+using __llvm_libc::cpp::string_view;
 
 TEST(LlvmLibcStringViewTest, InitializeCheck) {
   string_view v;

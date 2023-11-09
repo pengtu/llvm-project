@@ -205,22 +205,85 @@ bool Expr::isKnownToHaveBooleanValue(bool Semantic) const {
 }
 
 bool Expr::isFlexibleArrayMemberLike(
-    ASTContext &Ctx,
+    ASTContext &Context,
     LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel,
     bool IgnoreTemplateOrMacroSubstitution) const {
+
+  // For compatibility with existing code, we treat arrays of length 0 or
+  // 1 as flexible array members.
+  const auto *CAT = Context.getAsConstantArrayType(getType());
+  if (CAT) {
+    llvm::APInt Size = CAT->getSize();
+
+    using FAMKind = LangOptions::StrictFlexArraysLevelKind;
+
+    if (StrictFlexArraysLevel == FAMKind::IncompleteOnly)
+      return false;
+
+    // GCC extension, only allowed to represent a FAM.
+    if (Size == 0)
+      return true;
+
+    if (StrictFlexArraysLevel == FAMKind::ZeroOrIncomplete && Size.uge(1))
+      return false;
+
+    if (StrictFlexArraysLevel == FAMKind::OneZeroOrIncomplete && Size.uge(2))
+      return false;
+  } else if (!Context.getAsIncompleteArrayType(getType()))
+    return false;
+
   const Expr *E = IgnoreParens();
-  const Decl *D = nullptr;
 
-  if (const auto *ME = dyn_cast<MemberExpr>(E))
-    D = ME->getMemberDecl();
-  else if (const auto *DRE = dyn_cast<DeclRefExpr>(E))
-    D = DRE->getDecl();
+  const NamedDecl *ND = nullptr;
+  if (const auto *DRE = dyn_cast<DeclRefExpr>(E))
+    ND = DRE->getDecl();
+  else if (const auto *ME = dyn_cast<MemberExpr>(E))
+    ND = ME->getMemberDecl();
   else if (const auto *IRE = dyn_cast<ObjCIvarRefExpr>(E))
-    D = IRE->getDecl();
+    return IRE->getDecl()->getNextIvar() == nullptr;
 
-  return Decl::isFlexibleArrayMemberLike(Ctx, D, E->getType(),
-                                         StrictFlexArraysLevel,
-                                         IgnoreTemplateOrMacroSubstitution);
+  if (!ND)
+    return false;
+
+  // A flexible array member must be the last member in the class.
+  // FIXME: If the base type of the member expr is not FD->getParent(),
+  // this should not be treated as a flexible array member access.
+  if (const auto *FD = dyn_cast<FieldDecl>(ND)) {
+    // GCC treats an array memeber of a union as an FAM if the size is one or
+    // zero.
+    if (CAT) {
+      llvm::APInt Size = CAT->getSize();
+      if (FD->getParent()->isUnion() && (Size.isZero() || Size.isOne()))
+        return true;
+    }
+
+    // Don't consider sizes resulting from macro expansions or template argument
+    // substitution to form C89 tail-padded arrays.
+    if (IgnoreTemplateOrMacroSubstitution) {
+      TypeSourceInfo *TInfo = FD->getTypeSourceInfo();
+      while (TInfo) {
+        TypeLoc TL = TInfo->getTypeLoc();
+        // Look through typedefs.
+        if (TypedefTypeLoc TTL = TL.getAsAdjusted<TypedefTypeLoc>()) {
+          const TypedefNameDecl *TDL = TTL.getTypedefNameDecl();
+          TInfo = TDL->getTypeSourceInfo();
+          continue;
+        }
+        if (ConstantArrayTypeLoc CTL = TL.getAs<ConstantArrayTypeLoc>()) {
+          const Expr *SizeExpr = dyn_cast<IntegerLiteral>(CTL.getSizeExpr());
+          if (!SizeExpr || SizeExpr->getExprLoc().isMacroID())
+            return false;
+        }
+        break;
+      }
+    }
+
+    RecordDecl::field_iterator FI(
+        DeclContext::decl_iterator(const_cast<FieldDecl *>(FD)));
+    return ++FI == FD->getParent()->field_end();
+  }
+
+  return false;
 }
 
 const ValueDecl *
@@ -281,86 +344,85 @@ SourceLocation Expr::getExprLoc() const {
 // Primary Expressions.
 //===----------------------------------------------------------------------===//
 
-static void AssertResultStorageKind(ConstantResultStorageKind Kind) {
-  assert((Kind == ConstantResultStorageKind::APValue ||
-          Kind == ConstantResultStorageKind::Int64 ||
-          Kind == ConstantResultStorageKind::None) &&
+static void AssertResultStorageKind(ConstantExpr::ResultStorageKind Kind) {
+  assert((Kind == ConstantExpr::RSK_APValue ||
+          Kind == ConstantExpr::RSK_Int64 || Kind == ConstantExpr::RSK_None) &&
          "Invalid StorageKind Value");
   (void)Kind;
 }
 
-ConstantResultStorageKind ConstantExpr::getStorageKind(const APValue &Value) {
+ConstantExpr::ResultStorageKind
+ConstantExpr::getStorageKind(const APValue &Value) {
   switch (Value.getKind()) {
   case APValue::None:
   case APValue::Indeterminate:
-    return ConstantResultStorageKind::None;
+    return ConstantExpr::RSK_None;
   case APValue::Int:
     if (!Value.getInt().needsCleanup())
-      return ConstantResultStorageKind::Int64;
+      return ConstantExpr::RSK_Int64;
     [[fallthrough]];
   default:
-    return ConstantResultStorageKind::APValue;
+    return ConstantExpr::RSK_APValue;
   }
 }
 
-ConstantResultStorageKind
+ConstantExpr::ResultStorageKind
 ConstantExpr::getStorageKind(const Type *T, const ASTContext &Context) {
   if (T->isIntegralOrEnumerationType() && Context.getTypeInfo(T).Width <= 64)
-    return ConstantResultStorageKind::Int64;
-  return ConstantResultStorageKind::APValue;
+    return ConstantExpr::RSK_Int64;
+  return ConstantExpr::RSK_APValue;
 }
 
-ConstantExpr::ConstantExpr(Expr *SubExpr, ConstantResultStorageKind StorageKind,
+ConstantExpr::ConstantExpr(Expr *SubExpr, ResultStorageKind StorageKind,
                            bool IsImmediateInvocation)
     : FullExpr(ConstantExprClass, SubExpr) {
-  ConstantExprBits.ResultKind = llvm::to_underlying(StorageKind);
+  ConstantExprBits.ResultKind = StorageKind;
   ConstantExprBits.APValueKind = APValue::None;
   ConstantExprBits.IsUnsigned = false;
   ConstantExprBits.BitWidth = 0;
   ConstantExprBits.HasCleanup = false;
   ConstantExprBits.IsImmediateInvocation = IsImmediateInvocation;
 
-  if (StorageKind == ConstantResultStorageKind::APValue)
+  if (StorageKind == ConstantExpr::RSK_APValue)
     ::new (getTrailingObjects<APValue>()) APValue();
 }
 
 ConstantExpr *ConstantExpr::Create(const ASTContext &Context, Expr *E,
-                                   ConstantResultStorageKind StorageKind,
+                                   ResultStorageKind StorageKind,
                                    bool IsImmediateInvocation) {
   assert(!isa<ConstantExpr>(E));
   AssertResultStorageKind(StorageKind);
 
   unsigned Size = totalSizeToAlloc<APValue, uint64_t>(
-      StorageKind == ConstantResultStorageKind::APValue,
-      StorageKind == ConstantResultStorageKind::Int64);
+      StorageKind == ConstantExpr::RSK_APValue,
+      StorageKind == ConstantExpr::RSK_Int64);
   void *Mem = Context.Allocate(Size, alignof(ConstantExpr));
   return new (Mem) ConstantExpr(E, StorageKind, IsImmediateInvocation);
 }
 
 ConstantExpr *ConstantExpr::Create(const ASTContext &Context, Expr *E,
                                    const APValue &Result) {
-  ConstantResultStorageKind StorageKind = getStorageKind(Result);
+  ResultStorageKind StorageKind = getStorageKind(Result);
   ConstantExpr *Self = Create(Context, E, StorageKind);
   Self->SetResult(Result, Context);
   return Self;
 }
 
-ConstantExpr::ConstantExpr(EmptyShell Empty,
-                           ConstantResultStorageKind StorageKind)
+ConstantExpr::ConstantExpr(EmptyShell Empty, ResultStorageKind StorageKind)
     : FullExpr(ConstantExprClass, Empty) {
-  ConstantExprBits.ResultKind = llvm::to_underlying(StorageKind);
+  ConstantExprBits.ResultKind = StorageKind;
 
-  if (StorageKind == ConstantResultStorageKind::APValue)
+  if (StorageKind == ConstantExpr::RSK_APValue)
     ::new (getTrailingObjects<APValue>()) APValue();
 }
 
 ConstantExpr *ConstantExpr::CreateEmpty(const ASTContext &Context,
-                                        ConstantResultStorageKind StorageKind) {
+                                        ResultStorageKind StorageKind) {
   AssertResultStorageKind(StorageKind);
 
   unsigned Size = totalSizeToAlloc<APValue, uint64_t>(
-      StorageKind == ConstantResultStorageKind::APValue,
-      StorageKind == ConstantResultStorageKind::Int64);
+      StorageKind == ConstantExpr::RSK_APValue,
+      StorageKind == ConstantExpr::RSK_Int64);
   void *Mem = Context.Allocate(Size, alignof(ConstantExpr));
   return new (Mem) ConstantExpr(EmptyShell(), StorageKind);
 }
@@ -369,15 +431,15 @@ void ConstantExpr::MoveIntoResult(APValue &Value, const ASTContext &Context) {
   assert((unsigned)getStorageKind(Value) <= ConstantExprBits.ResultKind &&
          "Invalid storage for this value kind");
   ConstantExprBits.APValueKind = Value.getKind();
-  switch (getResultStorageKind()) {
-  case ConstantResultStorageKind::None:
+  switch (ConstantExprBits.ResultKind) {
+  case RSK_None:
     return;
-  case ConstantResultStorageKind::Int64:
+  case RSK_Int64:
     Int64Result() = *Value.getInt().getRawData();
     ConstantExprBits.BitWidth = Value.getInt().getBitWidth();
     ConstantExprBits.IsUnsigned = Value.getInt().isUnsigned();
     return;
-  case ConstantResultStorageKind::APValue:
+  case RSK_APValue:
     if (!ConstantExprBits.HasCleanup && Value.needsCleanup()) {
       ConstantExprBits.HasCleanup = true;
       Context.addDestruction(&APValueResult());
@@ -389,10 +451,10 @@ void ConstantExpr::MoveIntoResult(APValue &Value, const ASTContext &Context) {
 }
 
 llvm::APSInt ConstantExpr::getResultAsAPSInt() const {
-  switch (getResultStorageKind()) {
-  case ConstantResultStorageKind::APValue:
+  switch (ConstantExprBits.ResultKind) {
+  case ConstantExpr::RSK_APValue:
     return APValueResult().getInt();
-  case ConstantResultStorageKind::Int64:
+  case ConstantExpr::RSK_Int64:
     return llvm::APSInt(llvm::APInt(ConstantExprBits.BitWidth, Int64Result()),
                         ConstantExprBits.IsUnsigned);
   default:
@@ -402,14 +464,14 @@ llvm::APSInt ConstantExpr::getResultAsAPSInt() const {
 
 APValue ConstantExpr::getAPValueResult() const {
 
-  switch (getResultStorageKind()) {
-  case ConstantResultStorageKind::APValue:
+  switch (ConstantExprBits.ResultKind) {
+  case ConstantExpr::RSK_APValue:
     return APValueResult();
-  case ConstantResultStorageKind::Int64:
+  case ConstantExpr::RSK_Int64:
     return APValue(
         llvm::APSInt(llvm::APInt(ConstantExprBits.BitWidth, Int64Result()),
                      ConstantExprBits.IsUnsigned));
-  case ConstantResultStorageKind::None:
+  case ConstantExpr::RSK_None:
     if (ConstantExprBits.APValueKind == APValue::Indeterminate)
       return APValue::IndeterminateValue();
     return APValue();
@@ -429,7 +491,6 @@ DeclRefExpr::DeclRefExpr(const ASTContext &Ctx, ValueDecl *D,
   DeclRefExprBits.HadMultipleCandidates = false;
   DeclRefExprBits.RefersToEnclosingVariableOrCapture =
       RefersToEnclosingVariableOrCapture;
-  DeclRefExprBits.CapturedByCopyInLambdaWithExplicitObjectParameter = false;
   DeclRefExprBits.NonOdrUseReason = NOUR;
   DeclRefExprBits.IsImmediateEscalating = false;
   DeclRefExprBits.Loc = L;
@@ -457,7 +518,6 @@ DeclRefExpr::DeclRefExpr(const ASTContext &Ctx,
     = (TemplateArgs || TemplateKWLoc.isValid()) ? 1 : 0;
   DeclRefExprBits.RefersToEnclosingVariableOrCapture =
       RefersToEnclosingVariableOrCapture;
-  DeclRefExprBits.CapturedByCopyInLambdaWithExplicitObjectParameter = false;
   DeclRefExprBits.NonOdrUseReason = NOUR;
   if (TemplateArgs) {
     auto Deps = TemplateArgumentDependence::None;
@@ -599,16 +659,15 @@ std::string SYCLUniqueStableNameExpr::ComputeName(ASTContext &Context,
   std::string Buffer;
   Buffer.reserve(128);
   llvm::raw_string_ostream Out(Buffer);
-  Ctx->mangleCanonicalTypeName(Ty, Out);
+  Ctx->mangleTypeName(Ty, Out);
 
   return Out.str();
 }
 
-PredefinedExpr::PredefinedExpr(SourceLocation L, QualType FNTy,
-                               PredefinedIdentKind IK, bool IsTransparent,
-                               StringLiteral *SL)
+PredefinedExpr::PredefinedExpr(SourceLocation L, QualType FNTy, IdentKind IK,
+                               bool IsTransparent, StringLiteral *SL)
     : Expr(PredefinedExprClass, FNTy, VK_LValue, OK_Ordinary) {
-  PredefinedExprBits.Kind = llvm::to_underlying(IK);
+  PredefinedExprBits.Kind = IK;
   assert((getIdentKind() == IK) &&
          "IdentKind do not fit in PredefinedExprBitfields!");
   bool HasFunctionName = SL != nullptr;
@@ -626,7 +685,7 @@ PredefinedExpr::PredefinedExpr(EmptyShell Empty, bool HasFunctionName)
 }
 
 PredefinedExpr *PredefinedExpr::Create(const ASTContext &Ctx, SourceLocation L,
-                                       QualType FNTy, PredefinedIdentKind IK,
+                                       QualType FNTy, IdentKind IK,
                                        bool IsTransparent, StringLiteral *SL) {
   bool HasFunctionName = SL != nullptr;
   void *Mem = Ctx.Allocate(totalSizeToAlloc<Stmt *>(HasFunctionName),
@@ -641,23 +700,23 @@ PredefinedExpr *PredefinedExpr::CreateEmpty(const ASTContext &Ctx,
   return new (Mem) PredefinedExpr(EmptyShell(), HasFunctionName);
 }
 
-StringRef PredefinedExpr::getIdentKindName(PredefinedIdentKind IK) {
+StringRef PredefinedExpr::getIdentKindName(PredefinedExpr::IdentKind IK) {
   switch (IK) {
-  case PredefinedIdentKind::Func:
+  case Func:
     return "__func__";
-  case PredefinedIdentKind::Function:
+  case Function:
     return "__FUNCTION__";
-  case PredefinedIdentKind::FuncDName:
+  case FuncDName:
     return "__FUNCDNAME__";
-  case PredefinedIdentKind::LFunction:
+  case LFunction:
     return "L__FUNCTION__";
-  case PredefinedIdentKind::PrettyFunction:
+  case PrettyFunction:
     return "__PRETTY_FUNCTION__";
-  case PredefinedIdentKind::FuncSig:
+  case FuncSig:
     return "__FUNCSIG__";
-  case PredefinedIdentKind::LFuncSig:
+  case LFuncSig:
     return "L__FUNCSIG__";
-  case PredefinedIdentKind::PrettyFunctionNoVirtual:
+  case PrettyFunctionNoVirtual:
     break;
   }
   llvm_unreachable("Unknown ident kind for PredefinedExpr");
@@ -665,11 +724,10 @@ StringRef PredefinedExpr::getIdentKindName(PredefinedIdentKind IK) {
 
 // FIXME: Maybe this should use DeclPrinter with a special "print predefined
 // expr" policy instead.
-std::string PredefinedExpr::ComputeName(PredefinedIdentKind IK,
-                                        const Decl *CurrentDecl) {
+std::string PredefinedExpr::ComputeName(IdentKind IK, const Decl *CurrentDecl) {
   ASTContext &Context = CurrentDecl->getASTContext();
 
-  if (IK == PredefinedIdentKind::FuncDName) {
+  if (IK == PredefinedExpr::FuncDName) {
     if (const NamedDecl *ND = dyn_cast<NamedDecl>(CurrentDecl)) {
       std::unique_ptr<MangleContext> MC;
       MC.reset(Context.createMangleContext());
@@ -714,17 +772,15 @@ std::string PredefinedExpr::ComputeName(PredefinedIdentKind IK,
     return std::string(Out.str());
   }
   if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(CurrentDecl)) {
-    if (IK != PredefinedIdentKind::PrettyFunction &&
-        IK != PredefinedIdentKind::PrettyFunctionNoVirtual &&
-        IK != PredefinedIdentKind::FuncSig &&
-        IK != PredefinedIdentKind::LFuncSig)
+    if (IK != PrettyFunction && IK != PrettyFunctionNoVirtual &&
+        IK != FuncSig && IK != LFuncSig)
       return FD->getNameAsString();
 
     SmallString<256> Name;
     llvm::raw_svector_ostream Out(Name);
 
     if (const CXXMethodDecl *MD = dyn_cast<CXXMethodDecl>(FD)) {
-      if (MD->isVirtual() && IK != PredefinedIdentKind::PrettyFunctionNoVirtual)
+      if (MD->isVirtual() && IK != PrettyFunctionNoVirtual)
         Out << "virtual ";
       if (MD->isStatic())
         Out << "static ";
@@ -756,8 +812,7 @@ std::string PredefinedExpr::ComputeName(PredefinedIdentKind IK,
     if (FD->hasWrittenPrototype())
       FT = dyn_cast<FunctionProtoType>(AFT);
 
-    if (IK == PredefinedIdentKind::FuncSig ||
-        IK == PredefinedIdentKind::LFuncSig) {
+    if (IK == FuncSig || IK == LFuncSig) {
       switch (AFT->getCallConv()) {
       case CC_C: POut << "__cdecl "; break;
       case CC_X86StdCall: POut << "__stdcall "; break;
@@ -782,8 +837,7 @@ std::string PredefinedExpr::ComputeName(PredefinedIdentKind IK,
       if (FT->isVariadic()) {
         if (FD->getNumParams()) POut << ", ";
         POut << "...";
-      } else if ((IK == PredefinedIdentKind::FuncSig ||
-                  IK == PredefinedIdentKind::LFuncSig ||
+      } else if ((IK == FuncSig || IK == LFuncSig ||
                   !Context.getLangOpts().CPlusPlus) &&
                  !Decl->getNumParams()) {
         POut << "void";
@@ -908,8 +962,7 @@ std::string PredefinedExpr::ComputeName(PredefinedIdentKind IK,
 
     return std::string(Name);
   }
-  if (isa<TranslationUnitDecl>(CurrentDecl) &&
-      IK == PredefinedIdentKind::PrettyFunction) {
+  if (isa<TranslationUnitDecl>(CurrentDecl) && IK == PrettyFunction) {
     // __PRETTY_FUNCTION__ -> "top level", the others produce an empty string.
     return "top level";
   }
@@ -989,21 +1042,21 @@ std::string FixedPointLiteral::getValueAsString(unsigned Radix) const {
   return std::string(S.str());
 }
 
-void CharacterLiteral::print(unsigned Val, CharacterLiteralKind Kind,
+void CharacterLiteral::print(unsigned Val, CharacterKind Kind,
                              raw_ostream &OS) {
   switch (Kind) {
-  case CharacterLiteralKind::Ascii:
+  case CharacterLiteral::Ascii:
     break; // no prefix.
-  case CharacterLiteralKind::Wide:
+  case CharacterLiteral::Wide:
     OS << 'L';
     break;
-  case CharacterLiteralKind::UTF8:
+  case CharacterLiteral::UTF8:
     OS << "u8";
     break;
-  case CharacterLiteralKind::UTF16:
+  case CharacterLiteral::UTF16:
     OS << 'u';
     break;
-  case CharacterLiteralKind::UTF32:
+  case CharacterLiteral::UTF32:
     OS << 'U';
     break;
   }
@@ -1016,7 +1069,7 @@ void CharacterLiteral::print(unsigned Val, CharacterLiteralKind Kind,
     // would result in an invalid \U escape sequence.
     // FIXME: multicharacter literals such as '\xFF\xFF\xFF\xFF'
     // are not correctly handled.
-    if ((Val & ~0xFFu) == ~0xFFu && Kind == CharacterLiteralKind::Ascii)
+    if ((Val & ~0xFFu) == ~0xFFu && Kind == CharacterLiteral::Ascii)
       Val &= 0xFFu;
     if (Val < 256 && isPrintable((unsigned char)Val))
       OS << "'" << (char)Val << "'";
@@ -1067,23 +1120,23 @@ double FloatingLiteral::getValueAsApproximateDouble() const {
 }
 
 unsigned StringLiteral::mapCharByteWidth(TargetInfo const &Target,
-                                         StringLiteralKind SK) {
+                                         StringKind SK) {
   unsigned CharByteWidth = 0;
   switch (SK) {
-  case StringLiteralKind::Ordinary:
-  case StringLiteralKind::UTF8:
+  case Ordinary:
+  case UTF8:
     CharByteWidth = Target.getCharWidth();
     break;
-  case StringLiteralKind::Wide:
+  case Wide:
     CharByteWidth = Target.getWCharWidth();
     break;
-  case StringLiteralKind::UTF16:
+  case UTF16:
     CharByteWidth = Target.getChar16Width();
     break;
-  case StringLiteralKind::UTF32:
+  case UTF32:
     CharByteWidth = Target.getChar32Width();
     break;
-  case StringLiteralKind::Unevaluated:
+  case Unevaluated:
     return sizeof(char); // Host;
   }
   assert((CharByteWidth & 7) == 0 && "Assumes character size is byte multiple");
@@ -1094,17 +1147,17 @@ unsigned StringLiteral::mapCharByteWidth(TargetInfo const &Target,
 }
 
 StringLiteral::StringLiteral(const ASTContext &Ctx, StringRef Str,
-                             StringLiteralKind Kind, bool Pascal, QualType Ty,
+                             StringKind Kind, bool Pascal, QualType Ty,
                              const SourceLocation *Loc,
                              unsigned NumConcatenated)
     : Expr(StringLiteralClass, Ty, VK_LValue, OK_Ordinary) {
 
   unsigned Length = Str.size();
 
-  StringLiteralBits.Kind = llvm::to_underlying(Kind);
+  StringLiteralBits.Kind = Kind;
   StringLiteralBits.NumConcatenated = NumConcatenated;
 
-  if (Kind != StringLiteralKind::Unevaluated) {
+  if (Kind != StringKind::Unevaluated) {
     assert(Ctx.getAsConstantArrayType(Ty) &&
            "StringLiteral must be of constant array type!");
     unsigned CharByteWidth = mapCharByteWidth(Ctx.getTargetInfo(), Kind);
@@ -1159,8 +1212,8 @@ StringLiteral::StringLiteral(EmptyShell Empty, unsigned NumConcatenated,
 }
 
 StringLiteral *StringLiteral::Create(const ASTContext &Ctx, StringRef Str,
-                                     StringLiteralKind Kind, bool Pascal,
-                                     QualType Ty, const SourceLocation *Loc,
+                                     StringKind Kind, bool Pascal, QualType Ty,
+                                     const SourceLocation *Loc,
                                      unsigned NumConcatenated) {
   void *Mem = Ctx.Allocate(totalSizeToAlloc<unsigned, SourceLocation, char>(
                                1, NumConcatenated, Str.size()),
@@ -1182,21 +1235,13 @@ StringLiteral *StringLiteral::CreateEmpty(const ASTContext &Ctx,
 
 void StringLiteral::outputString(raw_ostream &OS) const {
   switch (getKind()) {
-  case StringLiteralKind::Unevaluated:
-  case StringLiteralKind::Ordinary:
+  case Unevaluated:
+  case Ordinary:
     break; // no prefix.
-  case StringLiteralKind::Wide:
-    OS << 'L';
-    break;
-  case StringLiteralKind::UTF8:
-    OS << "u8";
-    break;
-  case StringLiteralKind::UTF16:
-    OS << 'u';
-    break;
-  case StringLiteralKind::UTF32:
-    OS << 'U';
-    break;
+  case Wide:  OS << 'L'; break;
+  case UTF8:  OS << "u8"; break;
+  case UTF16: OS << 'u'; break;
+  case UTF32: OS << 'U'; break;
   }
   OS << '"';
   static const char Hex[] = "0123456789ABCDEF";
@@ -1210,8 +1255,8 @@ void StringLiteral::outputString(raw_ostream &OS) const {
 
       // Convert UTF-16 surrogate pairs back to codepoints before rendering.
       // Leave invalid surrogates alone; we'll use \x for those.
-      if (getKind() == StringLiteralKind::UTF16 && I != N - 1 &&
-          Char >= 0xd800 && Char <= 0xdbff) {
+      if (getKind() == UTF16 && I != N - 1 && Char >= 0xd800 &&
+          Char <= 0xdbff) {
         uint32_t Trail = getCodeUnit(I + 1);
         if (Trail >= 0xdc00 && Trail <= 0xdfff) {
           Char = 0x10000 + ((Char - 0xd800) << 10) + (Trail - 0xdc00);
@@ -1223,7 +1268,7 @@ void StringLiteral::outputString(raw_ostream &OS) const {
         // If this is a wide string, output characters over 0xff using \x
         // escapes. Otherwise, this is a UTF-16 or UTF-32 string, and Char is a
         // codepoint: use \x escapes for invalid codepoints.
-        if (getKind() == StringLiteralKind::Wide ||
+        if (getKind() == Wide ||
             (Char >= 0xd800 && Char <= 0xdfff) || Char >= 0x110000) {
           // FIXME: Is this the best way to print wchar_t?
           OS << "\\x";
@@ -1300,9 +1345,9 @@ StringLiteral::getLocationOfByte(unsigned ByteNo, const SourceManager &SM,
                                  const LangOptions &Features,
                                  const TargetInfo &Target, unsigned *StartToken,
                                  unsigned *StartTokenByteOffset) const {
-  assert((getKind() == StringLiteralKind::Ordinary ||
-          getKind() == StringLiteralKind::UTF8 ||
-          getKind() == StringLiteralKind::Unevaluated) &&
+  assert((getKind() == StringLiteral::Ordinary ||
+          getKind() == StringLiteral::UTF8 ||
+          getKind() == StringLiteral::Unevaluated) &&
          "Only narrow string literals are currently supported");
 
   // Loop over all of the tokens in this string until we find the one that
@@ -1574,10 +1619,6 @@ QualType CallExpr::getCallReturnType(const ASTContext &Ctx) const {
     // This should never be overloaded and so should never return null.
     CalleeType = Expr::findBoundMemberType(Callee);
     assert(!CalleeType.isNull());
-  } else if (CalleeType->isRecordType()) {
-    // If the Callee is a record type, then it is a not-yet-resolved
-    // dependent call to the call operator of that type.
-    return Ctx.DependentTy;
   } else if (CalleeType->isDependentType() ||
              CalleeType->isSpecificPlaceholderType(BuiltinType::Overload)) {
     return Ctx.DependentTy;
@@ -2212,31 +2253,31 @@ bool BinaryOperator::isNullPointerArithmeticExtension(ASTContext &Ctx,
   return true;
 }
 
-SourceLocExpr::SourceLocExpr(const ASTContext &Ctx, SourceLocIdentKind Kind,
+SourceLocExpr::SourceLocExpr(const ASTContext &Ctx, IdentKind Kind,
                              QualType ResultTy, SourceLocation BLoc,
                              SourceLocation RParenLoc,
                              DeclContext *ParentContext)
     : Expr(SourceLocExprClass, ResultTy, VK_PRValue, OK_Ordinary),
       BuiltinLoc(BLoc), RParenLoc(RParenLoc), ParentContext(ParentContext) {
-  SourceLocExprBits.Kind = llvm::to_underlying(Kind);
+  SourceLocExprBits.Kind = Kind;
   setDependence(ExprDependence::None);
 }
 
 StringRef SourceLocExpr::getBuiltinStr() const {
   switch (getIdentKind()) {
-  case SourceLocIdentKind::File:
+  case File:
     return "__builtin_FILE";
-  case SourceLocIdentKind::FileName:
+  case FileName:
     return "__builtin_FILE_NAME";
-  case SourceLocIdentKind::Function:
+  case Function:
     return "__builtin_FUNCTION";
-  case SourceLocIdentKind::FuncSig:
+  case FuncSig:
     return "__builtin_FUNCSIG";
-  case SourceLocIdentKind::Line:
+  case Line:
     return "__builtin_LINE";
-  case SourceLocIdentKind::Column:
+  case Column:
     return "__builtin_COLUMN";
-  case SourceLocIdentKind::SourceLocStruct:
+  case SourceLocStruct:
     return "__builtin_source_location";
   }
   llvm_unreachable("unexpected IdentKind!");
@@ -2271,7 +2312,7 @@ APValue SourceLocExpr::EvaluateInContext(const ASTContext &Ctx,
   };
 
   switch (getIdentKind()) {
-  case SourceLocIdentKind::FileName: {
+  case SourceLocExpr::FileName: {
     // __builtin_FILE_NAME() is a Clang-specific extension that expands to the
     // the last part of __builtin_FILE().
     SmallString<256> FileName;
@@ -2279,26 +2320,26 @@ APValue SourceLocExpr::EvaluateInContext(const ASTContext &Ctx,
         FileName, PLoc, Ctx.getLangOpts(), Ctx.getTargetInfo());
     return MakeStringLiteral(FileName);
   }
-  case SourceLocIdentKind::File: {
+  case SourceLocExpr::File: {
     SmallString<256> Path(PLoc.getFilename());
     clang::Preprocessor::processPathForFileMacro(Path, Ctx.getLangOpts(),
                                                  Ctx.getTargetInfo());
     return MakeStringLiteral(Path);
   }
-  case SourceLocIdentKind::Function:
-  case SourceLocIdentKind::FuncSig: {
+  case SourceLocExpr::Function:
+  case SourceLocExpr::FuncSig: {
     const auto *CurDecl = dyn_cast<Decl>(Context);
-    const auto Kind = getIdentKind() == SourceLocIdentKind::Function
-                          ? PredefinedIdentKind::Function
-                          : PredefinedIdentKind::FuncSig;
+    const auto Kind = getIdentKind() == SourceLocExpr::Function
+                          ? PredefinedExpr::Function
+                          : PredefinedExpr::FuncSig;
     return MakeStringLiteral(
         CurDecl ? PredefinedExpr::ComputeName(Kind, CurDecl) : std::string(""));
   }
-  case SourceLocIdentKind::Line:
+  case SourceLocExpr::Line:
     return APValue(Ctx.MakeIntValue(PLoc.getLine(), Ctx.UnsignedIntTy));
-  case SourceLocIdentKind::Column:
+  case SourceLocExpr::Column:
     return APValue(Ctx.MakeIntValue(PLoc.getColumn(), Ctx.UnsignedIntTy));
-  case SourceLocIdentKind::SourceLocStruct: {
+  case SourceLocExpr::SourceLocStruct: {
     // Fill in a std::source_location::__impl structure, by creating an
     // artificial file-scoped CompoundLiteralExpr, and returning a pointer to
     // that.
@@ -2324,7 +2365,7 @@ APValue SourceLocExpr::EvaluateInContext(const ASTContext &Ctx,
         Value.getStructField(F->getFieldIndex()) = MakeStringLiteral(
             CurDecl && !isa<TranslationUnitDecl>(CurDecl)
                 ? StringRef(PredefinedExpr::ComputeName(
-                      PredefinedIdentKind::PrettyFunction, CurDecl))
+                      PredefinedExpr::PrettyFunction, CurDecl))
                 : "");
       } else if (Name == "_M_line") {
         llvm::APSInt IntVal = Ctx.MakeIntValue(PLoc.getLine(), F->getType());

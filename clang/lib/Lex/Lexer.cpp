@@ -47,10 +47,6 @@
 #include <tuple>
 #include <utility>
 
-#ifdef __SSE4_2__
-#include <nmmintrin.h>
-#endif
-
 using namespace clang;
 
 //===----------------------------------------------------------------------===//
@@ -61,7 +57,7 @@ using namespace clang;
 bool Token::isObjCAtKeyword(tok::ObjCKeywordKind objcKey) const {
   if (isAnnotation())
     return false;
-  if (const IdentifierInfo *II = getIdentifierInfo())
+  if (IdentifierInfo *II = getIdentifierInfo())
     return II->getObjCKeywordID() == objcKey;
   return false;
 }
@@ -70,7 +66,7 @@ bool Token::isObjCAtKeyword(tok::ObjCKeywordKind objcKey) const {
 tok::ObjCKeywordKind Token::getObjCKeywordID() const {
   if (isAnnotation())
     return tok::objc_not_keyword;
-  const IdentifierInfo *specId = getIdentifierInfo();
+  IdentifierInfo *specId = getIdentifierInfo();
   return specId ? specId->getObjCKeywordID() : tok::objc_not_keyword;
 }
 
@@ -287,9 +283,9 @@ static size_t getSpellingSlow(const Token &Tok, const char *BufPtr,
   if (tok::isStringLiteral(Tok.getKind())) {
     // Munch the encoding-prefix and opening double-quote.
     while (BufPtr < BufEnd) {
-      auto CharAndSize = Lexer::getCharAndSizeNoWarn(BufPtr, LangOpts);
-      Spelling[Length++] = CharAndSize.Char;
-      BufPtr += CharAndSize.Size;
+      unsigned Size;
+      Spelling[Length++] = Lexer::getCharAndSizeNoWarn(BufPtr, Size, LangOpts);
+      BufPtr += Size;
 
       if (Spelling[Length - 1] == '"')
         break;
@@ -316,9 +312,9 @@ static size_t getSpellingSlow(const Token &Tok, const char *BufPtr,
   }
 
   while (BufPtr < BufEnd) {
-    auto CharAndSize = Lexer::getCharAndSizeNoWarn(BufPtr, LangOpts);
-    Spelling[Length++] = CharAndSize.Char;
-    BufPtr += CharAndSize.Size;
+    unsigned Size;
+    Spelling[Length++] = Lexer::getCharAndSizeNoWarn(BufPtr, Size, LangOpts);
+    BufPtr += Size;
   }
 
   assert(Length < Tok.getLength() &&
@@ -772,9 +768,10 @@ unsigned Lexer::getTokenPrefixLength(SourceLocation TokStart, unsigned CharNo,
   // If we have a character that may be a trigraph or escaped newline, use a
   // lexer to parse it correctly.
   for (; CharNo; --CharNo) {
-    auto CharAndSize = Lexer::getCharAndSizeNoWarn(TokPtr, LangOpts);
-    TokPtr += CharAndSize.Size;
-    PhysOffset += CharAndSize.Size;
+    unsigned Size;
+    Lexer::getCharAndSizeNoWarn(TokPtr, Size, LangOpts);
+    TokPtr += Size;
+    PhysOffset += Size;
   }
 
   // Final detail: if we end up on an escaped newline, we want to return the
@@ -1356,16 +1353,15 @@ SourceLocation Lexer::findLocationAfterToken(
 ///
 /// NOTE: When this method is updated, getCharAndSizeSlowNoWarn (below) should
 /// be updated to match.
-Lexer::SizedChar Lexer::getCharAndSizeSlow(const char *Ptr, Token *Tok) {
-  unsigned Size = 0;
+char Lexer::getCharAndSizeSlow(const char *Ptr, unsigned &Size,
+                               Token *Tok) {
   // If we have a slash, look for an escaped newline.
   if (Ptr[0] == '\\') {
     ++Size;
     ++Ptr;
 Slash:
     // Common case, backslash-char where the char is not whitespace.
-    if (!isWhitespace(Ptr[0]))
-      return {'\\', Size};
+    if (!isWhitespace(Ptr[0])) return '\\';
 
     // See if we have optional whitespace characters between the slash and
     // newline.
@@ -1382,13 +1378,11 @@ Slash:
       Ptr  += EscapedNewLineSize;
 
       // Use slow version to accumulate a correct size field.
-      auto CharAndSize = getCharAndSizeSlow(Ptr, Tok);
-      CharAndSize.Size += Size;
-      return CharAndSize;
+      return getCharAndSizeSlow(Ptr, Size, Tok);
     }
 
     // Otherwise, this is not an escaped newline, just return the slash.
-    return {'\\', Size};
+    return '\\';
   }
 
   // If this is a trigraph, process it.
@@ -1403,12 +1397,13 @@ Slash:
       Ptr += 3;
       Size += 3;
       if (C == '\\') goto Slash;
-      return {C, Size};
+      return C;
     }
   }
 
   // If this is neither, return a single character.
-  return {*Ptr, Size + 1u};
+  ++Size;
+  return *Ptr;
 }
 
 /// getCharAndSizeSlowNoWarn - Handle the slow/uncommon case of the
@@ -1417,18 +1412,15 @@ Slash:
 ///
 /// NOTE: When this method is updated, getCharAndSizeSlow (above) should
 /// be updated to match.
-Lexer::SizedChar Lexer::getCharAndSizeSlowNoWarn(const char *Ptr,
-                                                 const LangOptions &LangOpts) {
-
-  unsigned Size = 0;
+char Lexer::getCharAndSizeSlowNoWarn(const char *Ptr, unsigned &Size,
+                                     const LangOptions &LangOpts) {
   // If we have a slash, look for an escaped newline.
   if (Ptr[0] == '\\') {
     ++Size;
     ++Ptr;
 Slash:
     // Common case, backslash-char where the char is not whitespace.
-    if (!isWhitespace(Ptr[0]))
-      return {'\\', Size};
+    if (!isWhitespace(Ptr[0])) return '\\';
 
     // See if we have optional whitespace characters followed by a newline.
     if (unsigned EscapedNewLineSize = getEscapedNewLineSize(Ptr)) {
@@ -1437,13 +1429,11 @@ Slash:
       Ptr  += EscapedNewLineSize;
 
       // Use slow version to accumulate a correct size field.
-      auto CharAndSize = getCharAndSizeSlowNoWarn(Ptr, LangOpts);
-      CharAndSize.Size += Size;
-      return CharAndSize;
+      return getCharAndSizeSlowNoWarn(Ptr, Size, LangOpts);
     }
 
     // Otherwise, this is not an escaped newline, just return the slash.
-    return {'\\', Size};
+    return '\\';
   }
 
   // If this is a trigraph, process it.
@@ -1454,12 +1444,13 @@ Slash:
       Ptr += 3;
       Size += 3;
       if (C == '\\') goto Slash;
-      return {C, Size};
+      return C;
     }
   }
 
   // If this is neither, return a single character.
-  return {*Ptr, Size + 1u};
+  ++Size;
+  return *Ptr;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1856,47 +1847,19 @@ bool Lexer::LexUnicodeIdentifierStart(Token &Result, uint32_t C,
   return true;
 }
 
-static const char *
-fastParseASCIIIdentifier(const char *CurPtr,
-                         [[maybe_unused]] const char *BufferEnd) {
-#ifdef __SSE4_2__
-  alignas(16) static constexpr char AsciiIdentifierRange[16] = {
-      '_', '_', 'A', 'Z', 'a', 'z', '0', '9',
-  };
-  constexpr ssize_t BytesPerRegister = 16;
-
-  __m128i AsciiIdentifierRangeV =
-      _mm_load_si128((const __m128i *)AsciiIdentifierRange);
-
-  while (LLVM_LIKELY(BufferEnd - CurPtr >= BytesPerRegister)) {
-    __m128i Cv = _mm_loadu_si128((const __m128i *)(CurPtr));
-
-    int Consumed = _mm_cmpistri(AsciiIdentifierRangeV, Cv,
-                                _SIDD_LEAST_SIGNIFICANT | _SIDD_CMP_RANGES |
-                                    _SIDD_UBYTE_OPS | _SIDD_NEGATIVE_POLARITY);
-    CurPtr += Consumed;
-    if (Consumed == BytesPerRegister)
-      continue;
-    return CurPtr;
-  }
-#endif
-
-  unsigned char C = *CurPtr;
-  while (isAsciiIdentifierContinue(C))
-    C = *++CurPtr;
-  return CurPtr;
-}
-
 bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr) {
   // Match [_A-Za-z0-9]*, we have already matched an identifier start.
-
   while (true) {
-
-    CurPtr = fastParseASCIIIdentifier(CurPtr, BufferEnd);
+    unsigned char C = *CurPtr;
+    // Fast path.
+    if (isAsciiIdentifierContinue(C)) {
+      ++CurPtr;
+      continue;
+    }
 
     unsigned Size;
     // Slow path: handle trigraph, unicode codepoints, UCNs.
-    unsigned char C = getCharAndSize(CurPtr, Size);
+    C = getCharAndSize(CurPtr, Size);
     if (isAsciiIdentifierContinue(C)) {
       CurPtr = ConsumeChar(CurPtr, Size, Result);
       continue;
@@ -1930,7 +1893,7 @@ bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr) {
 
   // Fill in Result.IdentifierInfo and update the token kind,
   // looking up the identifier in the identifier table.
-  const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
+  IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
   // Note that we have to call PP->LookUpIdentifierInfo() even for code
   // completion, it writes IdentifierInfo into Result, and callers rely on it.
 
@@ -1969,14 +1932,11 @@ bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr) {
 /// isHexaLiteral - Return true if Start points to a hex constant.
 /// in microsoft mode (where this is supposed to be several different tokens).
 bool Lexer::isHexaLiteral(const char *Start, const LangOptions &LangOpts) {
-  auto CharAndSize1 = Lexer::getCharAndSizeNoWarn(Start, LangOpts);
-  char C1 = CharAndSize1.Char;
+  unsigned Size;
+  char C1 = Lexer::getCharAndSizeNoWarn(Start, Size, LangOpts);
   if (C1 != '0')
     return false;
-
-  auto CharAndSize2 =
-      Lexer::getCharAndSizeNoWarn(Start + CharAndSize1.Size, LangOpts);
-  char C2 = CharAndSize2.Char;
+  char C2 = Lexer::getCharAndSizeNoWarn(Start + Size, Size, LangOpts);
   return (C2 == 'x' || C2 == 'X');
 }
 
@@ -2020,7 +1980,8 @@ bool Lexer::LexNumericConstant(Token &Result, const char *CurPtr) {
 
   // If we have a digit separator, continue.
   if (C == '\'' && (LangOpts.CPlusPlus14 || LangOpts.C23)) {
-    auto [Next, NextSize] = getCharAndSizeNoWarn(CurPtr + Size, LangOpts);
+    unsigned NextSize;
+    char Next = getCharAndSizeNoWarn(CurPtr + Size, NextSize, LangOpts);
     if (isAsciiIdentifierContinue(Next)) {
       if (!isLexingRawMode())
         Diag(CurPtr, LangOpts.CPlusPlus
@@ -2092,8 +2053,8 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
       unsigned Consumed = Size;
       unsigned Chars = 1;
       while (true) {
-        auto [Next, NextSize] =
-            getCharAndSizeNoWarn(CurPtr + Consumed, LangOpts);
+        unsigned NextSize;
+        char Next = getCharAndSizeNoWarn(CurPtr + Consumed, NextSize, LangOpts);
         if (!isAsciiIdentifierContinue(Next)) {
           // End of suffix. Check whether this is on the allowed list.
           const StringRef CompleteSuffix(Buffer, Chars);
@@ -4497,7 +4458,7 @@ bool Lexer::LexDependencyDirectiveToken(Token &Result) {
   if (Result.is(tok::raw_identifier)) {
     Result.setRawIdentifierData(TokPtr);
     if (!isLexingRawMode()) {
-      const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
+      IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
       if (II->isHandleIdentifierCase())
         return PP->HandleIdentifier(Result);
     }

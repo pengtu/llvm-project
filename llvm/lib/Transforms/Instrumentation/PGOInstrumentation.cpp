@@ -327,6 +327,7 @@ extern cl::opt<PGOViewCountsType> PGOViewCounts;
 // Defined in Analysis/BlockFrequencyInfo.cpp:  -view-bfi-func-name=
 extern cl::opt<std::string> ViewBlockFreqFuncName;
 
+extern cl::opt<bool> DebugInfoCorrelate;
 } // namespace llvm
 
 static cl::opt<bool>
@@ -1760,10 +1761,17 @@ static void collectComdatMembers(
       ComdatMembers.insert(std::make_pair(C, &GA));
 }
 
-// Return true if we should not find instrumentation data for this function
-static bool skipPGOUse(const Function &F) {
+// Don't perform PGO instrumeatnion / profile-use.
+static bool skipPGO(const Function &F) {
   if (F.isDeclaration())
     return true;
+  if (F.hasFnAttribute(llvm::Attribute::NoProfile))
+    return true;
+  if (F.hasFnAttribute(llvm::Attribute::SkipProfile))
+    return true;
+  if (F.getInstructionCount() < PGOFunctionSizeThreshold)
+    return true;
+
   // If there are too many critical edges, PGO might cause
   // compiler time problem. Skip PGO if the number of
   // critical edges execeed the threshold.
@@ -1781,19 +1789,7 @@ static bool skipPGOUse(const Function &F) {
                       << " exceed the threshold. Skip PGO.\n");
     return true;
   }
-  return false;
-}
 
-// Return true if we should not instrument this function
-static bool skipPGOGen(const Function &F) {
-  if (skipPGOUse(F))
-    return true;
-  if (F.hasFnAttribute(llvm::Attribute::NoProfile))
-    return true;
-  if (F.hasFnAttribute(llvm::Attribute::SkipProfile))
-    return true;
-  if (F.getInstructionCount() < PGOFunctionSizeThreshold)
-    return true;
   return false;
 }
 
@@ -1809,7 +1805,7 @@ static bool InstrumentAllFunctions(
   collectComdatMembers(M, ComdatMembers);
 
   for (auto &F : M) {
-    if (skipPGOGen(F))
+    if (skipPGO(F))
       continue;
     auto &TLI = LookupTLI(F);
     auto *BPI = LookupBPI(F);
@@ -2036,7 +2032,7 @@ static bool annotateAllFunctions(
     InstrumentFuncEntry = PGOInstrumentEntry;
   bool HasSingleByteCoverage = PGOReader->hasSingleByteCoverage();
   for (auto &F : M) {
-    if (skipPGOUse(F))
+    if (skipPGO(F))
       continue;
     auto &TLI = LookupTLI(F);
     auto *BPI = LookupBPI(F);

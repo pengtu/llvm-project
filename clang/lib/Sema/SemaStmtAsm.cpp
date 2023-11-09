@@ -271,8 +271,7 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
       OutputName = Names[i]->getName();
 
     TargetInfo::ConstraintInfo Info(Literal->getString(), OutputName);
-    if (!Context.getTargetInfo().validateOutputConstraint(Info) &&
-        !(LangOpts.HIPStdPar && LangOpts.CUDAIsDevice)) {
+    if (!Context.getTargetInfo().validateOutputConstraint(Info)) {
       targetDiag(Literal->getBeginLoc(),
                  diag::err_asm_invalid_output_constraint)
           << Info.getConstraintStr();

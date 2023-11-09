@@ -390,7 +390,7 @@ static bool collectSRATypes(DenseMap<uint64_t, GlobalPart> &Parts,
       }
 
       // Scalable types not currently supported.
-      if (Ty->isScalableTy())
+      if (isa<ScalableVectorType>(Ty))
         return false;
 
       auto IsStored = [](Value *V, Constant *Initializer) {
@@ -1614,7 +1614,7 @@ processGlobal(GlobalValue &GV,
               function_ref<TargetTransformInfo &(Function &)> GetTTI,
               function_ref<TargetLibraryInfo &(Function &)> GetTLI,
               function_ref<DominatorTree &(Function &)> LookupDomTree) {
-  if (GV.getName().starts_with("llvm."))
+  if (GV.getName().startswith("llvm."))
     return false;
 
   GlobalStatus GS;

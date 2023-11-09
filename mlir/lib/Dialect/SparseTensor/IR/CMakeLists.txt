@@ -29,7 +29,6 @@ endif()
 
 add_mlir_dialect_library(MLIRSparseTensorDialect
   SparseTensorDialect.cpp
-  SparseTensorInterfaces.cpp
   Detail/Var.cpp
   Detail/DimLvlMap.cpp
   Detail/LvlTypeParser.cpp

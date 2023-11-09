@@ -54,7 +54,7 @@ llvm::Expected<std::string> CommandObjectRegexCommand::SubstituteVariables(
   return output.str();
 }
 
-void CommandObjectRegexCommand::DoExecute(llvm::StringRef command,
+bool CommandObjectRegexCommand::DoExecute(llvm::StringRef command,
                                           CommandReturnObject &result) {
   EntryCollection::const_iterator pos, end = m_entries.end();
   for (pos = m_entries.begin(); pos != end; ++pos) {
@@ -64,7 +64,7 @@ void CommandObjectRegexCommand::DoExecute(llvm::StringRef command,
           SubstituteVariables(pos->command, matches);
       if (!new_command) {
         result.SetError(new_command.takeError());
-        return;
+        return false;
       }
 
       // Interpret the new command and return this as the result!
@@ -73,9 +73,8 @@ void CommandObjectRegexCommand::DoExecute(llvm::StringRef command,
       // We don't have to pass an override_context here, as the command that 
       // called us should have set up the context appropriately.
       bool force_repeat_command = true;
-      m_interpreter.HandleCommand(new_command->c_str(), eLazyBoolNo, result,
-                                  force_repeat_command);
-      return;
+      return m_interpreter.HandleCommand(new_command->c_str(), eLazyBoolNo,
+                                         result, force_repeat_command);
     }
   }
   result.SetStatus(eReturnStatusFailed);
@@ -86,6 +85,7 @@ void CommandObjectRegexCommand::DoExecute(llvm::StringRef command,
                             << "' failed to match any "
                                "regular expression in the '"
                             << m_cmd_name << "' regex ";
+  return false;
 }
 
 bool CommandObjectRegexCommand::AddRegexCommand(llvm::StringRef re_cstr,

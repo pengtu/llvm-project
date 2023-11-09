@@ -1,4 +1,4 @@
-// RUN: mlir-opt %s -transform-interpreter -test-linalg-transform-patterns=test-patterns -split-input-file | FileCheck %s
+// RUN: mlir-opt %s -test-transform-dialect-interpreter -test-linalg-transform-patterns=test-patterns -split-input-file | FileCheck %s
 
 func.func @dot(%x: memref<?xf32, strided<[1], offset: ?>>,
           %y: memref<?xf32, strided<[1], offset: ?>>,
@@ -9,12 +9,10 @@ func.func @dot(%x: memref<?xf32, strided<[1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.dot"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %1, %loop = transform.structured.tile_using_for %0 [8000] : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.dot"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %1, %loop = transform.structured.tile %0 [8000] : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
 }
 
 // CHECK-LABEL: func @dot
@@ -35,12 +33,10 @@ func.func @matvec(%A: memref<?x?xf32, strided<[?, 1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matvec"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %1, %loops:2 = transform.structured.tile_using_for %0 [5, 6] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op)
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matvec"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %1, %loops:2 = transform.structured.tile %0 [5, 6] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op)
 }
 
 // CHECK-LABEL: func @matvec
@@ -64,15 +60,13 @@ func.func @matmul(%A: memref<?x?xf32, strided<[?, 1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %1, %loops:3 = transform.structured.tile_using_for %0 [2000, 3000, 4000] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      %2, %loops_2:3 = transform.structured.tile_using_for %1 [200, 300, 400] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      %3, %loops_3:3 = transform.structured.tile_using_for %2 [20, 30, 40] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      %4, %loops_4:3 = transform.structured.tile_using_for %3 [2, 3, 4] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %1, %loops:3 = transform.structured.tile %0 [2000, 3000, 4000] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+    %2, %loops_2:3 = transform.structured.tile %1 [200, 300, 400] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+    %3, %loops_3:3 = transform.structured.tile %2 [20, 30, 40] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+    %4, %loops_4:3 = transform.structured.tile %3 [2, 3, 4] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
 }
 
 // CHECK-LABEL: func @matmul
@@ -139,12 +133,10 @@ func.func @permute_generic(%A: memref<?x?xf32, strided<[?, 1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-    %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-    transform.structured.interchange %0 iterator_interchange = [1, 2, 0] : (!transform.any_op) -> !transform.any_op
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%arg1: !transform.any_op):
+  %0 = transform.structured.match ops{["linalg.generic"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  transform.structured.interchange %0 iterator_interchange = [1, 2, 0] : (!transform.any_op) -> !transform.any_op
 }
 
 // CHECK-LABEL:  func @permute_generic
@@ -167,12 +159,10 @@ func.func @matvec_perm(%A: memref<?x?xf32, strided<[?, 1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matvec"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %1, %loops:2 = transform.structured.tile_using_for %0 [5, 6] {interchange = [1, 0]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op)
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matvec"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %1, %loops:2 = transform.structured.tile %0 [5, 6] {interchange = [1, 0]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op)
 }
 
 // CHECK-LABEL: func @matvec_perm
@@ -196,14 +186,12 @@ func.func @matmul_perm(%A: memref<?x?xf32, strided<[?, 1], offset: ?>>,
   return
 }
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%arg1: !transform.any_op {transform.readonly}) {
-      %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-      %1, %loops:3 = transform.structured.tile_using_for %0 [2000, 3000, 4000] {interchange = [1, 2, 0]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      %2, %loops_2:3 = transform.structured.tile_using_for %1 [200, 300, 400] {interchange = [1, 0, 2]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      %3, %loops_3:3 = transform.structured.tile_using_for %2 [20, 30, 40] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
-      transform.yield
-  }
+transform.sequence failures(propagate) {
+  ^bb0(%arg1: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.matmul"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+    %1, %loops:3 = transform.structured.tile %0 [2000, 3000, 4000] {interchange = [1, 2, 0]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+    %2, %loops_2:3 = transform.structured.tile %1 [200, 300, 400] {interchange = [1, 0, 2]} : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+    %3, %loops_3:3 = transform.structured.tile %2 [20, 30, 40] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
 }
 
 // CHECK-LABEL: func @matmul_perm

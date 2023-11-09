@@ -23,9 +23,9 @@
 
 #include "mpfr_inc.h"
 
-template <typename T> using FPBits = LIBC_NAMESPACE::fputil::FPBits<T>;
+template <typename T> using FPBits = __llvm_libc::fputil::FPBits<T>;
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace testing {
 namespace mpfr {
 
@@ -51,7 +51,7 @@ template <> struct ExtraPrecision<long double> {
 template <typename T>
 static inline unsigned int get_precision(double ulp_tolerance) {
   if (ulp_tolerance <= 0.5) {
-    return LIBC_NAMESPACE::fputil::FloatProperties<T>::MANTISSA_PRECISION;
+    return __llvm_libc::fputil::FloatProperties<T>::MANTISSA_PRECISION;
   } else {
     return ExtraPrecision<T>::VALUE;
   }
@@ -72,7 +72,6 @@ static inline mpfr_rnd_t get_mpfr_rounding_mode(RoundingMode mode) {
     return MPFR_RNDN;
     break;
   }
-  __builtin_unreachable();
 }
 
 class MPFRNumber {
@@ -284,12 +283,6 @@ public:
   MPFRNumber log1p() const {
     MPFRNumber result(*this);
     mpfr_log1p(result.value, value, mpfr_rounding);
-    return result;
-  }
-
-  MPFRNumber pow(const MPFRNumber &b) {
-    MPFRNumber result(*this);
-    mpfr_pow(result.value, value, b.value, mpfr_rounding);
     return result;
   }
 
@@ -632,8 +625,6 @@ binary_operation_one_output(Operation op, InputType x, InputType y,
     return inputX.fmod(inputY);
   case Operation::Hypot:
     return inputX.hypot(inputY);
-  case Operation::Pow:
-    return inputX.pow(inputY);
   default:
     __builtin_unreachable();
   }
@@ -1020,4 +1011,4 @@ template long double round<long double>(long double, RoundingMode);
 
 } // namespace mpfr
 } // namespace testing
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

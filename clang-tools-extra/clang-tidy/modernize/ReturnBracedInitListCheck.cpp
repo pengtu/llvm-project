@@ -9,7 +9,6 @@
 #include "ReturnBracedInitListCheck.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Lex/Lexer.h"
 #include "clang/Tooling/FixIt.h"
 
@@ -18,27 +17,11 @@ using namespace clang::ast_matchers;
 namespace clang::tidy::modernize {
 
 void ReturnBracedInitListCheck::registerMatchers(MatchFinder *Finder) {
-  auto SemanticallyDifferentContainer = allOf(
-      hasDeclaration(
-          // Container(size_type count, const T &value,
-          //           const Allocator &alloc = Allocator());
-          cxxConstructorDecl(parameterCountIs(3),
-                             hasParameter(0, hasType(qualType(hasCanonicalType(
-                                                 isInteger())))))),
-      hasType(cxxRecordDecl(hasAnyName("::std::basic_string", "::std::vector",
-                                       "::std::deque", "::std::forward_list",
-                                       "::std::list"))));
-
+  // Skip list initialization and constructors with an initializer list.
   auto ConstructExpr =
       cxxConstructExpr(
-          unless(anyOf(
-              // Skip explicit constructor.
-              hasDeclaration(cxxConstructorDecl(isExplicit())),
-              // Skip list initialization and constructors with an initializer
-              // list.
-              isListInitialization(), hasDescendant(initListExpr()),
-              // Skip container `vector(size_type, const T&, ...)`.
-              SemanticallyDifferentContainer)))
+          unless(anyOf(hasDeclaration(cxxConstructorDecl(isExplicit())),
+                       isListInitialization(), hasDescendant(initListExpr()))))
           .bind("ctor");
 
   Finder->addMatcher(

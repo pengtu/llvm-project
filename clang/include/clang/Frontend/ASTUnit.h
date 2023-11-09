@@ -355,7 +355,6 @@ private:
 
   /// Bit used by CIndex to mark when a translation unit may be in an
   /// inconsistent state, and is not safe to free.
-  LLVM_PREFERRED_TYPE(bool)
   unsigned UnsafeToFree : 1;
 
   /// \brief Enumerator specifying the scope for skipping function bodies.

@@ -1,12 +1,10 @@
-// RUN: mlir-opt -split-input-file -transform-interpreter %s | FileCheck %s
+// RUN: mlir-opt -split-input-file -test-transform-dialect-interpreter %s | FileCheck %s
 
-module attributes {transform.with_named_sequence} {
-  transform.named_sequence @__transform_main(%func_op: !transform.op<"func.func"> {transform.readonly}) {
-    transform.apply_patterns to %func_op {
-      transform.apply_patterns.tensor.fold_tensor_subset_ops_into_vector_transfers
-    } : !transform.op<"func.func">
-    transform.yield
-  }
+transform.sequence failures(propagate) {
+^bb1(%func_op: !transform.op<"func.func">):
+  transform.apply_patterns to %func_op {
+    transform.apply_patterns.tensor.fold_tensor_subset_ops_into_vector_transfers
+  } : !transform.op<"func.func">
 }
 
 // CHECK: #[[$map:.*]] = affine_map<()[s0] -> (s0 + 4)>

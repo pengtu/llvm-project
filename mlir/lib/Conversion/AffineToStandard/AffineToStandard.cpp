@@ -156,10 +156,9 @@ public:
     Location loc = op.getLoc();
     Value lowerBound = lowerAffineLowerBound(op, rewriter);
     Value upperBound = lowerAffineUpperBound(op, rewriter);
-    Value step =
-        rewriter.create<arith::ConstantIndexOp>(loc, op.getStepAsInt());
+    Value step = rewriter.create<arith::ConstantIndexOp>(loc, op.getStep());
     auto scfForOp = rewriter.create<scf::ForOp>(loc, lowerBound, upperBound,
-                                                step, op.getInits());
+                                                step, op.getIterOperands());
     rewriter.eraseBlock(scfForOp.getBody());
     rewriter.inlineRegionBefore(op.getRegion(), scfForOp.getRegion(),
                                 scfForOp.getRegion().end());

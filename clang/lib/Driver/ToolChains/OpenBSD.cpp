@@ -30,7 +30,8 @@ void openbsd::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
                                       const InputInfoList &Inputs,
                                       const ArgList &Args,
                                       const char *LinkingOutput) const {
-  const auto &ToolChain = static_cast<const OpenBSD &>(getToolChain());
+  const toolchains::OpenBSD &ToolChain =
+      static_cast<const toolchains::OpenBSD &>(getToolChain());
   const Driver &D = ToolChain.getDriver();
   const llvm::Triple &Triple = ToolChain.getTriple();
 
@@ -44,7 +45,8 @@ void openbsd::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("--32");
     break;
 
-  case llvm::Triple::arm: {
+  case llvm::Triple::arm:
+  case llvm::Triple::armeb: {
     StringRef MArch, MCPU;
     arm::getARMArchCPUFromArgs(Args, MArch, MCPU, /*FromAs*/ true);
     std::string Arch = arm::getARMTargetCPU(MCPU, MArch, Triple);
@@ -109,7 +111,8 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
                                    const InputInfoList &Inputs,
                                    const ArgList &Args,
                                    const char *LinkingOutput) const {
-  const auto &ToolChain = static_cast<const OpenBSD &>(getToolChain());
+  const toolchains::OpenBSD &ToolChain =
+      static_cast<const toolchains::OpenBSD &>(getToolChain());
   const Driver &D = ToolChain.getDriver();
   const llvm::Triple::ArchType Arch = ToolChain.getArch();
   ArgStringList CmdArgs;
@@ -118,7 +121,6 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   bool Profiling = Args.hasArg(options::OPT_pg);
   bool Pie = Args.hasArg(options::OPT_pie);
   bool Nopie = Args.hasArg(options::OPT_nopie);
-  const bool Relocatable = Args.hasArg(options::OPT_r);
 
   // Silence warning for "clang -g foo.o -o foo"
   Args.ClaimAllArgs(options::OPT_g_Group);
@@ -136,7 +138,7 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   else if (Arch == llvm::Triple::mips64el)
     CmdArgs.push_back("-EL");
 
-  if (!Args.hasArg(options::OPT_nostdlib) && !Shared && !Relocatable) {
+  if (!Args.hasArg(options::OPT_nostdlib) && !Shared) {
     CmdArgs.push_back("-e");
     CmdArgs.push_back("__start");
   }
@@ -147,9 +149,10 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   } else {
     if (Args.hasArg(options::OPT_rdynamic))
       CmdArgs.push_back("-export-dynamic");
+    CmdArgs.push_back("-Bdynamic");
     if (Shared) {
       CmdArgs.push_back("-shared");
-    } else if (!Relocatable) {
+    } else if (!Args.hasArg(options::OPT_r)) {
       CmdArgs.push_back("-dynamic-linker");
       CmdArgs.push_back("/usr/libexec/ld.so");
     }
@@ -163,10 +166,11 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   if (Arch == llvm::Triple::riscv64)
     CmdArgs.push_back("-X");
 
-  assert((Output.isFilename() || Output.isNothing()) && "Invalid output.");
   if (Output.isFilename()) {
     CmdArgs.push_back("-o");
     CmdArgs.push_back(Output.getFilename());
+  } else {
+    assert(Output.isNothing() && "Invalid output.");
   }
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_nostartfiles,
@@ -192,8 +196,9 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
   ToolChain.AddFilePathLibArgs(Args, CmdArgs);
-  Args.addAllArgs(CmdArgs, {options::OPT_T_Group, options::OPT_s,
-                            options::OPT_t, options::OPT_r});
+  Args.AddAllArgs(CmdArgs,
+                  {options::OPT_T_Group, options::OPT_s, options::OPT_t,
+                   options::OPT_Z_Flag, options::OPT_r});
 
   bool NeedsSanitizerDeps = addSanitizerRuntimes(ToolChain, Args, CmdArgs);
   bool NeedsXRayDeps = addXRayRuntime(ToolChain, Args, CmdArgs);
@@ -213,23 +218,6 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
       else
         CmdArgs.push_back("-lm");
     }
-
-    // Silence warnings when linking C code with a C++ '-stdlib' argument.
-    Args.ClaimAllArgs(options::OPT_stdlib_EQ);
-
-    // Additional linker set-up and flags for Fortran. This is required in order
-    // to generate executables. As Fortran runtime depends on the C runtime,
-    // these dependencies need to be listed before the C runtime below (i.e.
-    // AddRunTimeLibs).
-    if (D.IsFlangMode()) {
-      addFortranRuntimeLibraryPath(ToolChain, Args, CmdArgs);
-      addFortranRuntimeLibs(ToolChain, CmdArgs);
-      if (Profiling)
-        CmdArgs.push_back("-lm_p");
-      else
-        CmdArgs.push_back("-lm");
-    }
-
     if (NeedsSanitizerDeps) {
       CmdArgs.push_back(ToolChain.getCompilerRTArgString(Args, "builtins"));
       linkSanitizerRuntimeDeps(ToolChain, Args, CmdArgs);

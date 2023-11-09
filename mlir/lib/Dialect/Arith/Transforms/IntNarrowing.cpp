@@ -516,7 +516,7 @@ struct ExtensionOverExtract final : NarrowingPattern<vector::ExtractOp> {
       return failure();
 
     Value newExtract = rewriter.create<vector::ExtractOp>(
-        op.getLoc(), ext->getIn(), op.getMixedPosition());
+        op.getLoc(), ext->getIn(), op.getPosition());
     ext->recreateAndReplace(rewriter, op, newExtract);
     return success();
   }
@@ -645,9 +645,8 @@ struct ExtensionOverInsert final
                                      vector::InsertOp origInsert,
                                      Value narrowValue,
                                      Value narrowDest) const override {
-    return rewriter.create<vector::InsertOp>(origInsert.getLoc(), narrowValue,
-                                             narrowDest,
-                                             origInsert.getMixedPosition());
+    return rewriter.create<vector::InsertOp>(
+        origInsert.getLoc(), narrowValue, narrowDest, origInsert.getPosition());
   }
 };
 

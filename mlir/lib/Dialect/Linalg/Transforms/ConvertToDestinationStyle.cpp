@@ -63,14 +63,11 @@ static void createMemcpy(OpBuilder &b, Location loc, Value tensorSource,
   assert(memrefDest.getType().isa<MemRefType>() && "expected ranked memref");
 
   switch (options.memcpyOp) {
-  case linalg::BufferizeToAllocationOptions::MemcpyOp::
-      MaterializeInDestination: {
+  case linalg::BufferizeToAllocationOptions::MemcpyOp::MemrefTensorStore:
     // Note: This is the preferred way of memcpy'ing because no layout map
     // and/or memory space must be specified for the source.
-    auto materializeOp = b.create<bufferization::MaterializeInDestinationOp>(
-        loc, tensorSource, memrefDest);
-    materializeOp.setWritable(true);
-  } break;
+    b.create<memref::TensorStoreOp>(loc, tensorSource, memrefDest);
+    break;
   case linalg::BufferizeToAllocationOptions::MemcpyOp::MemrefCopy: {
     // TODO: Support custom memory space on source.
     // We do not know the layout map of the source yet, so use a fully dynamic
@@ -241,7 +238,7 @@ Value linalg::bufferizeToAllocation(
     rewriter.setInsertionPointAfter(fillOp);
   }
 
-  // Create memcpy.
+  // Create memref.tensor_store.
   SmallVector<OpFoldResult> sizes =
       getMixedSizes(rewriter, loc, padOp.getSource());
   SmallVector<OpFoldResult> strides(padOp.getResultType().getRank(),
@@ -317,27 +314,6 @@ Value linalg::bufferizeToAllocation(
     });
   }
 
-  return alloc;
-}
-
-Value linalg::bufferizeToAllocation(
-    RewriterBase &rewriter, const linalg::BufferizeToAllocationOptions &options,
-    bufferization::AllocTensorOp allocTensorOp, Attribute memorySpace,
-    Operation *insertionPoint) {
-  Location loc = allocTensorOp.getLoc();
-  OpBuilder::InsertionGuard g(rewriter);
-  rewriter.setInsertionPoint(insertionPoint ? insertionPoint : allocTensorOp);
-  bufferization::BufferizationOptions bufferizationOptions;
-
-  // Create buffer allocation.
-  Value alloc = createAllocationForTensor(
-      rewriter, loc, allocTensorOp.getResult(), options, memorySpace);
-
-  // Create bufferization.to_tensor with "restrict" and "writable". The returned
-  // tensor is a new buffer allocation, so it does not alias with any buffer.
-  Value toTensorOp = rewriter.create<bufferization::ToTensorOp>(
-      loc, alloc, /*restrict=*/true, /*writable=*/true);
-  rewriter.replaceOp(allocTensorOp, toTensorOp);
   return alloc;
 }
 
@@ -478,8 +454,6 @@ Value linalg::bufferizeToAllocation(
     return bufferizeToAllocation(rewriter, options, padOp, memorySpace);
   if (auto maskOp = dyn_cast<vector::MaskOp>(op))
     return bufferizeToAllocation(rewriter, options, maskOp, memorySpace);
-  if (auto allocTensorOp = dyn_cast<bufferization::AllocTensorOp>(op))
-    return bufferizeToAllocation(rewriter, options, allocTensorOp, memorySpace);
 
   // Only bufferizable ops are supported.
   auto bufferizableOp = dyn_cast<BufferizableOpInterface>(op);

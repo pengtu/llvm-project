@@ -79,8 +79,8 @@ public:
   /// Note that \p SectionKind is used as a hint to guess the unit type
   /// for DWARF formats prior to DWARFv5. In DWARFv5 the unit type is
   /// explicitly defined in the header and the hint is ignored.
-  Error extract(DWARFContext &Context, const DWARFDataExtractor &debug_info,
-                uint64_t *offset_ptr, DWARFSectionKind SectionKind);
+  bool extract(DWARFContext &Context, const DWARFDataExtractor &debug_info,
+               uint64_t *offset_ptr, DWARFSectionKind SectionKind);
   // For units in DWARF Package File, remember the index entry and update
   // the abbreviation offset read by extract().
   bool applyIndexEntry(const DWARFUnitIndex::Entry *Entry);
@@ -400,8 +400,7 @@ public:
   void clear();
 
   const std::optional<StrOffsetsContributionDescriptor> &
-  getStringOffsetsTableContribution() {
-    extractDIEsIfNeeded(true /*CUDIeOnly*/);
+  getStringOffsetsTableContribution() const {
     return StringOffsetsTableContribution;
   }
 

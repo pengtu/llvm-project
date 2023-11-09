@@ -59,8 +59,7 @@ public:
     return SelectionDAGISel::runOnMachineFunction(MF);
   }
 
-  bool SelectInlineAsmMemoryOperand(const SDValue &Op,
-                                    InlineAsm::ConstraintCode ConstraintCode,
+  bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintCode,
                                     std::vector<SDValue> &OutOps) override;
 
 private:
@@ -285,13 +284,12 @@ bool LanaiDAGToDAGISel::selectAddrRr(SDValue Addr, SDValue &R1, SDValue &R2,
 }
 
 bool LanaiDAGToDAGISel::SelectInlineAsmMemoryOperand(
-    const SDValue &Op, InlineAsm::ConstraintCode ConstraintCode,
-    std::vector<SDValue> &OutOps) {
+    const SDValue &Op, unsigned ConstraintCode, std::vector<SDValue> &OutOps) {
   SDValue Op0, Op1, AluOp;
   switch (ConstraintCode) {
   default:
     return true;
-  case InlineAsm::ConstraintCode::m: // memory
+  case InlineAsm::Constraint_m: // memory
     if (!selectAddrRr(Op, Op0, Op1, AluOp) &&
         !selectAddrRi(Op, Op0, Op1, AluOp))
       return true;

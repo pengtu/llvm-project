@@ -9,7 +9,7 @@
 #include "file.h"
 #include <stdio.h>
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 constexpr size_t STDIN_BUFFER_SIZE = 512;
 uint8_t stdin_buffer[STDIN_BUFFER_SIZE];
@@ -17,8 +17,8 @@ static LinuxFile StdIn(0, stdin_buffer, STDIN_BUFFER_SIZE, _IOFBF, false,
                        File::ModeFlags(File::OpenMode::READ));
 File *stdin = &StdIn;
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
 extern "C" {
-FILE *stdin = reinterpret_cast<FILE *>(&LIBC_NAMESPACE::StdIn);
+FILE *stdin = reinterpret_cast<FILE *>(&__llvm_libc::StdIn);
 } // extern "C"

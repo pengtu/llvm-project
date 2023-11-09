@@ -162,19 +162,19 @@ public:
   }
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     if (args.GetArgumentCount() < 2) {
       result.AppendErrorWithFormat(
           "%s takes a log channel and one or more log types.\n",
           m_cmd_name.c_str());
-      return;
+      return false;
     }
 
     if (m_options.handler == eLogHandlerCircular &&
         m_options.buffer_size.GetCurrentValue() == 0) {
       result.AppendError(
           "the circular buffer handler requires a non-zero buffer size.\n");
-      return;
+      return false;
     }
 
     if ((m_options.handler != eLogHandlerCircular &&
@@ -182,13 +182,13 @@ protected:
         m_options.buffer_size.GetCurrentValue() != 0) {
       result.AppendError("a buffer size can only be specified for the circular "
                          "and stream buffer handler.\n");
-      return;
+      return false;
     }
 
     if (m_options.handler != eLogHandlerStream && m_options.log_file) {
       result.AppendError(
           "a file name can only be specified for the stream handler.\n");
-      return;
+      return false;
     }
 
     // Store into a std::string since we're about to shift the channel off.
@@ -212,6 +212,7 @@ protected:
       result.SetStatus(eReturnStatusSuccessFinishNoResult);
     else
       result.SetStatus(eReturnStatusFailed);
+    return result.Succeeded();
   }
 
   CommandOptions m_options;
@@ -256,12 +257,12 @@ public:
   }
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     if (args.empty()) {
       result.AppendErrorWithFormat(
           "%s takes a log channel and one or more log types.\n",
           m_cmd_name.c_str());
-      return;
+      return false;
     }
 
     const std::string channel = std::string(args[0].ref());
@@ -277,6 +278,7 @@ protected:
         result.SetStatus(eReturnStatusSuccessFinishNoResult);
       result.GetErrorStream() << error_stream.str();
     }
+    return result.Succeeded();
   }
 };
 
@@ -313,7 +315,7 @@ public:
   }
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     std::string output;
     llvm::raw_string_ostream output_stream(output);
     if (args.empty()) {
@@ -328,6 +330,7 @@ protected:
         result.SetStatus(eReturnStatusSuccessFinishResult);
     }
     result.GetOutputStream() << output_stream.str();
+    return result.Succeeded();
   }
 };
 class CommandObjectLogDump : public CommandObjectParsed {
@@ -395,12 +398,12 @@ public:
   }
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     if (args.empty()) {
       result.AppendErrorWithFormat(
           "%s takes a log channel and one or more log types.\n",
           m_cmd_name.c_str());
-      return;
+      return false;
     }
 
     std::unique_ptr<llvm::raw_ostream> stream_up;
@@ -414,7 +417,7 @@ protected:
         result.AppendErrorWithFormat("Unable to open log file '%s': %s",
                                      m_options.log_file.GetPath().c_str(),
                                      llvm::toString(file.takeError()).c_str());
-        return;
+        return false;
       }
       stream_up = std::make_unique<llvm::raw_fd_ostream>(
           (*file)->GetDescriptor(), /*shouldClose=*/true);
@@ -432,6 +435,8 @@ protected:
       result.SetStatus(eReturnStatusFailed);
       result.GetErrorStream() << error_stream.str();
     }
+
+    return result.Succeeded();
   }
 
   CommandOptions m_options;
@@ -462,7 +467,7 @@ public:
   ~CommandObjectLogTimerEnable() override = default;
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     result.SetStatus(eReturnStatusFailed);
 
     if (args.GetArgumentCount() == 0) {
@@ -483,6 +488,7 @@ protected:
       result.AppendError("Missing subcommand");
       result.AppendErrorWithFormat("Usage: %s\n", m_cmd_syntax.c_str());
     }
+    return result.Succeeded();
   }
 };
 
@@ -497,7 +503,7 @@ public:
   ~CommandObjectLogTimerDisable() override = default;
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     Timer::DumpCategoryTimes(result.GetOutputStream());
     Timer::SetDisplayDepth(0);
     result.SetStatus(eReturnStatusSuccessFinishResult);
@@ -506,6 +512,7 @@ protected:
       result.AppendError("Missing subcommand");
       result.AppendErrorWithFormat("Usage: %s\n", m_cmd_syntax.c_str());
     }
+    return result.Succeeded();
   }
 };
 
@@ -519,7 +526,7 @@ public:
   ~CommandObjectLogTimerDump() override = default;
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     Timer::DumpCategoryTimes(result.GetOutputStream());
     result.SetStatus(eReturnStatusSuccessFinishResult);
 
@@ -527,6 +534,7 @@ protected:
       result.AppendError("Missing subcommand");
       result.AppendErrorWithFormat("Usage: %s\n", m_cmd_syntax.c_str());
     }
+    return result.Succeeded();
   }
 };
 
@@ -541,7 +549,7 @@ public:
   ~CommandObjectLogTimerReset() override = default;
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     Timer::ResetCategoryTimes();
     result.SetStatus(eReturnStatusSuccessFinishResult);
 
@@ -549,6 +557,7 @@ protected:
       result.AppendError("Missing subcommand");
       result.AppendErrorWithFormat("Usage: %s\n", m_cmd_syntax.c_str());
     }
+    return result.Succeeded();
   }
 };
 
@@ -584,7 +593,7 @@ public:
   }
 
 protected:
-  void DoExecute(Args &args, CommandReturnObject &result) override {
+  bool DoExecute(Args &args, CommandReturnObject &result) override {
     result.SetStatus(eReturnStatusFailed);
 
     if (args.GetArgumentCount() == 1) {
@@ -603,6 +612,7 @@ protected:
       result.AppendError("Missing subcommand");
       result.AppendErrorWithFormat("Usage: %s\n", m_cmd_syntax.c_str());
     }
+    return result.Succeeded();
   }
 };
 

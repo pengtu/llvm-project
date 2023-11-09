@@ -536,9 +536,8 @@ void FileManager::fillRealPathName(FileEntry *UFE, llvm::StringRef FileName) {
 }
 
 llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>>
-FileManager::getBufferForFile(FileEntryRef FE, bool isVolatile,
+FileManager::getBufferForFile(const FileEntry *Entry, bool isVolatile,
                               bool RequiresNullTerminator) {
-  const FileEntry *Entry = &FE.getFileEntry();
   // If the content is living on the file entry, return a reference to it.
   if (Entry->Content)
     return llvm::MemoryBuffer::getMemBuffer(Entry->Content->getMemBufferRef());
@@ -549,7 +548,7 @@ FileManager::getBufferForFile(FileEntryRef FE, bool isVolatile,
   if (isVolatile || Entry->isNamedPipe())
     FileSize = -1;
 
-  StringRef Filename = FE.getName();
+  StringRef Filename = Entry->getName();
   // If the file is already open, use the open file descriptor.
   if (Entry->File) {
     auto Result = Entry->File->getBuffer(Filename, FileSize,
@@ -612,29 +611,32 @@ FileManager::getNoncachedStatValue(StringRef Path,
 }
 
 void FileManager::GetUniqueIDMapping(
-    SmallVectorImpl<OptionalFileEntryRef> &UIDToFiles) const {
+    SmallVectorImpl<const FileEntry *> &UIDToFiles) const {
   UIDToFiles.clear();
   UIDToFiles.resize(NextFileUID);
 
-  for (const auto &Entry : SeenFileEntries) {
-    // Only return files that exist and are not redirected.
-    if (!Entry.getValue() || !Entry.getValue()->V.is<FileEntry *>())
-      continue;
-    FileEntryRef FE(Entry);
-    // Add this file if it's the first one with the UID, or if its name is
-    // better than the existing one.
-    OptionalFileEntryRef &ExistingFE = UIDToFiles[FE.getUID()];
-    if (!ExistingFE || FE.getName() < ExistingFE->getName())
-      ExistingFE = FE;
-  }
+  // Map file entries
+  for (llvm::StringMap<llvm::ErrorOr<FileEntryRef::MapValue>,
+                       llvm::BumpPtrAllocator>::const_iterator
+           FE = SeenFileEntries.begin(),
+           FEEnd = SeenFileEntries.end();
+       FE != FEEnd; ++FE)
+    if (llvm::ErrorOr<FileEntryRef::MapValue> Entry = FE->getValue()) {
+      if (const auto *FE = Entry->V.dyn_cast<FileEntry *>())
+        UIDToFiles[FE->getUID()] = FE;
+    }
+
+  // Map virtual file entries
+  for (const auto &VFE : VirtualFileEntries)
+    UIDToFiles[VFE->getUID()] = VFE;
 }
 
 StringRef FileManager::getCanonicalName(DirectoryEntryRef Dir) {
   return getCanonicalName(Dir, Dir.getName());
 }
 
-StringRef FileManager::getCanonicalName(FileEntryRef File) {
-  return getCanonicalName(File, File.getName());
+StringRef FileManager::getCanonicalName(const FileEntry *File) {
+  return getCanonicalName(File, File->getName());
 }
 
 StringRef FileManager::getCanonicalName(const void *Entry, StringRef Name) {

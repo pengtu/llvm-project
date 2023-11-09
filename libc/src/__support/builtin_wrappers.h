@@ -7,15 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_BUILTIN_WRAPPERS_H
-#define LLVM_LIBC_SRC___SUPPORT_BUILTIN_WRAPPERS_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_BUILTIN_WRAPPERS_H
+#define LLVM_LIBC_SRC_SUPPORT_BUILTIN_WRAPPERS_H
 
 #include "named_pair.h"
 #include "src/__support/CPP/type_traits.h"
 #include "src/__support/macros/attributes.h" // LIBC_INLINE
 #include "src/__support/macros/config.h"     // LIBC_HAS_BUILTIN
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 // The following overloads are matched based on what is accepted by
 // __builtin_clz/ctz* rather than using the exactly-sized aliases from stdint.h.
@@ -221,6 +221,6 @@ sub_with_borrow<unsigned long long>(unsigned long long a, unsigned long long b,
 
 #endif // LIBC_HAS_BUILTIN(__builtin_subc)
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_BUILTIN_WRAPPERS_H
+#endif // LLVM_LIBC_SRC_SUPPORT_BUILTIN_WRAPPERS_H

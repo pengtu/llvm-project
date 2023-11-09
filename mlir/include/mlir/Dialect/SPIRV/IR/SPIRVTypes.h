@@ -347,7 +347,27 @@ public:
 
   Type getElementType(unsigned) const;
 
-  TypeRange getElementTypes() const;
+  /// Range class for element types.
+  class ElementTypeRange
+      : public ::llvm::detail::indexed_accessor_range_base<
+            ElementTypeRange, const Type *, Type, Type, Type> {
+  private:
+    using RangeBaseT::RangeBaseT;
+
+    /// See `llvm::detail::indexed_accessor_range_base` for details.
+    static const Type *offset_base(const Type *object, ptrdiff_t index) {
+      return object + index;
+    }
+    /// See `llvm::detail::indexed_accessor_range_base` for details.
+    static Type dereference_iterator(const Type *object, ptrdiff_t index) {
+      return object[index];
+    }
+
+    /// Allow base class access to `offset_base` and `dereference_iterator`.
+    friend RangeBaseT;
+  };
+
+  ElementTypeRange getElementTypes() const;
 
   bool hasOffset() const;
 

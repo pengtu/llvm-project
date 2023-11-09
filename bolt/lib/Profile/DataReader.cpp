@@ -785,8 +785,9 @@ bool DataReader::recordBranch(BinaryFunction &BF, uint64_t From, uint64_t To,
         FTBI.MispredictedCount += Mispreds;
       ToBB = FTSuccessor;
     } else {
-      LLVM_DEBUG(dbgs() << "invalid branch in " << BF
-                        << formatv(": {0:x} -> {1:x}\n", From, To));
+      LLVM_DEBUG(dbgs() << "invalid branch in " << BF << '\n'
+                        << Twine::utohexstr(From) << " -> "
+                        << Twine::utohexstr(To) << '\n');
       return false;
     }
   }

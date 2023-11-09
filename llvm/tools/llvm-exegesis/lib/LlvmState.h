@@ -16,6 +16,7 @@
 
 #include "MCInstrDescView.h"
 #include "RegisterAliasing.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrInfo.h"

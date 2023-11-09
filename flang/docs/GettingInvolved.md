@@ -7,10 +7,9 @@
 -->
 # Getting Involved
 
-```{contents}
----
-local:
----
+```eval_rst
+.. contents::
+   :local:
 ```
 
 The Flang Project welcomes contributions of all kinds.

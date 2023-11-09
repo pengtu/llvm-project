@@ -8,22 +8,13 @@
 
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
-#include "mlir/Analysis/Presburger/MPInt.h"
 #include "mlir/Analysis/Presburger/PWMAFunction.h"
-#include "mlir/Analysis/Presburger/PresburgerSpace.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
-#include "mlir/Support/LLVM.h"
-#include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallBitVector.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/raw_ostream.h"
-#include <cassert>
-#include <functional>
 #include <optional>
-#include <utility>
-#include <vector>
 
 using namespace mlir;
 using namespace presburger;
@@ -45,23 +36,6 @@ void PresburgerRelation::insertVarInPlace(VarKind kind, unsigned pos,
   for (IntegerRelation &cs : disjuncts)
     cs.insertVar(kind, pos, num);
   space.insertVar(kind, pos, num);
-}
-
-void PresburgerRelation::convertVarKind(VarKind srcKind, unsigned srcPos,
-                                        unsigned num, VarKind dstKind,
-                                        unsigned dstPos) {
-  assert(srcKind != VarKind::Local && dstKind != VarKind::Local &&
-         "srcKind/dstKind cannot be local");
-  assert(srcKind != dstKind && "cannot convert variables to the same kind");
-  assert(srcPos + num <= space.getNumVarKind(srcKind) &&
-         "invalid range for source variables");
-  assert(dstPos <= space.getNumVarKind(dstKind) &&
-         "invalid position for destination variables");
-
-  space.convertVarKind(srcKind, srcPos, num, dstKind, dstPos);
-
-  for (IntegerRelation &disjunct : disjuncts)
-    disjunct.convertVarKind(srcKind, srcPos, srcPos + num, dstKind, dstPos);
 }
 
 unsigned PresburgerRelation::getNumDisjuncts() const {
@@ -91,19 +65,19 @@ void PresburgerRelation::unionInPlace(const IntegerRelation &disjunct) {
 void PresburgerRelation::unionInPlace(const PresburgerRelation &set) {
   assert(space.isCompatible(set.getSpace()) && "Spaces should match");
 
-  if (isObviouslyEqual(set))
+  if (isPlainEqual(set))
     return;
 
-  if (isObviouslyEmpty()) {
+  if (isPlainEmpty()) {
     disjuncts = set.disjuncts;
     return;
   }
-  if (set.isObviouslyEmpty())
+  if (set.isPlainEmpty())
     return;
 
-  if (isObviouslyUniverse())
+  if (isPlainUniverse())
     return;
-  if (set.isObviouslyUniverse()) {
+  if (set.isPlainUniverse()) {
     disjuncts = set.disjuncts;
     return;
   }
@@ -152,10 +126,10 @@ PresburgerRelation::intersect(const PresburgerRelation &set) const {
 
   // If the set is empty or the other set is universe,
   // directly return the set
-  if (isObviouslyEmpty() || set.isObviouslyUniverse())
+  if (isPlainEmpty() || set.isPlainUniverse())
     return *this;
 
-  if (set.isObviouslyEmpty() || isObviouslyUniverse())
+  if (set.isPlainEmpty() || isPlainUniverse())
     return set;
 
   PresburgerRelation result(getSpace());
@@ -584,9 +558,6 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
     }
   }
 
-  // Try to simplify the results.
-  result = result.simplify();
-
   return result;
 }
 
@@ -604,7 +575,7 @@ PresburgerRelation::subtract(const PresburgerRelation &set) const {
 
   // If we know that the two sets are clearly equal, we can simply return the
   // empty set.
-  if (isObviouslyEqual(set))
+  if (isPlainEqual(set))
     return result;
 
   // We compute (U_i t_i) \ (U_i set_i) as U_i (t_i \ V_i set_i).
@@ -626,7 +597,7 @@ bool PresburgerRelation::isEqual(const PresburgerRelation &set) const {
   return this->isSubsetOf(set) && set.isSubsetOf(*this);
 }
 
-bool PresburgerRelation::isObviouslyEqual(const PresburgerRelation &set) const {
+bool PresburgerRelation::isPlainEqual(const PresburgerRelation &set) const {
   if (!space.isCompatible(set.getSpace()))
     return false;
 
@@ -636,7 +607,7 @@ bool PresburgerRelation::isObviouslyEqual(const PresburgerRelation &set) const {
   // Compare each disjunct in this PresburgerRelation with the corresponding
   // disjunct in the other PresburgerRelation.
   for (unsigned int i = 0, n = getNumDisjuncts(); i < n; ++i) {
-    if (!getDisjunct(i).isObviouslyEqual(set.getDisjunct(i)))
+    if (!getDisjunct(i).isPlainEqual(set.getDisjunct(i)))
       return false;
   }
   return true;
@@ -646,8 +617,8 @@ bool PresburgerRelation::isObviouslyEqual(const PresburgerRelation &set) const {
 /// otherwise. It is a simple check that only check if the relation has at least
 /// one unconstrained disjunct, indicating the absence of constraints or
 /// conditions.
-bool PresburgerRelation::isObviouslyUniverse() const {
-  for (const IntegerRelation &disjunct : getAllDisjuncts()) {
+bool PresburgerRelation::isPlainUniverse() const {
+  for (auto &disjunct : getAllDisjuncts()) {
     if (disjunct.getNumConstraints() == 0)
       return true;
   }
@@ -655,13 +626,13 @@ bool PresburgerRelation::isObviouslyUniverse() const {
 }
 
 bool PresburgerRelation::isConvexNoLocals() const {
-  return getNumDisjuncts() == 1 && getSpace().getNumLocalVars() == 0;
+  if (getNumDisjuncts() == 1 && getSpace().getNumLocalVars() == 0)
+    return true;
+  return false;
 }
 
 /// Return true if there is no disjunct, false otherwise.
-bool PresburgerRelation::isObviouslyEmpty() const {
-  return getNumDisjuncts() == 0;
-}
+bool PresburgerRelation::isPlainEmpty() const { return getNumDisjuncts() == 0; }
 
 /// Return true if all the sets in the union are known to be integer empty,
 /// false otherwise.
@@ -834,8 +805,8 @@ PresburgerRelation SetCoalescer::coalesce() {
   }
 
   PresburgerRelation newSet = PresburgerRelation::getEmpty(space);
-  for (const IntegerRelation &disjunct : disjuncts)
-    newSet.unionInPlace(disjunct);
+  for (unsigned i = 0, e = disjuncts.size(); i < e; ++i)
+    newSet.unionInPlace(disjuncts[i]);
 
   return newSet;
 }
@@ -1028,17 +999,6 @@ bool PresburgerRelation::hasOnlyDivLocals() const {
   return llvm::all_of(disjuncts, [](const IntegerRelation &rel) {
     return rel.hasOnlyDivLocals();
   });
-}
-
-PresburgerRelation PresburgerRelation::simplify() const {
-  PresburgerRelation origin = *this;
-  PresburgerRelation result = PresburgerRelation(getSpace());
-  for (IntegerRelation &disjunct : origin.disjuncts) {
-    disjunct.simplify();
-    if (!disjunct.isObviouslyEmpty())
-      result.unionInPlace(disjunct);
-  }
-  return result;
 }
 
 void PresburgerRelation::print(raw_ostream &os) const {

@@ -21,7 +21,6 @@
 
 using namespace lldb;
 using namespace lldb_private;
-using namespace lldb_private::plugin::dwarf;
 
 char SymbolFileDWARFDwo::ID;
 
@@ -99,14 +98,14 @@ SymbolFileDWARF::DIEToVariableSP &SymbolFileDWARFDwo::GetDIEToVariable() {
   return GetBaseSymbolFile().GetDIEToVariable();
 }
 
-SymbolFileDWARF::DIEToCompilerType &
-SymbolFileDWARFDwo::GetForwardDeclDIEToCompilerType() {
-  return GetBaseSymbolFile().GetForwardDeclDIEToCompilerType();
+SymbolFileDWARF::DIEToClangType &
+SymbolFileDWARFDwo::GetForwardDeclDieToClangType() {
+  return GetBaseSymbolFile().GetForwardDeclDieToClangType();
 }
 
-SymbolFileDWARF::CompilerTypeToDIE &
-SymbolFileDWARFDwo::GetForwardDeclCompilerTypeToDIE() {
-  return GetBaseSymbolFile().GetForwardDeclCompilerTypeToDIE();
+SymbolFileDWARF::ClangTypeToDIE &
+SymbolFileDWARFDwo::GetForwardDeclClangTypeToDie() {
+  return GetBaseSymbolFile().GetForwardDeclClangTypeToDie();
 }
 
 void SymbolFileDWARFDwo::GetObjCMethods(

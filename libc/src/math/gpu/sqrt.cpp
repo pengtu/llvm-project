@@ -9,8 +9,8 @@
 #include "src/math/sqrt.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(double, sqrt, (double x)) { return __builtin_sqrt(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

@@ -607,9 +607,8 @@ those in the caller.
    only if both threads entered the function by executing converged
    dynamic instances of the call-site.
 
-This intrinsic can occur at most once in a function, and only in the the entry
-block of the function. If this intrinsic occurs in a basic block, then it must
-precede any other convergent operation in the same basic block.
+This intrinsic can occur at most once in a function, and only at the start of
+the entry block of the function.
 
 It is an error if this intrinsic appears in a non-convergent function.
 
@@ -670,8 +669,7 @@ threads execute converged dynamic instances of ``U`` if and only if:
 It is an error to omit the ``convergencectrl`` operand bundle on a
 call to this intrinsic.
 
-If this intrinsic occurs in a basic block, then it must precede any other
-convergent operation in the same basic block.
+This intrinsic can only occur at the start of a basic block.
 
 .. _convergence_cycle_heart:
 

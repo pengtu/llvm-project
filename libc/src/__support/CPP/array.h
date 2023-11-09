@@ -6,18 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIBC_SRC___SUPPORT_CPP_ARRAY_H
-#define LLVM_LIBC_SRC___SUPPORT_CPP_ARRAY_H
+#ifndef LLVM_LIBC_SRC_SUPPORT_CPP_ARRAY_H
+#define LLVM_LIBC_SRC_SUPPORT_CPP_ARRAY_H
 
 #include "src/__support/macros/attributes.h"
 #include <stddef.h> // For size_t.
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 namespace cpp {
 
 template <class T, size_t N> struct array {
-  static_assert(N != 0,
-                "Cannot create a LIBC_NAMESPACE::cpp::array of size 0.");
+  static_assert(N != 0, "Cannot create a __llvm_libc::cpp::array of size 0.");
 
   T Data[N];
   using value_type = T;
@@ -51,6 +50,6 @@ template <class T, size_t N> struct array {
 };
 
 } // namespace cpp
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc
 
-#endif // LLVM_LIBC_SRC___SUPPORT_CPP_ARRAY_H
+#endif // LLVM_LIBC_SRC_SUPPORT_CPP_ARRAY_H

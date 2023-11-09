@@ -888,8 +888,7 @@ void MachineVerifier::verifyInlineAsm(const MachineInstr *MI) {
     // There may be implicit ops after the fixed operands.
     if (!MO.isImm())
       break;
-    const InlineAsm::Flag F(MO.getImm());
-    NumOps = 1 + F.getNumOperandRegisters();
+    NumOps = 1 + InlineAsm::getNumOperandRegisters(MO.getImm());
   }
 
   if (OpNo > MI->getNumOperands())
@@ -1592,12 +1591,6 @@ void MachineVerifier::verifyPreISelGenericInstruction(const MachineInstr *MI) {
       report("G_SEXT_INREG size must be less than source bit width", MI);
     break;
   }
-  case TargetOpcode::G_BSWAP: {
-    LLT DstTy = MRI->getType(MI->getOperand(0).getReg());
-    if (DstTy.getScalarSizeInBits() % 16 != 0)
-      report("G_BSWAP size must be a multiple of 16 bits", MI);
-    break;
-  }
   case TargetOpcode::G_SHUFFLE_VECTOR: {
     const MachineOperand &MaskOp = MI->getOperand(3);
     if (!MaskOp.isShuffleMask()) {
@@ -2169,9 +2162,9 @@ MachineVerifier::visitMachineOperand(const MachineOperand *MO, unsigned MONum) {
 
     // Verify two-address constraints after the twoaddressinstruction pass.
     // Both twoaddressinstruction pass and phi-node-elimination pass call
-    // MRI->leaveSSA() to set MF as not IsSSA, we should do the verification
-    // after twoaddressinstruction pass not after phi-node-elimination pass. So
-    // we shouldn't use the IsSSA as the condition, we should based on
+    // MRI->leaveSSA() to set MF as NoSSA, we should do the verification after
+    // twoaddressinstruction pass not after phi-node-elimination pass. So we
+    // shouldn't use the NoSSA as the condition, we should based on
     // TiedOpsRewritten property to verify two-address constraints, this
     // property will be set in twoaddressinstruction pass.
     unsigned DefIdx;

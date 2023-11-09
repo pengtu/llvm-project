@@ -10,7 +10,7 @@
 #include "src/__support/RPC/rpc_client.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(void, free, (void *ptr)) {
   rpc::Client::Port port = rpc::client.open<RPC_FREE>();
@@ -20,4 +20,4 @@ LLVM_LIBC_FUNCTION(void, free, (void *ptr)) {
   port.close();
 }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

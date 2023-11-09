@@ -52,7 +52,7 @@ static const char *const builderOpState = "odsState";
 static const char *const propertyStorage = "propStorage";
 static const char *const propertyValue = "propValue";
 static const char *const propertyAttr = "propAttr";
-static const char *const propertyDiag = "emitError";
+static const char *const propertyDiag = "propDiag";
 
 /// The names of the implicit attributes that contain variadic operand and
 /// result segment sizes.
@@ -156,36 +156,26 @@ static const char *const valueRangeReturnCode = R"(
 )";
 
 /// Read operand/result segment_size from bytecode.
-static const char *const readBytecodeSegmentSizeNative = R"(
-  if ($_reader.getBytecodeVersion() >= /*kNativePropertiesODSSegmentSize=*/6)
-    return $_reader.readSparseArray(::llvm::MutableArrayRef($_storage));
-)";
-
-static const char *const readBytecodeSegmentSizeLegacy = R"(
-  if ($_reader.getBytecodeVersion() < /*kNativePropertiesODSSegmentSize=*/6) {
-    auto &$_storage = prop.$_propName;
-    ::mlir::DenseI32ArrayAttr attr;
-    if (::mlir::failed($_reader.readAttribute(attr))) return ::mlir::failure();
-    if (attr.size() > static_cast<int64_t>(sizeof($_storage) / sizeof(int32_t))) {
-      $_reader.emitError("size mismatch for operand/result_segment_size");
-      return ::mlir::failure();
-    }
-    ::llvm::copy(::llvm::ArrayRef<int32_t>(attr), $_storage.begin());
+static const char *const readBytecodeSegmentSize = R"(
+if ($_reader.getBytecodeVersion() < /*kNativePropertiesODSSegmentSize=*/6) {
+  ::mlir::DenseI32ArrayAttr attr;
+  if (::mlir::failed($_reader.readAttribute(attr))) return ::mlir::failure();
+  if (attr.size() > static_cast<int64_t>(sizeof($_storage) / sizeof(int32_t))) {
+    $_reader.emitError("size mismatch for operand/result_segment_size");
+    return ::mlir::failure();
   }
-)";
-
-/// Write operand/result segment_size to bytecode.
-static const char *const writeBytecodeSegmentSizeNative = R"(
-  if ($_writer.getBytecodeVersion() >= /*kNativePropertiesODSSegmentSize=*/6)
-    $_writer.writeSparseArray(::llvm::ArrayRef($_storage));
-)";
-
-/// Write operand/result segment_size to bytecode.
-static const char *const writeBytecodeSegmentSizeLegacy = R"(
-if ($_writer.getBytecodeVersion() < /*kNativePropertiesODSSegmentSize=*/6) {
-  auto &$_storage = prop.$_propName;
-  $_writer.writeAttribute(::mlir::DenseI32ArrayAttr::get($_ctxt, $_storage));
+  ::llvm::copy(::llvm::ArrayRef<int32_t>(attr), $_storage.begin());
+} else {
+  return $_reader.readSparseArray(::llvm::MutableArrayRef($_storage));
 }
+)";
+
+/// Write operand/result segment_size to bytecode.
+static const char *const writeBytecodeSegmentSize = R"(
+if ($_writer.getBytecodeVersion() < /*kNativePropertiesODSSegmentSize=*/6)
+  $_writer.writeAttribute(::mlir::DenseI32ArrayAttr::get(getContext(), $_storage));
+else
+  $_writer.writeSparseArray(::llvm::ArrayRef($_storage));
 )";
 
 /// A header for indicating code sections.
@@ -399,14 +389,6 @@ public:
     return resultSegmentsSize;
   }
 
-  uint32_t getOperandSegmentSizesLegacyIndex() {
-    return operandSegmentSizesLegacyIndex;
-  }
-
-  uint32_t getResultSegmentSizesLegacyIndex() {
-    return resultSegmentSizesLegacyIndex;
-  }
-
 private:
   // Compute the attribute metadata.
   void computeAttrMetadata();
@@ -424,12 +406,6 @@ private:
   std::string operandSegmentsSizeStorage;
   std::optional<NamedProperty> resultSegmentsSize;
   std::string resultSegmentsSizeStorage;
-
-  // Indices to store the position in the emission order of the operand/result
-  // segment sizes attribute if emitted as part of the properties for legacy
-  // bytecode encodings, i.e. versions less than 6.
-  uint32_t operandSegmentSizesLegacyIndex = 0;
-  uint32_t resultSegmentSizesLegacyIndex = 0;
 
   // The number of required attributes.
   unsigned numRequired;
@@ -459,8 +435,8 @@ void OpOrAdaptorHelper::computeAttrMetadata() {
         "::mlir::DenseI32ArrayAttr::get($_ctxt, $_storage)",
         /*convertFromAttributeCall=*/
         "return convertFromAttribute($_storage, $_attr, $_diag);",
-        /*readFromMlirBytecodeCall=*/readBytecodeSegmentSizeNative,
-        /*writeToMlirBytecodeCall=*/writeBytecodeSegmentSizeNative,
+        /*readFromMlirBytecodeCall=*/readBytecodeSegmentSize,
+        /*writeToMlirBytecodeCall=*/writeBytecodeSegmentSize,
         /*hashPropertyCall=*/
         "::llvm::hash_combine_range(std::begin($_storage), "
         "std::end($_storage));",
@@ -501,21 +477,6 @@ void OpOrAdaptorHelper::computeAttrMetadata() {
              [](const AttributeMetadata &lhs, const AttributeMetadata &rhs) {
                return lhs.attrName < rhs.attrName;
              });
-
-  // Store the position of the legacy operand_segment_sizes /
-  // result_segment_sizes so we can emit a backward compatible property readers
-  // and writers.
-  StringRef legacyOperandSegmentSizeName =
-      StringLiteral("operand_segment_sizes");
-  StringRef legacyResultSegmentSizeName = StringLiteral("result_segment_sizes");
-  operandSegmentSizesLegacyIndex = 0;
-  resultSegmentSizesLegacyIndex = 0;
-  for (auto item : sortedAttrMetadata) {
-    if (item.attrName < legacyOperandSegmentSizeName)
-      ++operandSegmentSizesLegacyIndex;
-    if (item.attrName < legacyResultSegmentSizeName)
-      ++resultSegmentSizesLegacyIndex;
-  }
 
   // Compute the subrange bounds for each attribute.
   numRequired = 0;
@@ -1251,9 +1212,7 @@ void OpEmitter::genPropertiesSupport() {
               "::mlir::LogicalResult", "setPropertiesFromAttr",
               MethodParameter("Properties &", "prop"),
               MethodParameter("::mlir::Attribute", "attr"),
-              MethodParameter(
-                  "::llvm::function_ref<::mlir::InFlightDiagnostic()>",
-                  "emitError"))
+              MethodParameter("::mlir::InFlightDiagnostic *", "diag"))
           ->body();
   auto &getPropMethod =
       opClass
@@ -1295,7 +1254,7 @@ void OpEmitter::genPropertiesSupport() {
               MethodParameter("::mlir::NamedAttrList &", "attrs"),
               MethodParameter(
                   "llvm::function_ref<::mlir::InFlightDiagnostic()>",
-                  "emitError"))
+                  "getDiag"))
           ->body();
 
   opClass.declare<UsingDeclaration>("Properties", "FoldAdaptor::Properties");
@@ -1305,7 +1264,8 @@ void OpEmitter::genPropertiesSupport() {
   setPropMethod << R"decl(
   ::mlir::DictionaryAttr dict = ::llvm::dyn_cast<::mlir::DictionaryAttr>(attr);
   if (!dict) {
-    emitError() << "expected DictionaryAttr to set properties";
+    if (diag)
+      *diag << "expected DictionaryAttr to set properties";
     return ::mlir::failure();
   }
     )decl";
@@ -1313,16 +1273,17 @@ void OpEmitter::genPropertiesSupport() {
   const char *propFromAttrFmt = R"decl(;
     {{
       auto setFromAttr = [] (auto &propStorage, ::mlir::Attribute propAttr,
-               ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {{
+                             ::mlir::InFlightDiagnostic *propDiag) {{
         {0};
       };
       {2};
       if (!attr) {{
-        emitError() << "expected key entry for {1} in DictionaryAttr to set "
+        if (diag)
+          *diag << "expected key entry for {1} in DictionaryAttr to set "
                    "Properties.";
         return ::mlir::failure();
       }
-      if (::mlir::failed(setFromAttr(prop.{1}, attr, emitError)))
+      if (::mlir::failed(setFromAttr(prop.{1}, attr, diag)))
         return ::mlir::failure();
     }
 )decl";
@@ -1377,7 +1338,8 @@ void OpEmitter::genPropertiesSupport() {
     {2}
     if (attr || /*isRequired=*/{1}) {{
       if (!attr) {{
-        emitError() << "expected key entry for {0} in DictionaryAttr to set "
+        if (diag)
+          *diag << "expected key entry for {0} in DictionaryAttr to set "
                    "Properties.";
         return ::mlir::failure();
       }
@@ -1385,7 +1347,8 @@ void OpEmitter::genPropertiesSupport() {
       if (convertedAttr) {{
         propStorage = convertedAttr;
       } else {{
-        emitError() << "Invalid attribute `{0}` in property conversion: " << attr;
+        if (diag)
+          *diag << "Invalid attribute `{0}` in property conversion: " << attr;
         return ::mlir::failure();
       }
     }
@@ -1574,7 +1537,7 @@ void OpEmitter::genPropertiesSupport() {
           << formatv(R"(
     {{
       ::mlir::Attribute attr = attrs.get({0}AttrName(opName));
-      if (attr && ::mlir::failed({1}(attr, "{2}", emitError)))
+      if (attr && ::mlir::failed({1}(attr, "{2}", getDiag)))
         return ::mlir::failure();
     }
 )",
@@ -1619,33 +1582,15 @@ void OpEmitter::genPropertiesSupportForBytecode(
   readPropertiesMethod
       << "  auto &prop = state.getOrAddProperties<Properties>(); (void)prop;";
   writePropertiesMethod << "  auto &prop = getProperties(); (void)prop;\n";
-  for (const auto &item : llvm::enumerate(attrOrProperties)) {
-    auto &attrOrProp = item.value();
-    FmtContext fctx;
-    fctx.addSubst("_reader", "reader")
-        .addSubst("_writer", "writer")
-        .addSubst("_storage", propertyStorage)
-        .addSubst("_ctxt", "this->getContext()");
-    // If the op emits operand/result segment sizes as a property, emit the
-    // legacy reader/writer in the appropriate order to allow backward
-    // compatibility and back deployment.
-    if (emitHelper.getOperandSegmentsSize().has_value() &&
-        item.index() == emitHelper.getOperandSegmentSizesLegacyIndex()) {
-      FmtContext fmtCtxt(fctx);
-      fmtCtxt.addSubst("_propName", operandSegmentAttrName);
-      readPropertiesMethod << tgfmt(readBytecodeSegmentSizeLegacy, &fmtCtxt);
-      writePropertiesMethod << tgfmt(writeBytecodeSegmentSizeLegacy, &fmtCtxt);
-    }
-    if (emitHelper.getResultSegmentsSize().has_value() &&
-        item.index() == emitHelper.getResultSegmentSizesLegacyIndex()) {
-      FmtContext fmtCtxt(fctx);
-      fmtCtxt.addSubst("_propName", resultSegmentAttrName);
-      readPropertiesMethod << tgfmt(readBytecodeSegmentSizeLegacy, &fmtCtxt);
-      writePropertiesMethod << tgfmt(writeBytecodeSegmentSizeLegacy, &fmtCtxt);
-    }
+  for (const auto &attrOrProp : attrOrProperties) {
     if (const auto *namedProperty =
             attrOrProp.dyn_cast<const NamedProperty *>()) {
       StringRef name = namedProperty->name;
+      FmtContext fctx;
+      fctx.addSubst("_reader", "reader")
+          .addSubst("_writer", "writer")
+          .addSubst("_storage", propertyStorage)
+          .addSubst("_ctxt", "this->getContext()");
       readPropertiesMethod << formatv(
           R"(
   {{
@@ -2128,26 +2073,14 @@ void OpEmitter::genNamedOperandSetters() {
       continue;
     std::string name = op.getGetterName(operand.name);
 
-    StringRef returnType;
-    if (operand.isVariadicOfVariadic()) {
-      returnType = "::mlir::MutableOperandRangeRange";
-    } else if (operand.isVariableLength()) {
-      returnType = "::mlir::MutableOperandRange";
-    } else {
-      returnType = "::mlir::OpOperand &";
-    }
-    auto *m = opClass.addMethod(returnType, name + "Mutable");
+    auto *m = opClass.addMethod(operand.isVariadicOfVariadic()
+                                    ? "::mlir::MutableOperandRangeRange"
+                                    : "::mlir::MutableOperandRange",
+                                name + "Mutable");
     ERROR_IF_PRUNED(m, name, op);
     auto &body = m->body();
-    body << "  auto range = getODSOperandIndexAndLength(" << i << ");\n";
-
-    if (!operand.isVariadicOfVariadic() && !operand.isVariableLength()) {
-      // In case of a single operand, return a single OpOperand.
-      body << "  return getOperation()->getOpOperand(range.first);\n";
-      continue;
-    }
-
-    body << "  auto mutableRange = "
+    body << "  auto range = getODSOperandIndexAndLength(" << i << ");\n"
+         << "  auto mutableRange = "
             "::mlir::MutableOperandRange(getOperation(), "
             "range.first, range.second";
     if (attrSizedOperands) {
@@ -2883,20 +2816,16 @@ void OpEmitter::buildParamList(SmallVectorImpl<MethodParameter> &paramList,
   // Successors and variadic regions go at the end of the parameter list, so no
   // default arguments are possible.
   bool hasTrailingParams = op.getNumSuccessors() || op.getNumVariadicRegions();
-  if (!hasTrailingParams) {
+  if (attrParamKind == AttrParamKind::UnwrappedValue && !hasTrailingParams) {
     // Calculate the start index from which we can attach default values in the
     // builder declaration.
     for (int i = op.getNumArgs() - 1; i >= 0; --i) {
       auto *namedAttr =
           llvm::dyn_cast_if_present<tblgen::NamedAttribute *>(op.getArg(i));
-      if (!namedAttr)
+      if (!namedAttr || !namedAttr->attr.hasDefaultValue())
         break;
 
-      Attribute attr = namedAttr->attr;
-      // TODO: Currently we can't differentiate between optional meaning do not
-      // verify/not always error if missing or optional meaning need not be
-      // specified in builder. Expand isOptional once we can differentiate.
-      if (!attr.hasDefaultValue() && !attr.isDerivedAttr())
+      if (!canUseUnwrappedRawValue(namedAttr->attr))
         break;
 
       // Creating an APInt requires us to provide bitwidth, value, and
@@ -2910,21 +2839,6 @@ void OpEmitter::buildParamList(SmallVectorImpl<MethodParameter> &paramList,
 
       defaultValuedAttrStartIndex = i;
     }
-  }
-  // Avoid generating build methods that are ambiguous due to default values by
-  // requiring at least one attribute.
-  if (defaultValuedAttrStartIndex < op.getNumArgs()) {
-    // TODO: This should have been possible as a cast<NamedAttribute> but
-    // required template instantiations is not yet defined for the tblgen helper
-    // classes.
-    auto *namedAttr =
-        cast<NamedAttribute *>(op.getArg(defaultValuedAttrStartIndex));
-    Attribute attr = namedAttr->attr;
-    if ((attrParamKind == AttrParamKind::WrappedAttr &&
-         canUseUnwrappedRawValue(attr)) ||
-        (attrParamKind == AttrParamKind::UnwrappedValue &&
-         !canUseUnwrappedRawValue(attr)))
-      ++defaultValuedAttrStartIndex;
   }
 
   /// Collect any inferred attributes.
@@ -2978,12 +2892,9 @@ void OpEmitter::buildParamList(SmallVectorImpl<MethodParameter> &paramList,
 
     // Attach default value if requested and possible.
     std::string defaultValue;
-    if (i >= defaultValuedAttrStartIndex) {
-      if (attrParamKind == AttrParamKind::UnwrappedValue &&
-          canUseUnwrappedRawValue(attr))
-        defaultValue += attr.getDefaultValue();
-      else
-        defaultValue += "nullptr";
+    if (attrParamKind == AttrParamKind::UnwrappedValue &&
+        i >= defaultValuedAttrStartIndex) {
+      defaultValue += attr.getDefaultValue();
     }
     paramList.emplace_back(type, namedAttr.name, StringRef(defaultValue),
                            attr.isOptional());
@@ -3302,11 +3213,9 @@ void OpEmitter::genSideEffectInterfaceMethods() {
   // The code used to add an effect instance.
   // {0}: The effect class.
   // {1}: Optional value or symbol reference.
-  // {2}: The side effect stage.
-  // {3}: Does this side effect act on every single value of resource.
-  // {4}: The resource class.
+  // {1}: The resource class.
   const char *addEffectCode =
-      "  effects.emplace_back({0}::get(), {1}{2}, {3}, {4}::get());\n";
+      "  effects.emplace_back({0}::get(), {1}{2}::get());\n";
 
   for (auto &it : interfaceEffects) {
     // Generate the 'getEffects' method.
@@ -3323,25 +3232,20 @@ void OpEmitter::genSideEffectInterfaceMethods() {
     for (auto &location : it.second) {
       StringRef effect = location.effect.getName();
       StringRef resource = location.effect.getResource();
-      int stage = (int)location.effect.getStage();
-      bool effectOnFullRegion = (int)location.effect.getEffectOnfullRegion();
       if (location.kind == EffectKind::Static) {
         // A static instance has no attached value.
-        body << llvm::formatv(addEffectCode, effect, "", stage,
-                              effectOnFullRegion, resource)
-                    .str();
+        body << llvm::formatv(addEffectCode, effect, "", resource).str();
       } else if (location.kind == EffectKind::Symbol) {
         // A symbol reference requires adding the proper attribute.
         const auto *attr = op.getArg(location.index).get<NamedAttribute *>();
         std::string argName = op.getGetterName(attr->name);
         if (attr->attr.isOptional()) {
           body << "  if (auto symbolRef = " << argName << "Attr())\n  "
-               << llvm::formatv(addEffectCode, effect, "symbolRef, ", stage,
-                                effectOnFullRegion, resource)
+               << llvm::formatv(addEffectCode, effect, "symbolRef, ", resource)
                       .str();
         } else {
           body << llvm::formatv(addEffectCode, effect, argName + "Attr(), ",
-                                stage, effectOnFullRegion, resource)
+                                resource)
                       .str();
         }
       } else {
@@ -3349,9 +3253,7 @@ void OpEmitter::genSideEffectInterfaceMethods() {
         body << "  for (::mlir::Value value : getODS"
              << (location.kind == EffectKind::Operand ? "Operands" : "Results")
              << "(" << location.index << "))\n  "
-             << llvm::formatv(addEffectCode, effect, "value, ", stage,
-                              effectOnFullRegion, resource)
-                    .str();
+             << llvm::formatv(addEffectCode, effect, "value, ", resource).str();
       }
     }
   }
@@ -4325,7 +4227,7 @@ static void emitOpList(const std::vector<Record *> &defs, raw_ostream &os) {
 }
 
 static bool emitOpDecls(const RecordKeeper &recordKeeper, raw_ostream &os) {
-  emitSourceFileHeader("Op Declarations", os, recordKeeper);
+  emitSourceFileHeader("Op Declarations", os);
 
   std::vector<Record *> defs = getRequestedOpDefinitions(recordKeeper);
   emitOpClasses(recordKeeper, defs, os, /*emitDecl=*/true);
@@ -4334,7 +4236,7 @@ static bool emitOpDecls(const RecordKeeper &recordKeeper, raw_ostream &os) {
 }
 
 static bool emitOpDefs(const RecordKeeper &recordKeeper, raw_ostream &os) {
-  emitSourceFileHeader("Op Definitions", os, recordKeeper);
+  emitSourceFileHeader("Op Definitions", os);
 
   std::vector<Record *> defs = getRequestedOpDefinitions(recordKeeper);
   emitOpList(defs, os);

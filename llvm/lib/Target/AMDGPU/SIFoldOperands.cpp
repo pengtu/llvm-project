@@ -345,44 +345,9 @@ static void appendFoldCandidate(SmallVectorImpl<FoldCandidate> &FoldList,
 bool SIFoldOperands::tryAddToFoldList(SmallVectorImpl<FoldCandidate> &FoldList,
                                       MachineInstr *MI, unsigned OpNo,
                                       MachineOperand *OpToFold) const {
-  const unsigned Opc = MI->getOpcode();
-
-  auto tryToFoldAsFMAAKorMK = [&]() {
-    if (!OpToFold->isImm())
-      return false;
-
-    const bool TryAK = OpNo == 3;
-    const unsigned NewOpc = TryAK ? AMDGPU::S_FMAAK_F32 : AMDGPU::S_FMAMK_F32;
-    MI->setDesc(TII->get(NewOpc));
-
-    // We have to fold into operand which would be Imm not into OpNo.
-    bool FoldAsFMAAKorMK =
-        tryAddToFoldList(FoldList, MI, TryAK ? 3 : 2, OpToFold);
-    if (FoldAsFMAAKorMK) {
-      // Untie Src2 of fmac.
-      MI->untieRegOperand(3);
-      // For fmamk swap operands 1 and 2 if OpToFold was meant for operand 1.
-      if (OpNo == 1) {
-        MachineOperand &Op1 = MI->getOperand(1);
-        MachineOperand &Op2 = MI->getOperand(2);
-        Register OldReg = Op1.getReg();
-        // Operand 2 might be an inlinable constant
-        if (Op2.isImm()) {
-          Op1.ChangeToImmediate(Op2.getImm());
-          Op2.ChangeToRegister(OldReg, false);
-        } else {
-          Op1.setReg(Op2.getReg());
-          Op2.setReg(OldReg);
-        }
-      }
-      return true;
-    }
-    MI->setDesc(TII->get(Opc));
-    return false;
-  };
-
   if (!TII->isOperandLegal(*MI, OpNo, OpToFold)) {
     // Special case for v_mac_{f16, f32}_e64 if we are trying to fold into src2
+    unsigned Opc = MI->getOpcode();
     unsigned NewOpc = macToMad(Opc);
     if (NewOpc != AMDGPU::INSTRUCTION_LIST_END) {
       // Check if changing this to a v_mad_{f16, f32} instruction will allow us
@@ -400,13 +365,6 @@ bool SIFoldOperands::tryAddToFoldList(SmallVectorImpl<FoldCandidate> &FoldList,
       if (AddOpSel)
         MI->removeOperand(MI->getNumExplicitOperands() - 1);
       MI->setDesc(TII->get(Opc));
-    }
-
-    // Special case for s_fmac_f32 if we are trying to fold into Src2.
-    // By transforming into fmaak we can untie Src2 and make folding legal.
-    if (Opc == AMDGPU::S_FMAC_F32 && OpNo == 3) {
-      if (tryToFoldAsFMAAKorMK())
-        return true;
     }
 
     // Special case for s_setreg_b32
@@ -489,28 +447,6 @@ bool SIFoldOperands::tryAddToFoldList(SmallVectorImpl<FoldCandidate> &FoldList,
     return true;
   }
 
-  // Inlineable constant might have been folded into Imm operand of fmaak or
-  // fmamk and we are trying to fold a non-inlinable constant.
-  if ((Opc == AMDGPU::S_FMAAK_F32 || Opc == AMDGPU::S_FMAMK_F32) &&
-      !OpToFold->isReg() && !TII->isInlineConstant(*OpToFold)) {
-    unsigned ImmIdx = Opc == AMDGPU::S_FMAAK_F32 ? 3 : 2;
-    MachineOperand &OpImm = MI->getOperand(ImmIdx);
-    if (!OpImm.isReg() &&
-        TII->isInlineConstant(*MI, MI->getOperand(OpNo), OpImm))
-      return tryToFoldAsFMAAKorMK();
-  }
-
-  // Special case for s_fmac_f32 if we are trying to fold into Src0 or Src1.
-  // By changing into fmamk we can untie Src2.
-  // If folding for Src0 happens first and it is identical operand to Src1 we
-  // should avoid transforming into fmamk which requires commuting as it would
-  // cause folding into Src1 to fail later on due to wrong OpNo used.
-  if (Opc == AMDGPU::S_FMAC_F32 &&
-      (OpNo != 1 || !MI->getOperand(1).isIdenticalTo(MI->getOperand(2)))) {
-    if (tryToFoldAsFMAAKorMK())
-      return true;
-  }
-
   // Check the case where we might introduce a second constant operand to a
   // scalar instruction
   if (TII->isSALU(MI->getOpcode())) {
@@ -522,8 +458,7 @@ bool SIFoldOperands::tryAddToFoldList(SmallVectorImpl<FoldCandidate> &FoldList,
       // Otherwise check for another constant
       for (unsigned i = 0, e = InstDesc.getNumOperands(); i != e; ++i) {
         auto &Op = MI->getOperand(i);
-        if (OpNo != i && !Op.isReg() &&
-            !TII->isInlineConstant(Op, InstDesc.operands()[i]))
+        if (OpNo != i && !Op.isReg() && !TII->isInlineConstant(Op, OpInfo))
           return false;
       }
     }
@@ -1408,7 +1343,6 @@ const MachineOperand *SIFoldOperands::isClamp(const MachineInstr &MI) const {
   case AMDGPU::V_MAX_F32_e64:
   case AMDGPU::V_MAX_F16_e64:
   case AMDGPU::V_MAX_F16_t16_e64:
-  case AMDGPU::V_MAX_F16_fake16_e64:
   case AMDGPU::V_MAX_F64_e64:
   case AMDGPU::V_PK_MAX_F16: {
     if (!TII->getNamedOperand(MI, AMDGPU::OpName::clamp)->getImm())
@@ -1504,8 +1438,7 @@ static int getOModValue(unsigned Opc, int64_t Val) {
     }
   }
   case AMDGPU::V_MUL_F16_e64:
-  case AMDGPU::V_MUL_F16_t16_e64:
-  case AMDGPU::V_MUL_F16_fake16_e64: {
+  case AMDGPU::V_MUL_F16_t16_e64: {
     switch (static_cast<uint16_t>(Val)) {
     case 0x3800: // 0.5
       return SIOutMods::DIV2;
@@ -1532,14 +1465,12 @@ SIFoldOperands::isOMod(const MachineInstr &MI) const {
   case AMDGPU::V_MUL_F64_e64:
   case AMDGPU::V_MUL_F32_e64:
   case AMDGPU::V_MUL_F16_t16_e64:
-  case AMDGPU::V_MUL_F16_fake16_e64:
   case AMDGPU::V_MUL_F16_e64: {
     // If output denormals are enabled, omod is ignored.
     if ((Op == AMDGPU::V_MUL_F32_e64 &&
          MFI->getMode().FP32Denormals.Output != DenormalMode::PreserveSign) ||
         ((Op == AMDGPU::V_MUL_F64_e64 || Op == AMDGPU::V_MUL_F16_e64 ||
-          Op == AMDGPU::V_MUL_F16_t16_e64 ||
-          Op == AMDGPU::V_MUL_F16_fake16_e64) &&
+          Op == AMDGPU::V_MUL_F16_t16_e64) &&
          MFI->getMode().FP64FP16Denormals.Output != DenormalMode::PreserveSign))
       return std::pair(nullptr, SIOutMods::NONE);
 
@@ -1569,14 +1500,12 @@ SIFoldOperands::isOMod(const MachineInstr &MI) const {
   case AMDGPU::V_ADD_F64_e64:
   case AMDGPU::V_ADD_F32_e64:
   case AMDGPU::V_ADD_F16_e64:
-  case AMDGPU::V_ADD_F16_t16_e64:
-  case AMDGPU::V_ADD_F16_fake16_e64: {
+  case AMDGPU::V_ADD_F16_t16_e64: {
     // If output denormals are enabled, omod is ignored.
     if ((Op == AMDGPU::V_ADD_F32_e64 &&
          MFI->getMode().FP32Denormals.Output != DenormalMode::PreserveSign) ||
         ((Op == AMDGPU::V_ADD_F64_e64 || Op == AMDGPU::V_ADD_F16_e64 ||
-          Op == AMDGPU::V_ADD_F16_t16_e64 ||
-          Op == AMDGPU::V_ADD_F16_fake16_e64) &&
+          Op == AMDGPU::V_ADD_F16_t16_e64) &&
          MFI->getMode().FP64FP16Denormals.Output != DenormalMode::PreserveSign))
       return std::pair(nullptr, SIOutMods::NONE);
 

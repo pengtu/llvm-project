@@ -587,7 +587,7 @@ bool RegionInfoBase<Tr>::isRegion(BlockT *entry, BlockT *exit) const {
   for (BlockT *Succ : *entrySuccs) {
     if (Succ == exit || Succ == entry)
       continue;
-    if (!exitSuccs->contains(Succ))
+    if (exitSuccs->find(Succ) == exitSuccs->end())
       return false;
     if (!isCommonDomFrontier(Succ, entry, exit))
       return false;

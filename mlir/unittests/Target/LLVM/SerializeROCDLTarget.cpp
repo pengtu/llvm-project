@@ -83,7 +83,7 @@ TEST_F(MLIRTargetLLVMROCDL, SKIP_WITHOUT_AMDGPU(SerializeROCDLMToLLVM)) {
   // Serialize the module.
   auto serializer = dyn_cast<gpu::TargetAttrInterface>(target);
   ASSERT_TRUE(!!serializer);
-  gpu::TargetOptions options("", {}, "", gpu::CompilationTarget::Offload);
+  gpu::TargetOptions options("", {}, "", gpu::TargetOptions::offload);
   for (auto gpuModule : (*module).getBody()->getOps<gpu::GPUModuleOp>()) {
     std::optional<SmallVector<char, 0>> object =
         serializer.serializeToObject(gpuModule, options);
@@ -119,7 +119,7 @@ TEST_F(MLIRTargetLLVMROCDL, SKIP_WITHOUT_AMDGPU(SerializeROCDLToPTX)) {
   // Serialize the module.
   auto serializer = dyn_cast<gpu::TargetAttrInterface>(target);
   ASSERT_TRUE(!!serializer);
-  gpu::TargetOptions options("", {}, "", gpu::CompilationTarget::Assembly);
+  gpu::TargetOptions options("", {}, "", gpu::TargetOptions::assembly);
   for (auto gpuModule : (*module).getBody()->getOps<gpu::GPUModuleOp>()) {
     std::optional<SmallVector<char, 0>> object =
         serializer.serializeToObject(gpuModule, options);
@@ -149,7 +149,7 @@ TEST_F(MLIRTargetLLVMROCDL, SKIP_WITHOUT_AMDGPU(SerializeROCDLToBinary)) {
   // Serialize the module.
   auto serializer = dyn_cast<gpu::TargetAttrInterface>(target);
   ASSERT_TRUE(!!serializer);
-  gpu::TargetOptions options("", {}, "", gpu::CompilationTarget::Binary);
+  gpu::TargetOptions options("", {}, "", gpu::TargetOptions::binary);
   for (auto gpuModule : (*module).getBody()->getOps<gpu::GPUModuleOp>()) {
     std::optional<SmallVector<char, 0>> object =
         serializer.serializeToObject(gpuModule, options);

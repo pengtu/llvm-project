@@ -21,24 +21,6 @@ SourceRange getTypeRange(const ParmVarDecl &Param) {
   return {Param.getBeginLoc(), Param.getLocation().getLocWithOffset(-1)};
 }
 
-// Finds the location of the qualifying `const` token in the `ParmValDecl`'s
-// return type. Returns `std::nullopt` when the parm type is not
-// `const`-qualified like when the type is an alias or a macro.
-static std::optional<Token>
-findConstToRemove(const ParmVarDecl &Param,
-                  const MatchFinder::MatchResult &Result) {
-
-  CharSourceRange FileRange = Lexer::makeFileCharRange(
-      CharSourceRange::getTokenRange(getTypeRange(Param)),
-      *Result.SourceManager, Result.Context->getLangOpts());
-
-  if (FileRange.isInvalid())
-    return std::nullopt;
-
-  return tidy::utils::lexer::getQualifyingToken(
-      tok::kw_const, FileRange, *Result.Context, *Result.SourceManager);
-}
-
 } // namespace
 
 void AvoidConstParamsInDecls::storeOptions(ClangTidyOptions::OptionMap &Opts) {
@@ -48,10 +30,11 @@ void AvoidConstParamsInDecls::storeOptions(ClangTidyOptions::OptionMap &Opts) {
 void AvoidConstParamsInDecls::registerMatchers(MatchFinder *Finder) {
   const auto ConstParamDecl =
       parmVarDecl(hasType(qualType(isConstQualified()))).bind("param");
-  Finder->addMatcher(functionDecl(unless(isDefinition()),
-                                  has(typeLoc(forEach(ConstParamDecl))))
-                         .bind("func"),
-                     this);
+  Finder->addMatcher(
+      functionDecl(unless(isDefinition()),
+                   has(typeLoc(forEach(ConstParamDecl))))
+          .bind("func"),
+      this);
 }
 
 void AvoidConstParamsInDecls::check(const MatchFinder::MatchResult &Result) {
@@ -67,10 +50,7 @@ void AvoidConstParamsInDecls::check(const MatchFinder::MatchResult &Result) {
     return;
   }
 
-  const auto Tok = findConstToRemove(*Param, Result);
-  const auto ConstLocation = Tok ? Tok->getLocation() : Param->getBeginLoc();
-
-  auto Diag = diag(ConstLocation,
+  auto Diag = diag(Param->getBeginLoc(),
                    "parameter %0 is const-qualified in the function "
                    "declaration; const-qualification of parameters only has an "
                    "effect in function definitions");
@@ -90,9 +70,18 @@ void AvoidConstParamsInDecls::check(const MatchFinder::MatchResult &Result) {
     // from a macro.
     return;
   }
-  if (!Tok)
+
+  CharSourceRange FileRange = Lexer::makeFileCharRange(
+      CharSourceRange::getTokenRange(getTypeRange(*Param)),
+      *Result.SourceManager, getLangOpts());
+
+  if (!FileRange.isValid())
     return;
 
+  auto Tok = tidy::utils::lexer::getQualifyingToken(
+      tok::kw_const, FileRange, *Result.Context, *Result.SourceManager);
+  if (!Tok)
+    return;
   Diag << FixItHint::CreateRemoval(
       CharSourceRange::getTokenRange(Tok->getLocation(), Tok->getLocation()));
 }

@@ -157,7 +157,7 @@ private:
   void generateLineNumBasedProfile();
   void generateProbeBasedProfile();
   RangeSample preprocessRangeCounter(const RangeSample &RangeCounter);
-  FunctionSamples &getTopLevelFunctionProfile(FunctionId FuncName);
+  FunctionSamples &getTopLevelFunctionProfile(StringRef FuncName);
   // Helper function to get the leaf frame's FunctionProfile by traversing the
   // inline stack and meanwhile it adds the total samples for each frame's
   // function profile.

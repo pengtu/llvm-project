@@ -115,7 +115,6 @@ cxx_sources = [
   "atomic.cpp",
   "barrier.cpp",
   "bind.cpp",
-  "call_once.cpp",
   "charconv.cpp",
   "chrono.cpp",
   "condition_variable.cpp",

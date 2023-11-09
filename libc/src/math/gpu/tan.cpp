@@ -9,8 +9,8 @@
 #include "src/math/tan.h"
 #include "src/__support/common.h"
 
-namespace LIBC_NAMESPACE {
+namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(double, tan, (double x)) { return __builtin_tan(x); }
 
-} // namespace LIBC_NAMESPACE
+} // namespace __llvm_libc

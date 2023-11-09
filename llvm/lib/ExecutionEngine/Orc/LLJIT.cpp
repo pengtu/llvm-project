@@ -10,6 +10,8 @@
 #include "llvm/ExecutionEngine/JITLink/EHFrameSupport.h"
 #include "llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h"
 #include "llvm/ExecutionEngine/Orc/COFFPlatform.h"
+#include "llvm/ExecutionEngine/Orc/DebugObjectManagerPlugin.h"
+#include "llvm/ExecutionEngine/Orc/DebuggerSupportPlugin.h"
 #include "llvm/ExecutionEngine/Orc/ELFNixPlatform.h"
 #include "llvm/ExecutionEngine/Orc/EPCDynamicLibrarySearchGenerator.h"
 #include "llvm/ExecutionEngine/Orc/EPCEHFrameRegistrar.h"
@@ -750,12 +752,6 @@ Error LLJITBuilderState::prepareForConstruction() {
     case Triple::x86_64:
       UseJITLink = !TT.isOSBinFormatCOFF();
       break;
-    case Triple::ppc64:
-      UseJITLink = TT.isPPC64ELFv2ABI();
-      break;
-    case Triple::ppc64le:
-      UseJITLink = TT.isOSBinFormatELF();
-      break;
     default:
       break;
     }
@@ -779,8 +775,18 @@ Error LLJITBuilderState::prepareForConstruction() {
 
   // If we need a process JITDylib but no setup function has been given then
   // create a default one.
-  if (!SetupProcessSymbolsJITDylib && LinkProcessSymbolsByDefault) {
-    LLVM_DEBUG(dbgs() << "Creating default Process JD setup function\n");
+  if (!SetupProcessSymbolsJITDylib &&
+      (LinkProcessSymbolsByDefault || EnableDebuggerSupport)) {
+
+    LLVM_DEBUG({
+      dbgs() << "Creating default Process JD setup function (neeeded for";
+      if (LinkProcessSymbolsByDefault)
+        dbgs() << " <link-process-syms-by-default>";
+      if (EnableDebuggerSupport)
+        dbgs() << " <debugger-support>";
+      dbgs() << ")\n";
+    });
+
     SetupProcessSymbolsJITDylib = [this](LLJIT &J) -> Expected<JITDylibSP> {
       auto &JD =
           J.getExecutionSession().createBareJITDylib("<Process Symbols>");
@@ -1002,10 +1008,43 @@ LLJIT::LLJIT(LLJITBuilderState &S, Error &Err)
     }
   }
 
-  if (S.PrePlatformSetup) {
-    if (auto Err2 = S.PrePlatformSetup(*this)) {
-      Err = std::move(Err2);
-      return;
+  if (S.EnableDebuggerSupport) {
+    if (auto *OLL = dyn_cast<ObjectLinkingLayer>(ObjLinkingLayer.get())) {
+      switch (TT.getObjectFormat()) {
+      case Triple::ELF: {
+        auto Registrar = createJITLoaderGDBRegistrar(*ES);
+        if (!Registrar) {
+          Err = Registrar.takeError();
+          return;
+        }
+        OLL->addPlugin(std::make_unique<DebugObjectManagerPlugin>(
+            *ES, std::move(*Registrar), true, true));
+        break;
+      }
+      case Triple::MachO: {
+        assert(ProcessSymbols && "ProcessSymbols JD should be available when "
+                                 "EnableDebuggerSupport is set");
+        auto DS =
+            GDBJITDebugInfoRegistrationPlugin::Create(*ES, *ProcessSymbols, TT);
+        if (!DS) {
+          Err = DS.takeError();
+          return;
+        }
+        OLL->addPlugin(std::move(*DS));
+        break;
+      }
+      default:
+        LLVM_DEBUG({
+          dbgs() << "Cannot enable LLJIT debugger support: "
+                 << Triple::getObjectFormatTypeName(TT.getObjectFormat())
+                 << " not supported.\n";
+        });
+      }
+    } else {
+      LLVM_DEBUG({
+        dbgs() << "Cannot enable LLJIT debugger support: "
+                  " debugger support is only available when using JITLink.\n";
+      });
     }
   }
 
@@ -1095,7 +1134,7 @@ Expected<JITDylibSP> ExecutorNativePlatform::operator()(LLJIT &J) {
 
   if (!ObjLinkingLayer)
     return make_error<StringError>(
-        "ExecutorNativePlatform requires ObjectLinkingLayer",
+        "SetUpTargetPlatform requires ObjectLinkingLayer",
         inconvertibleErrorCode());
 
   std::unique_ptr<MemoryBuffer> RuntimeArchiveBuffer;

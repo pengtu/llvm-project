@@ -722,10 +722,10 @@ public:
   void setMemProt(orc::MemProt Prot) { this->Prot = Prot; }
 
   /// Get the memory lifetime policy for this section.
-  orc::MemLifetime getMemLifetime() const { return ML; }
+  orc::MemLifetimePolicy getMemLifetimePolicy() const { return MLP; }
 
   /// Set the memory lifetime policy for this section.
-  void setMemLifetime(orc::MemLifetime ML) { this->ML = ML; }
+  void setMemLifetimePolicy(orc::MemLifetimePolicy MLP) { this->MLP = MLP; }
 
   /// Returns the ordinal for this section.
   SectionOrdinal getOrdinal() const { return SecOrdinal; }
@@ -793,7 +793,7 @@ private:
 
   StringRef Name;
   orc::MemProt Prot;
-  orc::MemLifetime ML = orc::MemLifetime::Standard;
+  orc::MemLifetimePolicy MLP = orc::MemLifetimePolicy::Standard;
   SectionOrdinal SecOrdinal = 0;
   BlockSet Blocks;
   SymbolSet Symbols;
@@ -995,14 +995,14 @@ public:
   using GetEdgeKindNameFunction = const char *(*)(Edge::Kind);
 
   LinkGraph(std::string Name, const Triple &TT, SubtargetFeatures Features,
-            unsigned PointerSize, llvm::endianness Endianness,
+            unsigned PointerSize, support::endianness Endianness,
             GetEdgeKindNameFunction GetEdgeKindName)
       : Name(std::move(Name)), TT(TT), Features(std::move(Features)),
         PointerSize(PointerSize), Endianness(Endianness),
         GetEdgeKindName(std::move(GetEdgeKindName)) {}
 
   LinkGraph(std::string Name, const Triple &TT, unsigned PointerSize,
-            llvm::endianness Endianness,
+            support::endianness Endianness,
             GetEdgeKindNameFunction GetEdgeKindName)
       : LinkGraph(std::move(Name), TT, SubtargetFeatures(), PointerSize,
                   Endianness, GetEdgeKindName) {}
@@ -1026,7 +1026,7 @@ public:
   unsigned getPointerSize() const { return PointerSize; }
 
   /// Returns the endianness of content in this graph.
-  llvm::endianness getEndianness() const { return Endianness; }
+  support::endianness getEndianness() const { return Endianness; }
 
   const char *getEdgeKindName(Edge::Kind K) const { return GetEdgeKindName(K); }
 
@@ -1530,7 +1530,7 @@ private:
   Triple TT;
   SubtargetFeatures Features;
   unsigned PointerSize;
-  llvm::endianness Endianness;
+  support::endianness Endianness;
   GetEdgeKindNameFunction GetEdgeKindName = nullptr;
   DenseMap<StringRef, std::unique_ptr<Section>> Sections;
   ExternalSymbolMap ExternalSymbols;

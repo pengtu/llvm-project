@@ -12,8 +12,7 @@
 #include "Plugins/SymbolFile/DWARF/DWARFIndex.h"
 #include "llvm/DebugInfo/DWARF/DWARFAcceleratorTable.h"
 
-namespace lldb_private::plugin {
-namespace dwarf {
+namespace lldb_private {
 class AppleDWARFIndex : public DWARFIndex {
 public:
   static std::unique_ptr<AppleDWARFIndex>
@@ -78,7 +77,6 @@ private:
                  std::optional<dw_tag_t> search_for_tag = std::nullopt,
                  std::optional<uint32_t> search_for_qualhash = std::nullopt);
 };
-} // namespace dwarf
-} // namespace lldb_private::plugin
+} // namespace lldb_private
 
 #endif // LLDB_SOURCE_PLUGINS_SYMBOLFILE_DWARF_APPLEDWARFINDEX_H

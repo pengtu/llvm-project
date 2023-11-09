@@ -312,7 +312,7 @@ public:
       return false;
   }
 
-  virtual void Execute(const char *args_string,
+  virtual bool Execute(const char *args_string,
                        CommandReturnObject &result) = 0;
 
 protected:
@@ -398,10 +398,10 @@ public:
 
   ~CommandObjectParsed() override = default;
 
-  void Execute(const char *args_string, CommandReturnObject &result) override;
+  bool Execute(const char *args_string, CommandReturnObject &result) override;
 
 protected:
-  virtual void DoExecute(Args &command, CommandReturnObject &result) = 0;
+  virtual bool DoExecute(Args &command, CommandReturnObject &result) = 0;
 
   bool WantsRawCommandString() override { return false; }
 };
@@ -415,10 +415,10 @@ public:
 
   ~CommandObjectRaw() override = default;
 
-  void Execute(const char *args_string, CommandReturnObject &result) override;
+  bool Execute(const char *args_string, CommandReturnObject &result) override;
 
 protected:
-  virtual void DoExecute(llvm::StringRef command,
+  virtual bool DoExecute(llvm::StringRef command,
                          CommandReturnObject &result) = 0;
 
   bool WantsRawCommandString() override { return true; }

@@ -31,11 +31,12 @@
 // RUN: %if mlir_arm_sve_tests %{ %{compile_sve} | %{run_sve} | FileCheck %s %}
 
 #DCSR  = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d0 : compressed, d1 : compressed)
+  lvlTypes = [ "compressed", "compressed" ]
 }>
 
 #DCSC  = #sparse_tensor.encoding<{
-  map = (d0, d1) -> (d1 : compressed, d0 : compressed)
+  lvlTypes = [ "compressed", "compressed" ],
+  dimToLvl = affine_map<(i,j) -> (j,i)>
 }>
 
 //

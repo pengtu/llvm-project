@@ -31,7 +31,6 @@
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/Process.h"
 #include "llvm/Support/Program.h"
-#include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/WindowsManifest/WindowsManifestMerger.h"
 #include <limits>
@@ -662,7 +661,6 @@ static StringRef exportSourceName(ExportSource s) {
 // Performs error checking on all /export arguments.
 // It also sets ordinals.
 void LinkerDriver::fixupExports() {
-  llvm::TimeTraceScope timeScope("Fixup exports");
   // Symbol ordinals must be unique.
   std::set<uint16_t> ords;
   for (Export &e : ctx.config.exports) {
