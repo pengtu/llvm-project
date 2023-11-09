@@ -162,6 +162,30 @@ LogicalResult GENX::Matrix2DBlockLoadOp::verify() {
     return this->emitOpError(
         "4th operand (base pitch) should be >= 2nd operand (base width)");
 
+  Type InputElemType = getPtr().getType().getElementType();
+  switch (getElemSizeInBits()) {
+    case 32:
+    if (!InputElemType.isF32()) // || !InputElemType.isBFloat32Type();
+      return this->emitOpError(
+         "element of size 32 should be of type bf32 or f32");
+      break;
+
+    case 16:
+    if (!InputElemType.isF16() || !InputElemType.isBF16())
+      return this->emitOpError(
+          "element of size 16 should be of type bf16 or f16");
+      break;
+
+    case 8:
+    if (!InputElemType.isa<IntegerType>()) // ||!InputElemType.isIntegerTy(8);
+      return this->emitOpError(
+          "element of size 8 should be of type int8 or uint8");
+      break;
+
+    default:
+    return this->emitOpError(
+        "element size should be 8, 16 or 32 bits");
+  }
   return success();
 }
 
@@ -185,6 +209,30 @@ LogicalResult GENX::Matrix2DBlockStoreOp::verify() {
     return this->emitOpError(
         "4th operand (base pitch) should be >= 2nd operand (base width)");
 
+  Type InputElemType = getPtr().getType().getElementType();//cast<GENX::MatrixElemType>;
+  switch (getElemSizeInBits()) {
+    case 32:
+    if (!InputElemType.isF32()) // || !InputElemType.isBFloat32Type();
+      return this->emitOpError(
+         "element of size 32 should be of type bf32 or f32");
+      break;
+
+    case 16:
+    if (!InputElemType.isF16() || !InputElemType.isBF16())
+      return this->emitOpError(
+          "element of size 16 should be of type bf16 or f16");
+      break;
+
+    case 8:
+    if (!InputElemType.isa<IntegerType>()) // ||!InputElemType.isIntegerTy(8);
+      return this->emitOpError(
+          "element of size 8 should be of type int8 or uint8");
+      break;
+
+    default:
+    return this->emitOpError(
+        "element size should be 8, 16 or 32 bits");
+  }
   return success();
 }
 
